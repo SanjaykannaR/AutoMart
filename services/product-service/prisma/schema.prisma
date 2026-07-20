@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./automart_products.db"
+  url      = "file:/data/automart_products.db"
 }
 
 model Category {

@@ -21,7 +21,7 @@ services:
   auth-service:
     volumes:
       - ./services/auth-service/src:/app/services/auth-service/src
-      - ./services/auth-service/prisma:/app/services/auth-service/prisma
+      - auth_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              node prisma/seed.js || true &&
@@ -30,7 +30,7 @@ services:
   product-service:
     volumes:
       - ./services/product-service/src:/app/services/product-service/src
-      - ./services/product-service/prisma:/app/services/product-service/prisma
+      - product_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              node prisma/seed.js || true &&
@@ -44,7 +44,7 @@ services:
   order-service:
     volumes:
       - ./services/order-service/src:/app/services/order-service/src
-      - ./services/order-service/prisma:/app/services/order-service/prisma
+      - order_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              npx tsx watch services/order-service/src/index.ts"
@@ -52,7 +52,7 @@ services:
   inventory-service:
     volumes:
       - ./services/inventory-service/src:/app/services/inventory-service/src
-      - ./services/inventory-service/prisma:/app/services/inventory-service/prisma
+      - inventory_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              npx tsx watch services/inventory-service/src/index.ts"

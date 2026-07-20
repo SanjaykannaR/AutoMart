@@ -36,7 +36,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-automart-docker-secret}
       - AUTH_SERVICE_PORT=3001
     volumes:
-      - auth_db:/app/prisma
+      - auth_db:/data
     depends_on:
       redis:
         condition: service_healthy
@@ -58,7 +58,7 @@ services:
     environment:
       - PRODUCT_SERVICE_PORT=3002
     volumes:
-      - product_db:/app/prisma
+      - product_db:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
       interval: 10s
@@ -98,7 +98,7 @@ services:
       - ORDER_SERVICE_PORT=3004
       - REDIS_URL=redis://redis:6379
     volumes:
-      - order_db:/app/prisma
+      - order_db:/data
     depends_on:
       redis:
         condition: service_healthy
@@ -121,7 +121,7 @@ services:
       - INVENTORY_SERVICE_PORT=3005
       - REDIS_URL=redis://redis:6379
     volumes:
-      - inventory_db:/app/prisma
+      - inventory_db:/data
     depends_on:
       redis:
         condition: service_healthy
