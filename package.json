@@ -1,0 +1,32 @@
+{
+  "name": "automart",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "e2e"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev -w apps/web",
+    "dev:gateway": "npm run dev -w services/api-gateway",
+    "dev:auth": "npm run dev -w services/auth-service",
+    "dev:products": "npm run dev -w services/product-service",
+    "dev:search": "npm run dev -w services/search-service",
+    "dev:orders": "npm run dev -w services/order-service",
+    "dev:inventory": "npm run dev -w services/inventory-service",
+    "dev:notifications": "npm run dev -w services/notification-service",
+    "dev:mcp": "npm run dev -w services/mcp-server",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test -w e2e",
+    "db:migrate": "npm run db:migrate --workspaces --if-present",
+    "docker:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up",
+    "docker:build": "docker compose -f docker-compose.yml build",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

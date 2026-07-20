@@ -1,0 +1,111 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DB: automart_auth,automart_products,automart_orders,automart_inventory
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
+    ports:
+      - "5432:5432"
+    networks:
+      - automart-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - automart-net
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "3000:3000"
+    depends_on: [postgres, redis]
+    env_file: .env
+    networks:
+      - automart-net
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "3001:3001"
+    depends_on: [postgres, redis]
+    env_file: .env
+    networks:
+      - automart-net
+
+  product-service:
+    build: ./services/product-service
+    ports:
+      - "3002:3002"
+    depends_on: [postgres]
+    env_file: .env
+    networks:
+      - automart-net
+
+  search-service:
+    build: ./services/search-service
+    ports:
+      - "3003:3003"
+    depends_on: [postgres]
+    env_file: .env
+    networks:
+      - automart-net
+
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "3004:3004"
+    depends_on: [postgres, redis]
+    env_file: .env
+    networks:
+      - automart-net
+
+  inventory-service:
+    build: ./services/inventory-service
+    ports:
+      - "3005:3005"
+    depends_on: [postgres, redis]
+    env_file: .env
+    networks:
+      - automart-net
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "3006:3006"
+    depends_on: [redis]
+    env_file: .env
+    networks:
+      - automart-net
+
+  mcp-server:
+    build: ./services/mcp-server
+    ports:
+      - "3007:3007"
+    depends_on: [redis]
+    env_file: .env
+    networks:
+      - automart-net
+
+  web:
+    build: ./apps/web
+    ports:
+      - "3008:3000"
+    depends_on: [api-gateway]
+    env_file: .env
+    networks:
+      - automart-net
+
+networks:
+  automart-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

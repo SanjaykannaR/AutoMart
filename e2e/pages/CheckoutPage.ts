@@ -1,0 +1,28 @@
+import { type Page, type Locator } from '@playwright/test'
+
+export class CheckoutPage {
+  readonly page: Page
+  readonly addressInput: Locator
+  readonly phoneInput: Locator
+  readonly placeOrderButton: Locator
+
+  constructor(page: Page) {
+    this.page = page
+    this.addressInput = page.getByLabel(/address/i)
+    this.phoneInput = page.getByLabel(/phone/i)
+    this.placeOrderButton = page.getByRole('button', { name: /place order/i })
+  }
+
+  async goto() {
+    await this.page.goto('/checkout')
+  }
+
+  async fillDetails(address: string, phone: string) {
+    await this.addressInput.fill(address)
+    await this.phoneInput.fill(phone)
+  }
+
+  async placeOrder() {
+    await this.placeOrderButton.click()
+  }
+}

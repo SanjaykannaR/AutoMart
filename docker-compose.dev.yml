@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api-gateway:
+    volumes:
+      - ./services/api-gateway/src:/app/src
+    command: npm run dev
+
+  auth-service:
+    volumes:
+      - ./services/auth-service/src:/app/src
+    command: npm run dev
+
+  product-service:
+    volumes:
+      - ./services/product-service/src:/app/src
+    command: npm run dev
+
+  search-service:
+    volumes:
+      - ./services/search-service/src:/app/src
+    command: npm run dev
+
+  order-service:
+    volumes:
+      - ./services/order-service/src:/app/src
+    command: npm run dev
+
+  inventory-service:
+    volumes:
+      - ./services/inventory-service/src:/app/src
+    command: npm run dev
+
+  notification-service:
+    volumes:
+      - ./services/notification-service/src:/app/src
+    command: npm run dev
+
+  mcp-server:
+    volumes:
+      - ./services/mcp-server/src:/app/src
+    command: npm run dev
+
+  web:
+    volumes:
+      - ./apps/web/src:/app/src
+      - ./apps/web/public:/app/public
+    command: npm run dev
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true

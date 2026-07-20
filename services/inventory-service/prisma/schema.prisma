@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/inventory"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./automart_inventory.db"
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  quantity  Int      @default(0)
+  reserved  Int      @default(0)
+  location  String?
+  updatedAt DateTime @updatedAt
+}

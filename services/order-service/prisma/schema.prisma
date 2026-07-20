@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/order"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./automart_orders.db"
+}
+
+model Order {
+  id               String   @id @default(cuid())
+  userId           String
+  items            String
+  total            Float
+  status           String   @default("pending") // pending | confirmed | picked | shipped | delivered | cancelled
+  address          String
+  phone            String
+  note             String?
+  estimatedDelivery DateTime?
+  deliveredAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

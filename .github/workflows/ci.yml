@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [sanjay]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-build:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth-service, product-service, order-service, inventory-service, api-gateway, search-service, notification-service, mcp-server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - name: Generate Prisma Client
+        if: contains(fromJson('["auth-service","product-service","order-service","inventory-service"]'), matrix.service)
+        working-directory: services/${{ matrix.service }}
+        run: npx prisma generate
+      - name: Build
+        working-directory: services/${{ matrix.service }}
+        run: npx tsc --noEmit
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: backend-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - name: Build
+        working-directory: apps/web
+        run: npx next build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000
+
+  typecheck:
+    name: TypeCheck All Services
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - name: Generate all Prisma clients
+        run: |
+          cd services/auth-service && npx prisma generate && cd ../..
+          cd services/product-service && npx prisma generate && cd ../..
+          cd services/order-service && npx prisma generate && cd ../..
+          cd services/inventory-service && npx prisma generate && cd ../..
+      - name: Check all services compile
+        run: |
+          for svc in services/*/; do
+            if [ -f "$svc/tsconfig.json" ]; then
+              echo "Checking $svc..."
+              cd "$svc" && npx tsc --noEmit && cd ../..
+            fi
+          done
