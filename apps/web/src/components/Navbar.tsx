@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ThemeToggle } from './ThemeToggle'
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -32,14 +33,18 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          <ThemeToggle />
           <Link href="/login" className="glass-button text-sm px-5 py-2">
             Sign In
           </Link>
         </div>
 
-        <button className="md:hidden text-white" onClick={() => setOpen(!open)}>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button className="md:hidden text-white" onClick={() => setOpen(!open)}>
           {open ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
-        </button>
+          </button>
+        </div>
       </div>
 
       {open && (

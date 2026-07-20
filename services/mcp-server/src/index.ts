@@ -13,6 +13,10 @@ const PORT = process.env.MCP_SERVER_PORT || 3007
 
 app.use(express.json())
 
+function errorResponse(res: express.Response, status: number, code: string, message: string, hint?: string) {
+  return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
+}
+
 const tools = [
   {
     name: 'search_parts',
@@ -75,6 +79,9 @@ async function searchParts(params: { query: string; category?: string; maxPrice?
 
   try {
     const res = await fetch(`http://search-service:${process.env.SEARCH_SERVICE_PORT || 3003}/search?${searchParams}`)
+    if (!res.ok) {
+      return { code: 'MCP_SEARCH_FAILED', error: `Search service returned HTTP ${res.status}`, hint: 'The search service may be down or misconfigured.' }
+    }
     const data = (await res.json()) as any[]
     return data.slice(0, params.limit || 10).map((p: any) => ({
       id: p.id,
@@ -83,41 +90,65 @@ async function searchParts(params: { query: string; category?: string; maxPrice?
       price: p.price,
       category: p.category,
     }))
-  } catch {
-    return { error: 'Search service unavailable' }
+  } catch (err: any) {
+    return { code: 'MCP_SEARCH_UNREACHABLE', error: 'Search service is unreachable', hint: `Ensure search-service is running. Connection error: ${err.message}` }
   }
 }
 
 async function checkStock(params: { productId: string }) {
+  if (!params.productId) {
+    return { code: 'MCP_MISSING_PARAM', error: 'productId is required', hint: 'Provide a valid product ID to check stock.' }
+  }
   try {
     const res = await fetch(`http://inventory-service:${process.env.INVENTORY_SERVICE_PORT || 3005}/inventory/${params.productId}`)
+    if (res.status === 404) {
+      return { code: 'MCP_PRODUCT_NOT_IN_INVENTORY', error: `No inventory record for product "${params.productId}"`, hint: 'This product has not been added to inventory yet.' }
+    }
+    if (!res.ok) {
+      return { code: 'MCP_INVENTORY_FAILED', error: `Inventory service returned HTTP ${res.status}`, hint: 'The inventory service may be down.' }
+    }
     return await res.json()
-  } catch {
-    return { error: 'Inventory service unavailable' }
+  } catch (err: any) {
+    return { code: 'MCP_INVENTORY_UNREACHABLE', error: 'Inventory service is unreachable', hint: `Ensure inventory-service is running. Connection error: ${err.message}` }
   }
 }
 
 async function getOrderStatus(params: { orderId: string }) {
+  if (!params.orderId) {
+    return { code: 'MCP_MISSING_PARAM', error: 'orderId is required', hint: 'Provide a valid order ID to check its status.' }
+  }
   try {
     const res = await fetch(`http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}/orders/${params.orderId}`)
+    if (res.status === 404) {
+      return { code: 'MCP_ORDER_NOT_FOUND', error: `No order found with ID "${params.orderId}"`, hint: 'Verify the order ID is correct. It may have been deleted or never existed.' }
+    }
+    if (!res.ok) {
+      return { code: 'MCP_ORDER_FAILED', error: `Order service returned HTTP ${res.status}`, hint: 'The order service may be down.' }
+    }
     return await res.json()
-  } catch {
-    return { error: 'Order service unavailable' }
+  } catch (err: any) {
+    return { code: 'MCP_ORDER_UNREACHABLE', error: 'Order service is unreachable', hint: `Ensure order-service is running. Connection error: ${err.message}` }
   }
 }
 
 async function getCategories() {
   try {
     const res = await fetch(`http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}/categories`)
+    if (!res.ok) {
+      return { code: 'MCP_CATEGORIES_FAILED', error: `Product service returned HTTP ${res.status}`, hint: 'The product service may be down.' }
+    }
     return await res.json()
-  } catch {
-    return { error: 'Product service unavailable' }
+  } catch (err: any) {
+    return { code: 'MCP_PRODUCT_UNREACHABLE', error: 'Product service is unreachable', hint: `Ensure product-service is running. Connection error: ${err.message}` }
   }
 }
 
 async function getPopularParts(params: { limit?: number }) {
   try {
     const res = await fetch(`http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}/products`)
+    if (!res.ok) {
+      return { code: 'MCP_PRODUCTS_FAILED', error: `Product service returned HTTP ${res.status}`, hint: 'The product service may be down.' }
+    }
     const products = (await res.json()) as any[]
     return products.slice(0, params.limit || 10).map((p: any) => ({
       id: p.id,
@@ -126,8 +157,8 @@ async function getPopularParts(params: { limit?: number }) {
       price: p.price,
       category: p.category?.name,
     }))
-  } catch {
-    return { error: 'Product service unavailable' }
+  } catch (err: any) {
+    return { code: 'MCP_PRODUCT_UNREACHABLE', error: 'Product service is unreachable', hint: `Ensure product-service is running. Connection error: ${err.message}` }
   }
 }
 
@@ -139,19 +170,28 @@ const toolHandlers: Record<string, (params: any) => Promise<any>> = {
   get_popular_parts: getPopularParts,
 }
 
+// ─── MCP endpoints ─────────────────────────────────────────────────────────────
 app.get('/mcp/tools', (_req, res) => {
   res.json({ protocol: 'model-context-protocol', version: '2025-03-26', server: 'automart', tools })
 })
 
 app.post('/mcp/tools/:name/call', async (req, res) => {
   const handler = toolHandlers[req.params.name]
-  if (!handler) return res.status(404).json({ error: `Tool "${req.params.name}" not found` })
+  if (!handler) {
+    const available = Object.keys(toolHandlers).join(', ')
+    return errorResponse(res, 404, 'MCP_TOOL_NOT_FOUND',
+      `Tool "${req.params.name}" does not exist.`,
+      `Available tools: ${available}.`)
+  }
 
   try {
     const result = await handler(req.body.parameters || {})
     res.json({ tool: req.params.name, result, status: 'success' })
   } catch (err: any) {
-    res.status(500).json({ tool: req.params.name, error: err.message, status: 'error' })
+    console.error(`[MCP] Tool "${req.params.name}" failed:`, err)
+    return errorResponse(res, 500, 'MCP_TOOL_FAILED',
+      `Tool "${req.params.name}" encountered an unexpected error: ${err.message}`,
+      'Check mcp-server logs and verify the underlying service is running.')
   }
 })
 
@@ -164,6 +204,14 @@ app.get('/mcp/resources', (_req, res) => {
   })
 })
 
+// ─── 404 for unknown MCP routes ────────────────────────────────────────────────
+app.use('/mcp', (_req, res) => {
+  return errorResponse(res, 404, 'MCP_ROUTE_NOT_FOUND',
+    `No MCP route matched "${_req.method} ${_req.originalUrl}".`,
+    'Valid MCP routes: GET /mcp/tools, POST /mcp/tools/:name/call, GET /mcp/resources.')
+})
+
+// ─── Health ─────────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'mcp-server' }))
 
 app.listen(PORT, () => {

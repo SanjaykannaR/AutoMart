@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/GlassCard'
 import Link from 'next/link'
+import { useToast } from '@/components/Toast'
 
 const roles = [
   { value: 'mechanic', label: 'Mechanic' },
@@ -13,6 +14,7 @@ const roles = [
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'individual' })
   const [error, setError] = useState('')
 
@@ -28,9 +30,11 @@ export default function RegisterPage() {
       if (!res.ok) throw new Error('Registration failed')
       const data = await res.json()
       localStorage.setItem('token', data.token)
+      showToast('Account created! Welcome to AutoMart.', 'success')
       router.push('/')
     } catch (err: any) {
       setError(err.message)
+      showToast(err.message, 'error')
     }
   }
 

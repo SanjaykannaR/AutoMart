@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/GlassCard'
+import { useToast } from '@/components/Toast'
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [items, setItems] = useState<any[]>([])
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
@@ -40,9 +42,10 @@ export default function CheckoutPage() {
       })
       const order = await res.json()
       localStorage.removeItem('cart')
+      showToast('Order placed successfully!', 'success')
       router.push(`/orders/${order.id}`)
     } catch {
-      alert('Order failed. Please try again.')
+      showToast('Order failed. Please try again.', 'error')
     } finally {
       setPlacing(false)
     }

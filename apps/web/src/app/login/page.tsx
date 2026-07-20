@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/GlassCard'
 import Link from 'next/link'
+import { useToast } from '@/components/Toast'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -20,12 +22,17 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      if (!res.ok) throw new Error('Invalid credentials')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Invalid credentials')
+      }
       const data = await res.json()
       localStorage.setItem('token', data.token)
+      showToast('Welcome back!', 'success')
       router.push('/')
     } catch (err: any) {
       setError(err.message)
+      showToast(err.message, 'error')
     }
   }
 

@@ -14,6 +14,7 @@
  */
 
 import Fuse from 'fuse.js'
+import { Trie } from './trie'
 
 interface Product {
   id: string
@@ -40,6 +41,7 @@ interface SearchOptions {
 
 let fuse: Fuse<Product> | null = null
 let productCache: Product[] = []
+let trie: Trie | null = null
 
 export async function initSearchEngine() {
   try {
@@ -70,6 +72,13 @@ export async function initSearchEngine() {
       includeScore: true,
       minMatchCharLength: 2,
     })
+
+    // Build Trie for fast prefix-based autocomplete
+    trie = new Trie()
+    for (const p of productCache) {
+      trie.insertPhrase(p.name, 1)
+      trie.insert(p.brand.toLowerCase(), 1)
+    }
 
     console.log(`[Search] Indexed ${productCache.length} products`)
   } catch (err) {
@@ -104,7 +113,16 @@ export function fuzzySearch(opts: SearchOptions): Product[] {
 }
 
 export function autoComplete(query: string, limit = 8): string[] {
-  if (!query || !fuse) return []
+  if (!query) return []
+
+  // Use Trie for fast prefix-based autocomplete
+  if (trie) {
+    const trieResults = trie.autocomplete(query, limit)
+    if (trieResults.length > 0) return trieResults
+  }
+
+  // Fallback to Fuse.js fuzzy search
+  if (!fuse) return []
   const results = fuse.search(query, { limit })
   return [...new Set(results.map((r) => r.item.name))]
 }

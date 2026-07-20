@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { GlassCard } from '@/components/GlassCard'
 import { TrashIcon } from '@heroicons/react/24/outline'
+import { useToast } from '@/components/Toast'
 
 interface CartItem {
   id: string
@@ -14,6 +15,7 @@ interface CartItem {
 }
 
 export default function CartPage() {
+  const { showToast } = useToast()
   const [items, setItems] = useState<CartItem[]>([])
   const [mounted, setMounted] = useState(false)
 
@@ -35,6 +37,7 @@ export default function CartPage() {
     const updated = items.filter((item) => item.id !== id)
     setItems(updated)
     localStorage.setItem('cart', JSON.stringify(updated))
+    showToast('Item removed from cart', 'info')
   }
 
   const total = items.reduce((sum, item) => sum + item.price * item.qty, 0)
