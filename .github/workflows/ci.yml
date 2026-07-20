@@ -98,6 +98,11 @@ jobs:
       - name: Start full stack
         run: docker compose up -d --build --wait
         timeout-minutes: 10
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          docker compose logs --tail=100
+          docker compose ps -a
       - name: Wait for API Gateway
         run: |
           for i in $(seq 1 30); do
