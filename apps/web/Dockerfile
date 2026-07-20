@@ -8,7 +8,7 @@ RUN npm ci
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json tsconfig.json ./
+COPY package.json package-lock.json ./
 COPY apps/web ./apps/web
 RUN cd apps/web && npx next build
 

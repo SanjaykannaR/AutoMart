@@ -8,7 +8,7 @@ RUN npm ci
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json tsconfig.json ./
+COPY package.json package-lock.json ./
 COPY services/search-service ./services/search-service
 RUN cd services/search-service && npx tsc
 

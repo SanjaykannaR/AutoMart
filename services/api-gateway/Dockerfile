@@ -8,7 +8,7 @@ RUN npm ci
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json tsconfig.json ./
+COPY package.json package-lock.json ./
 COPY services/api-gateway ./services/api-gateway
 RUN cd services/api-gateway && npx tsc
 

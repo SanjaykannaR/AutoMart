@@ -8,7 +8,7 @@ RUN npm ci
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json tsconfig.json ./
+COPY package.json package-lock.json ./
 COPY services/inventory-service ./services/inventory-service
 RUN npx prisma generate --schema=services/inventory-service/prisma/schema.prisma
 RUN cd services/inventory-service && npx tsc
