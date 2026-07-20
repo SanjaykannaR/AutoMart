@@ -55,7 +55,6 @@ app.post('/orders', async (req, res) => {
       },
     })
 
-    // Publish order event for notification/inventory services
     await redis.publish('order:created', JSON.stringify({
       orderId: order.id,
       userId,
@@ -76,10 +75,14 @@ app.get('/orders', async (req, res) => {
     where: { userId },
     orderBy: { createdAt: 'desc' },
   })
-  res.json(orders.map(o => ({ ...o, items: JSON.parse(o.items) }))), async (req, res) => {
+  res.json(orders.map(o => ({ ...o, items: JSON.parse(o.items) })))
+})
+
+app.get('/orders/:id', async (req, res) => {
   const order = await prisma.order.findUnique({ where: { id: req.params.id } })
   if (!order) return res.status(404).json({ error: 'Order not found' })
   res.json({ ...order, items: JSON.parse(order.items) })
+})
 
 app.patch('/orders/:id/status', async (req, res) => {
   const { status } = req.body

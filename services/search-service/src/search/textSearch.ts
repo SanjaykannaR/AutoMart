@@ -44,7 +44,7 @@ let productCache: Product[] = []
 export async function initSearchEngine() {
   try {
     const res = await fetch(`http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}/products`)
-    const products = await res.json()
+    const products = await res.json() as any[]
     productCache = products.map((p: any) => ({
       id: p.id,
       name: p.name,

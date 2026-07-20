@@ -21,13 +21,17 @@ const productSchema = z.object({
   imageUrl: z.string().optional(),
 })
 
+function parseProduct(p: any) {
+  return { ...p, compatibleVehicles: JSON.parse(p.compatibleVehicles || '[]') }
+}
+
 app.get('/products', async (req, res) => {
   const { category, brand, minPrice, maxPrice, vehicleType, search } = req.query
   const where: any = {}
 
   if (category) where.categoryId = category
-  if (brand) where.brand = { contains: brand as string, mode: 'insensitive' }
-  if (search) where.name = { contains: search as string, mode: 'insensitive' }
+  if (brand) where.brand = { contains: brand as string }
+  if (search) where.name = { contains: search as string }
   if (vehicleType) where.vehicleType = { in: [vehicleType as string, 'both'] }
   if (minPrice || maxPrice) {
     where.price = {}
@@ -40,7 +44,7 @@ app.get('/products', async (req, res) => {
     include: { category: true },
     orderBy: { createdAt: 'desc' },
   })
-  res.json(products.map(p => ({ ...p, compatibleVehicles: JSON.parse(p.compatibleVehicles || '[]') })))
+  res.json(products.map(parseProduct))
 })
 
 app.get('/products/:id', async (req, res) => {
@@ -49,17 +53,25 @@ app.get('/products/:id', async (req, res) => {
     include: { category: true },
   })
   if (!product) return res.status(404).json({ error: 'Product not found' })
-  res.json({ ...product, compatibleVehicles: JSON.parse(product.compatibleVehicles || '[]') }), async (req, res) => {
+  res.json(parseProduct(product))
+})
+
+app.get('/products/slug/:slug', async (req, res) => {
   const product = await prisma.product.findUnique({
     where: { slug: req.params.slug },
     include: { category: true },
   })
   if (!product) return res.status(404).json({ error: 'Product not found' })
-  res.json({ ...product, compatibleVehicles: JSON.parse(product.compatibleVehicles || '[]') }), async (req, res) => {
+  res.json(parseProduct(product))
+})
+
+app.post('/products', async (req, res) => {
   try {
     const data = productSchema.parse(req.body)
     const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const product = await prisma.product.create({ data: { ...data, compatibleVehicles: JSON.stringify(data.compatibleVehicles), slug } })
+    const product = await prisma.product.create({
+      data: { ...data, compatibleVehicles: JSON.stringify(data.compatibleVehicles), slug },
+    })
     res.status(201).json(product)
   } catch (err) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors })
