@@ -14,6 +14,7 @@ RUN npx prisma generate --schema=services/inventory-service/prisma/schema.prisma
 RUN cd services/inventory-service && npx tsc
 
 FROM node:20-alpine
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY --from=build /app/services/inventory-service/dist ./dist
 COPY --from=build /app/services/inventory-service/src/generated ./src/generated

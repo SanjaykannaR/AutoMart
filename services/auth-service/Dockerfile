@@ -14,6 +14,7 @@ RUN npx prisma generate --schema=services/auth-service/prisma/schema.prisma
 RUN cd services/auth-service && npx tsc
 
 FROM node:20-alpine
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY --from=build /app/services/auth-service/dist ./dist
 COPY --from=build /app/services/auth-service/src/generated ./src/generated
