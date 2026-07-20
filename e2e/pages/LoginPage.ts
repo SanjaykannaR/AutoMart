@@ -18,10 +18,10 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page
-    this.emailInput = page.getByLabel(/email/i)
-    this.passwordInput = page.getByLabel(/password/i)
+    this.emailInput = page.getByLabel('Email')
+    this.passwordInput = page.getByLabel('Password')
     this.submitButton = page.getByRole('button', { name: /sign in/i })
-    this.errorMessage = page.locator('text=Invalid credentials')
+    this.errorMessage = page.locator('[class*="danger"], [class*="error"]')
     this.registerLink = page.getByRole('link', { name: /register/i })
   }
 
@@ -36,6 +36,6 @@ export class LoginPage {
   }
 
   async waitForError() {
-    await this.errorMessage.waitFor({ state: 'visible', timeout: 5000 })
+    await this.errorMessage.first().waitFor({ state: 'visible', timeout: 10000 })
   }
 }

@@ -14,3 +14,4 @@ prisma/*.sqlite
 *.db-journal
 services/*/src/generated/
 .DS_Store
+*.tsbuildinfo

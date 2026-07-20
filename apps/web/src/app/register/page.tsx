@@ -27,7 +27,10 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error('Registration failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || 'Registration failed')
+      }
       const data = await res.json()
       localStorage.setItem('token', data.token)
       showToast('Account created! Welcome to AutoMart.', 'success')
