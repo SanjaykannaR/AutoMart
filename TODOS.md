@@ -1,5 +1,8 @@
 # AutoMart — Complete Project Todos
 
+> Branch: `sanjay` (merged to `main`)
+> All phases marked ✅ are fully committed and pushed.
+
 ## Phase 1: Foundation & Dev Setup ✅
 - [x] Install dependencies: `npm install` in root (513 packages)
 - [x] Add missing package.json files with correct dependencies for all services
@@ -62,9 +65,11 @@
 - [ ] Verify Docker build workflow pushes to ghcr.io
 - [ ] Add branch protection rules
 
-## Phase 8: Docker & Deployment
-- [ ] Test `docker compose up` locally
-- [ ] Verify inter-service communication in Docker
+## Phase 8: Docker & Deployment ← IN PROGRESS
+- [ ] Fix Docker Compose to run all 8 services + Redis
+- [ ] Verify inter-service communication in Docker network
+- [ ] Test `docker compose up` locally with full stack
+- [ ] Add Prisma migrate + seed to Docker startup
 - [ ] Deploy frontend to Vercel
 - [ ] Deploy backend services to Render
 

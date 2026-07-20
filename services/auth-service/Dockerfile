@@ -1,14 +1,26 @@
-FROM node:20-alpine AS base
+# ── Auth Service ──────────────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json tsconfig.json prisma/ ./prisma/
-RUN npm ci --omit=dev && npx prisma generate
-COPY src/ ./src/
-RUN npm run build
+COPY package.json package-lock.json ./
+COPY services/auth-service/package.json ./services/auth-service/
+RUN npm ci
+
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json tsconfig.json ./
+COPY services/auth-service ./services/auth-service
+RUN npx prisma generate --schema=services/auth-service/prisma/schema.prisma
+RUN cd services/auth-service && npx tsc
 
 FROM node:20-alpine
 WORKDIR /app
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/prisma ./prisma
+COPY --from=build /app/services/auth-service/dist ./dist
+COPY --from=build /app/services/auth-service/src/generated ./src/generated
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/services/auth-service/prisma ./prisma
+COPY services/auth-service/docker-entrypoint.sh ./entrypoint.sh
+COPY services/auth-service/prisma/seed.js ./prisma/seed.js
+RUN chmod +x ./entrypoint.sh
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["./entrypoint.sh"]

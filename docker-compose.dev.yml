@@ -1,59 +1,82 @@
 version: "3.9"
 
+# ════════════════════════════════════════════════════════════════════════════════
+# AutoMart — Docker Compose Dev Override
+# ════════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# This overlay:
+#   - Mounts source code as volumes for live reload via tsx watch
+#   - Exposes Redis GUI on port 6380
+#   - Adds debug logging
+# ════════════════════════════════════════════════════════════════════════════════
+
 services:
-  postgres:
-    ports:
-      - "5432:5432"
 
   redis:
     ports:
-      - "6379:6379"
-
-  api-gateway:
-    volumes:
-      - ./services/api-gateway/src:/app/src
-    command: npm run dev
+      - "6380:6379"   # Redis GUI on 6380 to avoid conflicts with local Redis
 
   auth-service:
     volumes:
-      - ./services/auth-service/src:/app/src
-    command: npm run dev
+      - ./services/auth-service/src:/app/services/auth-service/src
+      - ./services/auth-service/prisma:/app/services/auth-service/prisma
+    command: >
+      sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
+             node prisma/seed.js || true &&
+             npx tsx watch services/auth-service/src/index.ts"
 
   product-service:
     volumes:
-      - ./services/product-service/src:/app/src
-    command: npm run dev
+      - ./services/product-service/src:/app/services/product-service/src
+      - ./services/product-service/prisma:/app/services/product-service/prisma
+    command: >
+      sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
+             node prisma/seed.js || true &&
+             npx tsx watch services/product-service/src/index.ts"
 
   search-service:
     volumes:
-      - ./services/search-service/src:/app/src
-    command: npm run dev
+      - ./services/search-service/src:/app/services/search-service/src
+    command: npx tsx watch services/search-service/src/index.ts
 
   order-service:
     volumes:
-      - ./services/order-service/src:/app/src
-    command: npm run dev
+      - ./services/order-service/src:/app/services/order-service/src
+      - ./services/order-service/prisma:/app/services/order-service/prisma
+    command: >
+      sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
+             npx tsx watch services/order-service/src/index.ts"
 
   inventory-service:
     volumes:
-      - ./services/inventory-service/src:/app/src
-    command: npm run dev
+      - ./services/inventory-service/src:/app/services/inventory-service/src
+      - ./services/inventory-service/prisma:/app/services/inventory-service/prisma
+    command: >
+      sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
+             npx tsx watch services/inventory-service/src/index.ts"
 
   notification-service:
     volumes:
-      - ./services/notification-service/src:/app/src
-    command: npm run dev
+      - ./services/notification-service/src:/app/services/notification-service/src
+    command: npx tsx watch services/notification-service/src/index.ts
 
   mcp-server:
     volumes:
-      - ./services/mcp-server/src:/app/src
-    command: npm run dev
+      - ./services/mcp-server/src:/app/services/mcp-server/src
+    command: npx tsx watch services/mcp-server/src/index.ts
+
+  api-gateway:
+    volumes:
+      - ./services/api-gateway/src:/app/services/api-gateway/src
+    command: npx tsx watch services/api-gateway/src/index.ts
 
   web:
     volumes:
-      - ./apps/web/src:/app/src
-      - ./apps/web/public:/app/public
-    command: npm run dev
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+    command: npx next dev
     environment:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true

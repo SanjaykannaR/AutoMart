@@ -1,105 +1,226 @@
 version: "3.9"
 
+# ════════════════════════════════════════════════════════════════════════════════
+# AutoMart — Docker Compose (SQLite + Redis)
+# ════════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose up --build          # build + run everything
+#   docker compose up -d               # run in background
+#   docker compose down -v             # stop + remove volumes (fresh DB)
+#   docker compose logs -f auth        # follow one service's logs
+# ════════════════════════════════════════════════════════════════════════════════
+
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_MULTIPLE_DB: automart_auth,automart_products,automart_orders,automart_inventory
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
-    ports:
-      - "5432:5432"
-    networks:
-      - automart-net
+
+  # ── Infrastructure ───────────────────────────────────────────────────────────
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - automart-net
 
-  api-gateway:
-    build: ./services/api-gateway
-    ports:
-      - "3000:3000"
-    depends_on: [postgres, redis]
-    env_file: .env
-    networks:
-      - automart-net
+  # ── Backend Services ─────────────────────────────────────────────────────────
 
   auth-service:
-    build: ./services/auth-service
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
     ports:
       - "3001:3001"
-    depends_on: [postgres, redis]
-    env_file: .env
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-automart-docker-secret}
+      - AUTH_SERVICE_PORT=3001
+    volumes:
+      - auth_db:/app/prisma
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - automart-net
 
   product-service:
-    build: ./services/product-service
+    build:
+      context: .
+      dockerfile: services/product-service/Dockerfile
     ports:
       - "3002:3002"
-    depends_on: [postgres]
-    env_file: .env
+    environment:
+      - PRODUCT_SERVICE_PORT=3002
+    volumes:
+      - product_db:/app/prisma
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - automart-net
 
   search-service:
-    build: ./services/search-service
+    build:
+      context: .
+      dockerfile: services/search-service/Dockerfile
     ports:
       - "3003:3003"
-    depends_on: [postgres]
-    env_file: .env
+    environment:
+      - SEARCH_SERVICE_PORT=3003
+    depends_on:
+      product-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - automart-net
 
   order-service:
-    build: ./services/order-service
+    build:
+      context: .
+      dockerfile: services/order-service/Dockerfile
     ports:
       - "3004:3004"
-    depends_on: [postgres, redis]
-    env_file: .env
+    environment:
+      - ORDER_SERVICE_PORT=3004
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - order_db:/app/prisma
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - automart-net
 
   inventory-service:
-    build: ./services/inventory-service
+    build:
+      context: .
+      dockerfile: services/inventory-service/Dockerfile
     ports:
       - "3005:3005"
-    depends_on: [postgres, redis]
-    env_file: .env
+    environment:
+      - INVENTORY_SERVICE_PORT=3005
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - inventory_db:/app/prisma
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - automart-net
 
   notification-service:
-    build: ./services/notification-service
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     ports:
       - "3006:3006"
-    depends_on: [redis]
-    env_file: .env
+    environment:
+      - NOTIFICATION_SERVICE_PORT=3006
+      - REDIS_URL=redis://redis:6379
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3006/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - automart-net
 
   mcp-server:
-    build: ./services/mcp-server
+    build:
+      context: .
+      dockerfile: services/mcp-server/Dockerfile
     ports:
       - "3007:3007"
-    depends_on: [redis]
-    env_file: .env
+    environment:
+      - MCP_SERVER_PORT=3007
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3007/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - automart-net
 
-  web:
-    build: ./apps/web
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
     ports:
-      - "3008:3000"
-    depends_on: [api-gateway]
-    env_file: .env
+      - "3000:3000"
+    environment:
+      - API_GATEWAY_PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-automart-docker-secret}
+      # Service discovery via Docker DNS (service name = hostname)
+      - AUTH_SERVICE_PORT=3001
+      - PRODUCT_SERVICE_PORT=3002
+      - SEARCH_SERVICE_PORT=3003
+      - ORDER_SERVICE_PORT=3004
+      - INVENTORY_SERVICE_PORT=3005
+      - NOTIFICATION_SERVICE_PORT=3006
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - automart-net
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3080:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    depends_on:
+      api-gateway:
+        condition: service_healthy
     networks:
       - automart-net
 
@@ -108,4 +229,7 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  auth_db:
+  product_db:
+  order_db:
+  inventory_db:
