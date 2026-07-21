@@ -54,6 +54,8 @@ export default function LoginPage() {
       }
       const data = await res.json()
       localStorage.setItem('token', data.token)
+      // Save user data for navbar Settings icon
+      localStorage.setItem('user', JSON.stringify({ email, name: data.user?.name || email.split('@')[0] }))
       showToast('Welcome back!', 'success')
       router.push('/')
     } catch (err: any) {

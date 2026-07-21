@@ -23,7 +23,9 @@ import { FeaturedCarousel } from '@/components/FeaturedCarousel'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
-  StopIcon, CogIcon, WrenchIcon, BoltIcon, Cog6ToothIcon, FireIcon
+  StopIcon, CogIcon, WrenchIcon, BoltIcon, Cog6ToothIcon, FireIcon,
+  MagnifyingGlassIcon, ClipboardDocumentCheckIcon, TruckIcon,
+  CubeIcon, ClockIcon, UserGroupIcon, HeadphonesIcon
 } from '@heroicons/react/24/outline'
 
 /**
@@ -39,36 +41,37 @@ const categories = [
 ]
 
 /**
- * How It Works steps — numbered process section.
- * Uses the "01", "02", "03" index style from the reference design.
+ * How It Works steps — with icons for glass circle style.
  */
 const steps = [
   {
     num: '01',
     title: 'Search Your Part',
     desc: 'Enter your part name, brand, or vehicle model. Our AI finds the exact match.',
+    icon: MagnifyingGlassIcon,
   },
   {
     num: '02',
     title: 'Place Your Order',
     desc: 'Confirm your part, add delivery details, and check out in seconds.',
+    icon: ClipboardDocumentCheckIcon,
   },
   {
     num: '03',
     title: 'Get It in 30 Mins',
     desc: 'Your mechanic picks and delivers the part to your doorstep in 30 minutes.',
+    icon: TruckIcon,
   },
 ]
 
 /**
- * Trust stats — displayed in a horizontal bar below "How It Works".
- * Each stat has a large value and a small label.
+ * Trust stats — with icons for glass circle style.
  */
 const stats = [
-  { value: '10,000+', label: 'Parts Available' },
-  { value: '30 min', label: 'Avg. Delivery' },
-  { value: '50,000+', label: 'Orders Delivered' },
-  { value: '24/7', label: 'Customer Support' },
+  { value: '10,000+', label: 'Parts Available', icon: CubeIcon },
+  { value: '30 min', label: 'Avg. Delivery', icon: ClockIcon },
+  { value: '50,000+', label: 'Orders Delivered', icon: UserGroupIcon },
+  { value: '24/7', label: 'Customer Support', icon: HeadphonesIcon },
 ]
 
 export default function HomePage() {
@@ -219,37 +222,44 @@ export default function HomePage() {
 
         {/* Steps grid — 3 columns */}
         <div className="grid md:grid-cols-3 gap-6">
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.num}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{
-                duration: 0.5,
-                delay: index * 0.1,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-            >
-              <div className="card p-8 h-full">
-                {/* Large numbered index — lime accent, semi-transparent */}
-                <span
-                  className="block text-5xl font-black text-[var(--color-accent)] opacity-20 mb-4"
-                  style={{ fontFamily: 'Outfit, sans-serif' }}
-                >
-                  {step.num}
-                </span>
-                {/* Step title */}
-                <h3 className="text-lg font-bold mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                  {step.title}
-                </h3>
-                {/* Step description */}
-                <p className="text-sm text-[var(--color-text-dim)] leading-relaxed">
-                  {step.desc}
-                </p>
-              </div>
-            </motion.div>
-          ))}
+          {steps.map((step, index) => {
+            const Icon = step.icon
+            return (
+              <motion.div
+                key={step.num}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  duration: 0.5,
+                  delay: index * 0.1,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                <div className="card p-8 h-full">
+                  {/* ─── GLASS CIRCLE ICON ─── */}
+                  <div className="w-14 h-14 mb-5 rounded-full flex items-center justify-center bg-white/[0.06] backdrop-blur-md border border-white/[0.1]">
+                    <Icon className="w-6 h-6 text-[var(--color-accent)]" />
+                  </div>
+                  {/* Large numbered index */}
+                  <span
+                    className="block text-5xl font-black text-[var(--color-accent)] opacity-20 mb-4"
+                    style={{ fontFamily: 'Outfit, sans-serif' }}
+                  >
+                    {step.num}
+                  </span>
+                  {/* Step title */}
+                  <h3 className="text-lg font-bold mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                    {step.title}
+                  </h3>
+                  {/* Step description */}
+                  <p className="text-sm text-[var(--color-text-dim)] leading-relaxed">
+                    {step.desc}
+                  </p>
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
       </section>
 
@@ -266,17 +276,24 @@ export default function HomePage() {
         >
           {/* Stats grid — 2x2 on mobile, 4 columns on desktop */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p
-                  className="text-2xl sm:text-3xl font-extrabold text-[var(--color-accent)] mb-1"
-                  style={{ fontFamily: 'Outfit, sans-serif' }}
-                >
-                  {stat.value}
-                </p>
-                <p className="text-xs sm:text-sm text-[var(--color-text-dim)]">{stat.label}</p>
-              </div>
-            ))}
+            {stats.map((stat) => {
+              const Icon = stat.icon
+              return (
+                <div key={stat.label} className="text-center">
+                  {/* ─── GLASS CIRCLE ICON ─── */}
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-white/[0.06] backdrop-blur-md border border-white/[0.1]">
+                    <Icon className="w-5 h-5 text-[var(--color-accent)]" />
+                  </div>
+                  <p
+                    className="text-2xl sm:text-3xl font-extrabold text-[var(--color-accent)] mb-1"
+                    style={{ fontFamily: 'Outfit, sans-serif' }}
+                  >
+                    {stat.value}
+                  </p>
+                  <p className="text-xs sm:text-sm text-[var(--color-text-dim)]">{stat.label}</p>
+                </div>
+              )
+            })}
           </div>
         </motion.div>
       </section>
