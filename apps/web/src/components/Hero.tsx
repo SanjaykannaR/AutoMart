@@ -1,27 +1,18 @@
 /**
- * Hero — 3D Carousel Product Showcase
+ * Hero — 3D Carousel Product Showcase (Smooth Version)
  * 
- * Animation Concept (from your reference):
- *   - 3 product cards arranged in a carousel/coverflow layout
- *   - CENTER card: full size, in front, main focus
- *   - LEFT/RIGHT cards: smaller, rotated, behind the center
- *   - On HOVER over a side card → it smoothly slides to center
- *   - The old center card slides to the side
- *   - Creates a "background comes to front" effect
+ * Animation:
+ *   - 3 products in coverflow layout
+ *   - On hover → card slides to center SLOWLY and stops
+ *   - Uses long duration (800ms) + ease-out for smooth deceleration
+ *   - Card "parks" in center so user can see the image clearly
+ *   - No price shown — just product name + "More" button
  * 
  * How it works:
- *   - activeIndex state tracks which product is centered (0, 1, or 2)
- *   - On hover over a side card → setActiveIndex(hoveredIndex)
- *   - Framer-motion `layout` prop animates position changes smoothly
- *   - CSS perspective creates 3D depth effect
- *   - Each card has different scale, rotation, and z-index based on position
- * 
- * Layout:
- *   LEFT (behind)  ←  CENTER (front)  →  RIGHT (behind)
- *   scale: 0.8       scale: 1.0          scale: 0.8
- *   rotate: 15deg     rotate: 0deg        rotate: -15deg
- *   x: -120px         x: 0                x: 120px
- *   z: -1             z: 10               z: -1
+ *   - activeIndex tracks which product is centered
+ *   - getCardStyle returns position for each card
+ *   - framer-motion animate transitions cards smoothly
+ *   - CSS perspective creates 3D depth
  */
 'use client'
 
@@ -30,90 +21,61 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { SearchBar } from '@/components/SearchBar'
 
-/**
- * Product items for the carousel.
- * Verified Unsplash auto parts images.
- */
+/** Product items for the carousel — verified Unsplash images */
 const carouselProducts = [
   {
     id: 1,
     name: 'Ceramic Brake Pads',
     category: 'Brake System',
-    price: '$45.99',
     image: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=600&h=600&fit=crop&q=80',
+    link: '/products/1',
   },
   {
     id: 2,
     name: 'Engine Components',
     category: 'Engine Parts',
-    price: '$189.00',
     image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=600&fit=crop&q=80',
+    link: '/products/2',
   },
   {
     id: 3,
     name: 'Exhaust System',
     category: 'Exhaust',
-    price: '$289.00',
     image: 'https://images.unsplash.com/photo-1759419281480-bacc913c9606?w=600&h=600&fit=crop&q=80',
+    link: '/products/3',
   },
 ]
-
-/** Smooth easing curve */
-const ease = [0.16, 1, 0.3, 1] as const
 
 interface HeroProps {
   onSearch: (query: string) => void
 }
 
 export function Hero({ onSearch }: HeroProps) {
-  /** Which product is currently in the center (0, 1, or 2) */
   const [activeIndex, setActiveIndex] = useState(1)
 
   /**
-   * Get position styles for each card based on its relative position to active.
+   * Position styles for each card based on distance from center.
    * -1 = left, 0 = center, 1 = right
    */
   const getCardStyle = (index: number) => {
     const offset = index - activeIndex
-    // Wrap offset for circular feel (-1, 0, 1)
     const wrapped = offset === -2 ? 1 : offset === 2 ? -1 : offset
 
     if (wrapped === 0) {
-      // CENTER — full size, front, no rotation
-      return {
-        x: 0,
-        scale: 1,
-        rotateY: 0,
-        z: 10,
-        opacity: 1,
-        zIndex: 10,
-      }
+      // CENTER — full size, front
+      return { x: 0, scale: 1, rotateY: 0, z: 10, opacity: 1, zIndex: 10 }
     } else if (wrapped === -1) {
-      // LEFT — smaller, behind, rotated right
-      return {
-        x: -180,
-        scale: 0.78,
-        rotateY: 25,
-        z: -1,
-        opacity: 0.8,
-        zIndex: 5,
-      }
+      // LEFT — smaller, behind, rotated
+      return { x: -160, scale: 0.8, rotateY: 20, z: -1, opacity: 0.7, zIndex: 5 }
     } else {
-      // RIGHT — smaller, behind, rotated left
-      return {
-        x: 180,
-        scale: 0.78,
-        rotateY: -25,
-        z: -1,
-        opacity: 0.8,
-        zIndex: 5,
-      }
+      // RIGHT — smaller, behind, rotated
+      return { x: 160, scale: 0.8, rotateY: -20, z: -1, opacity: 0.7, zIndex: 5 }
     }
   }
 
   return (
     <section className="relative min-h-[85vh] flex items-center overflow-hidden">
-      {/* ─── Background Glow ─── */}
+      {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-[var(--color-accent)] rounded-full opacity-[0.03] blur-[120px]" />
         <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-[var(--color-blue)] rounded-full opacity-[0.03] blur-[100px]" />
@@ -122,14 +84,12 @@ export function Hero({ onSearch }: HeroProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-4 items-center">
 
-          {/* ═══════════════════════════════════════════════════════
-              LEFT PANEL: Text + Search + CTA
-              ═══════════════════════════════════════════════════════ */}
+          {/* ─── LEFT: Text + Search ─── */}
           <div className="text-center lg:text-left">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, ease }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="mb-4"
             >
               <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[var(--color-text-dim)]">
@@ -140,7 +100,7 @@ export function Hero({ onSearch }: HeroProps) {
             <motion.h1
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15, ease }}
+              transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
               className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] mb-6"
               style={{ fontFamily: 'Outfit, sans-serif' }}
             >
@@ -155,7 +115,7 @@ export function Hero({ onSearch }: HeroProps) {
             <motion.p
               initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3, ease }}
+              transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="text-[var(--color-text-dim)] text-base sm:text-lg mb-8 max-w-lg mx-auto lg:mx-0"
             >
               Find any car or bike spare part. Your mechanic delivers in 30 minutes.
@@ -164,7 +124,7 @@ export function Hero({ onSearch }: HeroProps) {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.45, ease }}
+              transition={{ duration: 0.5, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
               className="mb-6 max-w-xl mx-auto lg:mx-0"
             >
               <SearchBar onSearch={onSearch} placeholder="Search by part name, brand, or vehicle..." />
@@ -173,7 +133,7 @@ export function Hero({ onSearch }: HeroProps) {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.55, ease }}
+              transition={{ duration: 0.5, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
               className="flex flex-wrap gap-3 justify-center lg:justify-start"
             >
               <Link href="/search" className="glass-button text-sm px-8 py-3">
@@ -187,7 +147,7 @@ export function Hero({ onSearch }: HeroProps) {
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.7, ease }}
+              transition={{ duration: 0.5, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
               className="flex gap-8 mt-10 justify-center lg:justify-start"
             >
               {[
@@ -205,20 +165,16 @@ export function Hero({ onSearch }: HeroProps) {
             </motion.div>
           </div>
 
-          {/* ═══════════════════════════════════════════════════════
-              RIGHT PANEL: 3D Carousel Product Showcase
-              Products arranged in a coverflow layout.
-              Hover a side card → it slides to center.
-              ═══════════════════════════════════════════════════════ */}
+          {/* ─── RIGHT: 3D Carousel ─── */}
           <div className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]">
-            {/* Glow behind center product */}
+            {/* Glow behind center */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-72 h-72 rounded-full bg-[var(--color-accent)] opacity-[0.05] blur-[80px] hero-glow" />
             </div>
 
-            {/* Carousel container with 3D perspective */}
+            {/* Carousel with 3D perspective */}
             <div
-              className="relative w-full max-w-lg h-[380px]"
+              className="relative w-full max-w-lg h-[400px]"
               style={{ perspective: '1200px' }}
             >
               {carouselProducts.map((product, index) => {
@@ -229,9 +185,10 @@ export function Hero({ onSearch }: HeroProps) {
                   <motion.div
                     key={product.id}
                     /**
-                     * ANIMATION: When activeIndex changes, framer-motion
-                     * smoothly animates x, scale, rotateY, opacity to new values.
-                     * This creates the "background comes to front" effect.
+                     * SLOW SMOOTH ANIMATION:
+                     * - duration: 0.8s (800ms) — slow enough to follow
+                     * - ease: [0.32, 0.72, 0, 1] — starts fast, decelerates smoothly, parks gently
+                     * This makes the card "glide" into position and stop cleanly.
                      */
                     animate={{
                       x: style.x,
@@ -240,13 +197,9 @@ export function Hero({ onSearch }: HeroProps) {
                       opacity: style.opacity,
                     }}
                     transition={{
-                      duration: 0.6,
-                      ease: [0.32, 0.72, 0, 1], // smooth deceleration
+                      duration: 0.8,
+                      ease: [0.32, 0.72, 0, 1],
                     }}
-                    /**
-                     * HOVER: When user hovers a side card, set it as active.
-                     * This triggers the animate transition above.
-                     */
                     onMouseEnter={() => setActiveIndex(index)}
                     className="absolute top-0 left-1/2 -translate-x-1/2 cursor-pointer"
                     style={{
@@ -256,13 +209,13 @@ export function Hero({ onSearch }: HeroProps) {
                   >
                     {/* Product card */}
                     <div
-                      className={`w-56 sm:w-64 rounded-2xl overflow-hidden transition-shadow duration-500 ${
+                      className={`w-56 sm:w-64 rounded-2xl overflow-hidden transition-shadow duration-700 ${
                         isCenter
                           ? 'shadow-[0_20px_60px_rgba(0,0,0,0.5)] ring-1 ring-[var(--color-accent)]/20'
                           : 'shadow-[0_10px_30px_rgba(0,0,0,0.3)]'
                       }`}
                     >
-                      {/* Product image */}
+                      {/* Product image — full card, always visible */}
                       <div className="aspect-square bg-[var(--color-surface)] relative overflow-hidden">
                         <img
                           src={product.image}
@@ -270,36 +223,47 @@ export function Hero({ onSearch }: HeroProps) {
                           className="w-full h-full object-cover"
                           draggable={false}
                         />
+
                         {/* Category badge — only on center card */}
                         {isCenter && (
                           <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
+                            transition={{ delay: 0.4, duration: 0.4 }}
                             className="absolute top-3 left-3"
                           >
                             <span className="badge">{product.category}</span>
                           </motion.div>
                         )}
+
+                        {/* Dark overlay on non-center cards */}
+                        {!isCenter && (
+                          <div className="absolute inset-0 bg-black/30" />
+                        )}
                       </div>
 
-                      {/* Info panel — only visible on center card */}
+                      {/* Info panel — name + More button, only on center card */}
                       <AnimatePresence>
                         {isCenter && (
                           <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="bg-[var(--color-surface)] px-5 py-4"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            transition={{ duration: 0.4, delay: 0.3 }}
+                            className="bg-[var(--color-surface)] px-5 py-4 flex items-center justify-between"
                           >
-                            <p className="text-xs text-[var(--color-text-dim)] mb-1">{product.category}</p>
-                            <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-[var(--color-text-dim)] mb-0.5">{product.category}</p>
                               <h3 className="font-semibold text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
                                 {product.name}
                               </h3>
-                              <span className="text-lg font-bold glow-text">{product.price}</span>
                             </div>
+                            <Link
+                              href={product.link}
+                              className="text-xs font-medium px-4 py-2 rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] hover:bg-[var(--color-accent)]/90 transition-colors shrink-0"
+                            >
+                              More
+                            </Link>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -309,16 +273,16 @@ export function Hero({ onSearch }: HeroProps) {
               })}
             </div>
 
-            {/* Dot indicators below carousel */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {/* Dot indicators */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
               {carouselProducts.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
                     index === activeIndex
                       ? 'bg-[var(--color-accent)] w-6'
-                      : 'bg-[var(--color-border)] hover:bg-[var(--color-text-dim)]'
+                      : 'bg-[var(--color-border)] w-1.5 hover:bg-[var(--color-text-dim)]'
                   }`}
                   aria-label={`View ${carouselProducts[index].name}`}
                 />
