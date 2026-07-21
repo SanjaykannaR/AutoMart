@@ -31,7 +31,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { SearchBar } from '@/components/SearchBar'
 import { ProductCard } from '@/components/ProductCard'
 import { motion } from 'framer-motion'
-import { XMarkIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, FunnelIcon, CameraIcon } from '@heroicons/react/24/outline'
 
 /**
  * Category options for the filter dropdown.
@@ -52,6 +52,30 @@ function SearchContent() {
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  /** Image search mode — shows uploaded image banner */
+  const [imageSearch, setImageSearch] = useState<string | null>(null)
+  const isImageMode = searchParams.get('mode') === 'image'
+
+  // On mount, check if image search mode — read from sessionStorage
+  useEffect(() => {
+    if (isImageMode) {
+      const img = sessionStorage.getItem('imageSearch')
+      if (img) {
+        setImageSearch(img)
+      } else {
+        // No image found — fall back to normal search
+        router.replace('/search')
+      }
+    }
+  }, [isImageMode, router])
+
+  // Clear image search
+  const clearImageSearch = () => {
+    sessionStorage.removeItem('imageSearch')
+    setImageSearch(null)
+    router.replace('/search')
+  }
 
   /** Filter state — initialized from URL search params */
   const [filters, setFilters] = useState({
@@ -202,6 +226,39 @@ function SearchContent() {
       <div className="mb-8">
         <SearchBar onSearch={handleSearch} placeholder="Search by part name, brand, or vehicle..." />
       </div>
+
+      {/* ─── IMAGE SEARCH BANNER ─── */}
+      {imageSearch && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex items-center gap-4 p-4 rounded-2xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08]"
+        >
+          <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/[0.1] shrink-0">
+            <img
+              src={imageSearch}
+              alt="Search reference"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <CameraIcon className="w-4 h-4 text-[var(--color-accent)]" />
+              <span className="text-sm font-semibold text-[var(--color-accent)]">Image Search</span>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] truncate">
+              Showing results matching your uploaded photo
+            </p>
+          </div>
+          <button
+            onClick={clearImageSearch}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/[0.08] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+            title="Clear image search"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        </motion.div>
+      )}
 
       {/* ─── Active Filter Chips ─── */}
       {activeFilterCount > 0 && (

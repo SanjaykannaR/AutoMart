@@ -1,21 +1,25 @@
 /**
  * Navbar — Centered menu with icons + text labels
  * 
- * Fixes:
- *   - Settings icon: listens for 'user-updated' custom event (same tab)
- *   - Active underline: uses relative positioning on each link
+ * Features:
+ *   - Camera icon → search by image (file picker for auto part photo)
+ *   - Microphone icon → search by voice (Web Speech API)
+ *   - Settings gear visible when logged in (checks token OR user)
+ *   - Active underline moves between links
+ *   - Glass circle buttons for wishlist, cart, settings
  * 
  * Layout:
- *   [Logo] ——— [🏠 Home] [📁 Categories] [🔧 Browse] [📦 Orders] [🔍 Search] ——— [♡] [🛒] [⚙️]
+ *   [Logo] ——— [🏠 Home] [📁 Categories] [🔧 Browse] [📦 Orders] [🔍 🔎 _search_ 🎤 📷] ——— [♡] [🛒] [⚙️]
  */
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   ShoppingCartIcon, MagnifyingGlassIcon, HeartIcon, Cog6ToothIcon,
-  HomeIcon, Squares2X2Icon, WrenchIcon, ClipboardDocumentListIcon
+  HomeIcon, Squares2X2Icon, WrenchIcon, ClipboardDocumentListIcon,
+  CameraIcon, MicrophoneIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
@@ -30,50 +34,52 @@ const navLinks = [
 export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [cartCount, setCartCount] = useState(0)
   const [wishlistCount, setWishlistCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isListening, setIsListening] = useState(false)
 
-  /**
-   * CHECK LOGIN STATE
+  /* ───────────────────────────────────────────────────────────────
+   * LOGIN STATE DETECTION
    * 
-   * Reads 'user' from localStorage.
-   * Falls back to 'token' — handles users who logged in before
-   * the 'user' key was introduced.
-   */
+   * Checks for 'user' OR 'token' in localStorage.
+   * The 'token' fallback handles:
+   *   - Users who logged in before 'user' key was added
+   *   - Sessions restored from API token only
+   * ─────────────────────────────────────────────────────────────── */
   const checkLogin = () => {
     try {
       const user = localStorage.getItem('user')
       const token = localStorage.getItem('token')
-      // Logged in if we have a valid user entry OR just a token
-      setIsLoggedIn(
+      const loggedIn =
         (!!user && user !== 'null' && user !== '') ||
         (!!token && token !== 'null' && token !== '')
-      )
-    } catch { setIsLoggedIn(false) }
+      setIsLoggedIn(loggedIn)
+    } catch {
+      setIsLoggedIn(false)
+    }
   }
 
   useEffect(() => {
     checkLogin()
-
-    // Cross-tab changes
     window.addEventListener('storage', checkLogin)
-    // Same-tab login/register
     window.addEventListener('user-updated', checkLogin)
-
     return () => {
       window.removeEventListener('storage', checkLogin)
       window.removeEventListener('user-updated', checkLogin)
     }
   }, [])
 
-  // Re-check login on navigation
+  // Re-check on every navigation (handles redirect after login)
   useEffect(() => {
     checkLogin()
   }, [pathname])
 
-  /** Cart count */
+  /* ───────────────────────────────────────────────────────────────
+   * CART + WISHLIST COUNTS
+   * ─────────────────────────────────────────────────────────────── */
   const updateCartCount = () => {
     try {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]')
@@ -81,7 +87,6 @@ export function Navbar() {
     } catch { setCartCount(0) }
   }
 
-  /** Wishlist count */
   const updateWishlistCount = () => {
     try {
       const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]')
@@ -89,31 +94,34 @@ export function Navbar() {
     } catch { setWishlistCount(0) }
   }
 
-  /** Initialize listeners */
   useEffect(() => {
     updateCartCount()
     updateWishlistCount()
     const h1 = () => updateCartCount()
     const h2 = () => updateWishlistCount()
-    window.addEventListener('storage', h1)
     window.addEventListener('cart-updated', h1)
-    window.addEventListener('storage', h2)
     window.addEventListener('wishlist-updated', h2)
+    window.addEventListener('storage', h1)
+    window.addEventListener('storage', h2)
     return () => {
-      window.removeEventListener('storage', h1)
       window.removeEventListener('cart-updated', h1)
-      window.removeEventListener('storage', h2)
       window.removeEventListener('wishlist-updated', h2)
+      window.removeEventListener('storage', h1)
+      window.removeEventListener('storage', h2)
     }
   }, [])
 
-  /** Active link check */
+  /* ───────────────────────────────────────────────────────────────
+   * ACTIVE LINK DETECTION
+   * ─────────────────────────────────────────────────────────────── */
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
 
-  /** Search submission */
+  /* ───────────────────────────────────────────────────────────────
+   * TEXT SEARCH
+   * ─────────────────────────────────────────────────────────────── */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
@@ -122,12 +130,102 @@ export function Navbar() {
     }
   }
 
+  /* ───────────────────────────────────────────────────────────────
+   * SEARCH BY IMAGE
+   * 
+   * Opens a file picker for camera/photo.
+   * Converts the selected image to base64 and navigates to
+   * the search page with the image data as a query param.
+   * 
+   * In production, you'd send this to a backend vision API
+   * (e.g., Google Lens, Clarifai) for part identification.
+   * ─────────────────────────────────────────────────────────────── */
+  const handleImageSearch = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be under 5MB')
+      return
+    }
+
+    // Convert to base64 and pass to search page
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result as string
+      // Store in sessionStorage for the search page to pick up
+      sessionStorage.setItem('imageSearch', base64)
+      router.push('/search?mode=image')
+    }
+    reader.readAsDataURL(file)
+
+    // Reset input so same file can be selected again
+    e.target.value = ''
+  }
+
+  /* ───────────────────────────────────────────────────────────────
+   * SEARCH BY VOICE (Web Speech API)
+   * 
+   * Uses the browser's built-in speech recognition.
+   * Supported in Chrome, Edge, Safari.
+   * Falls back gracefully if not supported.
+   * ─────────────────────────────────────────────────────────────── */
+  const handleVoiceSearch = () => {
+    // Check browser support
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert('Voice search is not supported in this browser. Try Chrome or Edge.')
+      return
+    }
+
+    // If already listening, stop
+    if (isListening) {
+      setIsListening(false)
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setSearchQuery(transcript)
+      // Auto-search after voice input
+      router.push(`/search?q=${encodeURIComponent(transcript)}`)
+      setIsListening(false)
+    }
+
+    recognition.onerror = () => {
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    setIsListening(true)
+    recognition.start()
+  }
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--color-surface)]/80 backdrop-blur-xl border-b border-white/[0.06]">
       <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
 
-          {/* ─── LOGO (left) ─── */}
+          {/* ─── LOGO ─── */}
           <Link href="/" className="flex items-center gap-1 shrink-0">
             <span className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
               <span className="text-[var(--color-accent)]">Auto</span>
@@ -135,9 +233,9 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* ─── CENTER: Nav Links (icon + text) + Search Bar ─── */}
+          {/* ─── CENTER: Nav Links + Search Bar ─── */}
           <div className="hidden md:flex items-center gap-5 flex-1 justify-center">
-            {/* Nav links — icon + text, each has RELATIVE for underline */}
+            {/* Nav links */}
             <div className="flex items-center gap-1">
               {navLinks.map((link) => {
                 const Icon = link.icon
@@ -156,7 +254,6 @@ export function Navbar() {
                       <Icon className="w-4 h-4" />
                       {link.label}
                     </span>
-                    {/* Active underline — positioned relative to THIS link */}
                     {active && (
                       <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-[var(--color-accent)] rounded-full" />
                     )}
@@ -165,19 +262,56 @@ export function Navbar() {
               })}
             </div>
 
-            {/* Search bar — glass style */}
+            {/* ─── SEARCH BAR — glass with voice + camera ─── */}
             <form onSubmit={handleSearch} className="flex-1 max-w-sm">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] focus-within:border-[var(--color-accent)]/40 focus-within:bg-white/[0.1] transition-all">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] focus-within:border-[var(--color-accent)]/40 focus-within:bg-white/[0.1] transition-all">
+                {/* Search icon */}
                 <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)] shrink-0" />
+
+                {/* Text input */}
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search parts..."
-                  className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] w-full"
+                  className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] min-w-0"
                 />
+
+                {/* Voice search button */}
+                <button
+                  type="button"
+                  onClick={handleVoiceSearch}
+                  title={isListening ? 'Stop listening' : 'Search by voice'}
+                  className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-full transition-all ${
+                    isListening
+                      ? 'bg-[var(--color-coral)]/20 text-[var(--color-coral)] animate-pulse'
+                      : 'hover:bg-white/[0.08] text-[var(--color-text-muted)] hover:text-[var(--color-text-dim)]'
+                  }`}
+                >
+                  <MicrophoneIcon className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Image search button */}
+                <button
+                  type="button"
+                  onClick={handleImageSearch}
+                  title="Search by image"
+                  className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/[0.08] text-[var(--color-text-muted)] hover:text-[var(--color-text-dim)] transition-all"
+                >
+                  <CameraIcon className="w-3.5 h-3.5" />
+                </button>
               </div>
             </form>
+
+            {/* Hidden file input for image search */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageSelected}
+              className="hidden"
+            />
           </div>
 
           {/* ─── RIGHT: Wishlist + Cart + Auth ─── */}
