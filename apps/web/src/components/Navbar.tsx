@@ -1,28 +1,27 @@
 /**
- * Navbar — Fixed top navigation bar
+ * Navbar — Fixed top navigation bar with scroll-triggered search
  * 
  * Layout:
- *   Desktop: [Logo] ——— [Nav Links] ——— [Cart Icon + Badge] [Sign In]
+ *   Desktop: [Logo] ——— [Nav Links] ——— [Cart] [Sign In]
+ *   After scroll: [Logo] ——— [🔍 Search Bar] ——— [Cart] [Sign In]
  *   Mobile:  [Logo] ———————————— [Cart] [Hamburger → Drawer]
  * 
- * Design:
- *   - Full-width dark surface bar (not floating glass pill)
- *   - Bottom border for separation
- *   - Active link gets lime accent underline
- *   - Cart icon shows item count badge in lime
- *   - Mobile: slide-in drawer from right side
+ * Scroll behavior:
+ *   - On home page: search bar appears in navbar after scrolling past hero (~300px)
+ *   - On other pages: search bar always visible in navbar
+ *   - Search bar slides up smoothly when entering
+ *   - Clicking search navigates to /search?q=...
  * 
- * Cart count: read from localStorage on mount + on storage events
- * so it updates when items are added/removed from other tabs.
+ * Cart count: read from localStorage + 'cart-updated' custom event
  */
 'use client'
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
-import { Bars3Icon, XMarkIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
+import { usePathname, useRouter } from 'next/navigation'
+import { Bars3Icon, XMarkIcon, ShoppingCartIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 
-/** Navigation links — rendered in desktop nav and mobile drawer */
+/** Navigation links */
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/search', label: 'Browse Parts' },
@@ -31,14 +30,31 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [cartCount, setCartCount] = useState(0)
+  const [scrolled, setScrolled] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  /** Check if we're on the home page */
+  const isHome = pathname === '/'
 
   /**
-   * Read cart count from localStorage.
-   * Called on mount and whenever localStorage changes
-   * (e.g. when user adds item from product page).
+   * Scroll listener — detect when user scrolls past hero.
+   * On home page: show search bar after 300px scroll
+   * On other pages: always show search bar
    */
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 300)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    // Check initial scroll position
+    handleScroll()
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  /** Read cart count from localStorage */
   const updateCartCount = () => {
     try {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]')
@@ -49,13 +65,10 @@ export function Navbar() {
     }
   }
 
-  /** Read cart on mount and listen for storage changes */
   useEffect(() => {
     updateCartCount()
-    // Listen for cart changes from other components
     const handler = () => updateCartCount()
     window.addEventListener('storage', handler)
-    // Custom event for same-tab cart updates
     window.addEventListener('cart-updated', handler)
     return () => {
       window.removeEventListener('storage', handler)
@@ -69,14 +82,26 @@ export function Navbar() {
     return pathname.startsWith(href)
   }
 
+  /** Handle search submission from navbar search bar */
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+    }
+  }
+
+  /** Show search bar: on non-home pages always, on home page only after scroll */
+  const showSearch = !isHome || scrolled
+
   return (
     <>
       {/* ─── Main Navbar Bar ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-16 gap-4">
 
-            {/* Logo — lime accent on "Auto", white on "Mart" */}
+            {/* Logo */}
             <Link href="/" className="flex items-center gap-1 shrink-0">
               <span className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
                 <span className="text-[var(--color-accent)]">Auto</span>
@@ -84,8 +109,8 @@ export function Navbar() {
               </span>
             </Link>
 
-            {/* Desktop Navigation — centered links */}
-            <div className="hidden md:flex items-center gap-1">
+            {/* Desktop Nav Links — hidden when search is showing (to make room) */}
+            <div className={`hidden md:flex items-center gap-1 transition-all duration-300 ${showSearch ? 'md:hidden' : ''}`}>
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -97,7 +122,6 @@ export function Navbar() {
                   }`}
                 >
                   {link.label}
-                  {/* Active indicator — lime underline */}
                   {isActive(link.href) && (
                     <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--color-accent)] rounded-full" />
                   )}
@@ -105,16 +129,36 @@ export function Navbar() {
               ))}
             </div>
 
+            {/* ─── Search Bar (appears on scroll) ─── */}
+            <div
+              className={`flex-1 max-w-md transition-all duration-500 ease-out ${
+                showSearch
+                  ? 'opacity-100 translate-y-0 pointer-events-auto'
+                  : 'opacity-0 -translate-y-2 pointer-events-none'
+              }`}
+            >
+              <form onSubmit={handleSearch} className="relative">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)] focus-within:shadow-[0_0_0_2px_var(--color-accent-dim)] transition-all">
+                  <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)] shrink-0" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search parts..."
+                    className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] w-full"
+                  />
+                </div>
+              </form>
+            </div>
+
             {/* Right side — Cart + Auth */}
-            <div className="flex items-center gap-2">
-              {/* Cart icon with item count badge */}
+            <div className="flex items-center gap-2 shrink-0">
               <Link
                 href="/cart"
                 className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
                 aria-label={`Shopping cart with ${cartCount} items`}
               >
                 <ShoppingCartIcon className="w-5 h-5 text-[var(--color-text-dim)]" />
-                {/* Badge — only shown when cart has items */}
                 {cartCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] text-[10px] font-bold px-1">
                     {cartCount}
@@ -122,7 +166,6 @@ export function Navbar() {
                 )}
               </Link>
 
-              {/* Sign In button — desktop only */}
               <Link
                 href="/login"
                 className="hidden md:inline-flex glass-button text-sm px-5 py-2"
@@ -130,7 +173,6 @@ export function Navbar() {
                 Sign In
               </Link>
 
-              {/* Hamburger menu — mobile only */}
               <button
                 className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
                 onClick={() => setDrawerOpen(true)}
@@ -143,18 +185,14 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* ─── Mobile Drawer (slide-in from right) ─── */}
+      {/* ─── Mobile Drawer ─── */}
       {drawerOpen && (
         <>
-          {/* Backdrop — darkens the page content */}
           <div
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm md:hidden"
             onClick={() => setDrawerOpen(false)}
           />
-
-          {/* Drawer panel — slides in from right */}
           <div className="fixed top-0 right-0 bottom-0 z-[70] w-72 bg-[var(--color-surface)] border-l border-[var(--color-border)] md:hidden flex flex-col">
-            {/* Drawer header with close button */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
               <span className="text-lg font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
                 <span className="text-[var(--color-accent)]">Auto</span>Mart
@@ -168,7 +206,22 @@ export function Navbar() {
               </button>
             </div>
 
-            {/* Navigation links — stacked vertically */}
+            {/* Mobile search bar in drawer */}
+            <div className="px-4 py-3 border-b border-[var(--color-border)]">
+              <form onSubmit={(e) => { handleSearch(e); setDrawerOpen(false) }}>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
+                  <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search parts..."
+                    className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
+                  />
+                </div>
+              </form>
+            </div>
+
             <div className="flex-1 px-3 py-4 space-y-1">
               {navLinks.map((link) => (
                 <Link
@@ -186,7 +239,6 @@ export function Navbar() {
               ))}
             </div>
 
-            {/* Drawer footer — Sign In button */}
             <div className="px-3 pb-4">
               <Link
                 href="/login"
