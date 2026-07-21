@@ -1,65 +1,64 @@
 /**
- * Hero — Split-screen hero section for the home page
+ * Hero — 3D Carousel Product Showcase
  * 
- * Layout (desktop):
- *   ┌─────────────────────────┬─────────────────────────┐
- *   │  Left: Text + CTA       │  Right: Product Showcase │
- *   │  - Headline (Outfit)    │  - Floating product img  │
- *   │  - Subtitle             │  - Background glow       │
- *   │  - Search bar           │  - Animated entrance     │
- *   │  - CTA button           │                          │
- *   └─────────────────────────┴─────────────────────────┘
+ * Animation Concept (from your reference):
+ *   - 3 product cards arranged in a carousel/coverflow layout
+ *   - CENTER card: full size, in front, main focus
+ *   - LEFT/RIGHT cards: smaller, rotated, behind the center
+ *   - On HOVER over a side card → it smoothly slides to center
+ *   - The old center card slides to the side
+ *   - Creates a "background comes to front" effect
  * 
- * Animation Strategy (2 layers):
- *   1. CSS Keyframe Animations (reliable, always work):
- *      - .animate-slide-up: elements slide up from below
- *      - .hero-float: main product bobs up/down continuously
- *      - .hero-glow: background glow pulses
- *      - Staggered delays via animation-delay CSS
- *   
- *   2. Framer Motion (enhancement, adds smooth easing):
- *      - Overwrites CSS with smoother cubic-bezier curves
- *      - If framer-motion fails, CSS animations still show content
+ * How it works:
+ *   - activeIndex state tracks which product is centered (0, 1, or 2)
+ *   - On hover over a side card → setActiveIndex(hoveredIndex)
+ *   - Framer-motion `layout` prop animates position changes smoothly
+ *   - CSS perspective creates 3D depth effect
+ *   - Each card has different scale, rotation, and z-index based on position
  * 
- * Product showcase:
- *   - 3 product cards stacked with depth effect
- *   - Main card: large, front, floating animation
- *   - Secondary: smaller, right, slightly behind
- *   - Tertiary: smallest, left, furthest behind
- *   - All use verified Unsplash auto parts images
+ * Layout:
+ *   LEFT (behind)  ←  CENTER (front)  →  RIGHT (behind)
+ *   scale: 0.8       scale: 1.0          scale: 0.8
+ *   rotate: 15deg     rotate: 0deg        rotate: -15deg
+ *   x: -120px         x: 0                x: 120px
+ *   z: -1             z: 10               z: -1
  */
 'use client'
 
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { SearchBar } from '@/components/SearchBar'
 
 /**
- * Hero product showcase items — verified Unsplash auto parts images.
- * Each URL tested with curl to ensure 200 OK response.
+ * Product items for the carousel.
+ * Verified Unsplash auto parts images.
  */
-const showcaseProducts = [
+const carouselProducts = [
   {
+    id: 1,
     name: 'Ceramic Brake Pads',
     category: 'Brake System',
-    // Close-up of brake pads on a vehicle
+    price: '$45.99',
     image: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=600&h=600&fit=crop&q=80',
   },
   {
-    name: 'Engine Parts',
-    category: 'Engine',
-    // Gray and black engine close-up
+    id: 2,
+    name: 'Engine Components',
+    category: 'Engine Parts',
+    price: '$189.00',
     image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=600&fit=crop&q=80',
   },
   {
+    id: 3,
     name: 'Exhaust System',
     category: 'Exhaust',
-    // Catalytic converters and exhaust parts
+    price: '$289.00',
     image: 'https://images.unsplash.com/photo-1759419281480-bacc913c9606?w=600&h=600&fit=crop&q=80',
   },
 ]
 
-/** Smooth easing curve — fast start, gentle deceleration */
+/** Smooth easing curve */
 const ease = [0.16, 1, 0.3, 1] as const
 
 interface HeroProps {
@@ -67,24 +66,66 @@ interface HeroProps {
 }
 
 export function Hero({ onSearch }: HeroProps) {
+  /** Which product is currently in the center (0, 1, or 2) */
+  const [activeIndex, setActiveIndex] = useState(1)
+
+  /**
+   * Get position styles for each card based on its relative position to active.
+   * -1 = left, 0 = center, 1 = right
+   */
+  const getCardStyle = (index: number) => {
+    const offset = index - activeIndex
+    // Wrap offset for circular feel (-1, 0, 1)
+    const wrapped = offset === -2 ? 1 : offset === 2 ? -1 : offset
+
+    if (wrapped === 0) {
+      // CENTER — full size, front, no rotation
+      return {
+        x: 0,
+        scale: 1,
+        rotateY: 0,
+        z: 10,
+        opacity: 1,
+        zIndex: 10,
+      }
+    } else if (wrapped === -1) {
+      // LEFT — smaller, behind, rotated right
+      return {
+        x: -180,
+        scale: 0.78,
+        rotateY: 25,
+        z: -1,
+        opacity: 0.8,
+        zIndex: 5,
+      }
+    } else {
+      // RIGHT — smaller, behind, rotated left
+      return {
+        x: 180,
+        scale: 0.78,
+        rotateY: -25,
+        z: -1,
+        opacity: 0.8,
+        zIndex: 5,
+      }
+    }
+  }
+
   return (
     <section className="relative min-h-[85vh] flex items-center overflow-hidden">
-      {/* ─── Background Glow — subtle radial gradient behind the hero ─── */}
+      {/* ─── Background Glow ─── */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-[var(--color-accent)] rounded-full opacity-[0.03] blur-[120px]" />
         <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-[var(--color-blue)] rounded-full opacity-[0.03] blur-[100px]" />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-4 items-center">
 
           {/* ═══════════════════════════════════════════════════════
               LEFT PANEL: Text + Search + CTA
-              Uses CSS animate-slide-up as fallback, framer-motion as enhancement
               ═══════════════════════════════════════════════════════ */}
           <div className="text-center lg:text-left">
-
-            {/* Eyebrow text — small uppercase label */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -96,7 +137,6 @@ export function Hero({ onSearch }: HeroProps) {
               </span>
             </motion.div>
 
-            {/* Main headline — bold Outfit font, lime accent on key words */}
             <motion.h1
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -112,7 +152,6 @@ export function Hero({ onSearch }: HeroProps) {
               <span className="text-[var(--color-text)]"> Minutes</span>
             </motion.h1>
 
-            {/* Subtitle */}
             <motion.p
               initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: 0 }}
@@ -122,7 +161,6 @@ export function Hero({ onSearch }: HeroProps) {
               Find any car or bike spare part. Your mechanic delivers in 30 minutes.
             </motion.p>
 
-            {/* Search bar — integrated into hero */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -132,7 +170,6 @@ export function Hero({ onSearch }: HeroProps) {
               <SearchBar onSearch={onSearch} placeholder="Search by part name, brand, or vehicle..." />
             </motion.div>
 
-            {/* CTA buttons */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -147,7 +184,6 @@ export function Hero({ onSearch }: HeroProps) {
               </Link>
             </motion.div>
 
-            {/* Trust indicators — small stats below CTA */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -160,10 +196,7 @@ export function Hero({ onSearch }: HeroProps) {
                 { value: '24/7', label: 'Support' },
               ].map((stat) => (
                 <div key={stat.label} className="text-center lg:text-left">
-                  <p
-                    className="text-lg font-bold text-[var(--color-text)]"
-                    style={{ fontFamily: 'Outfit, sans-serif' }}
-                  >
+                  <p className="text-lg font-bold text-[var(--color-text)]" style={{ fontFamily: 'Outfit, sans-serif' }}>
                     {stat.value}
                   </p>
                   <p className="text-xs text-[var(--color-text-dim)]">{stat.label}</p>
@@ -173,81 +206,123 @@ export function Hero({ onSearch }: HeroProps) {
           </div>
 
           {/* ═══════════════════════════════════════════════════════
-              RIGHT PANEL: Product Showcase
-              3 stacked product cards with depth + floating animation
+              RIGHT PANEL: 3D Carousel Product Showcase
+              Products arranged in a coverflow layout.
+              Hover a side card → it slides to center.
               ═══════════════════════════════════════════════════════ */}
-          <div className="relative flex items-center justify-center min-h-[400px] lg:min-h-[500px]">
-
-            {/* Glow ring behind the product — CSS pulse animation */}
+          <div className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]">
+            {/* Glow behind center product */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-[var(--color-accent)] opacity-[0.06] blur-[60px] hero-glow" />
+              <div className="w-72 h-72 rounded-full bg-[var(--color-accent)] opacity-[0.05] blur-[80px] hero-glow" />
             </div>
 
-            {/* Product showcase — 3 stacked cards with depth */}
-            <div className="relative w-full max-w-sm">
+            {/* Carousel container with 3D perspective */}
+            <div
+              className="relative w-full max-w-lg h-[380px]"
+              style={{ perspective: '1200px' }}
+            >
+              {carouselProducts.map((product, index) => {
+                const style = getCardStyle(index)
+                const isCenter = index === activeIndex
 
-              {/* ─── Main Product (front, largest, floating) ─── */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.7, rotate: -8 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.8, delay: 0.2, ease }}
-                className="relative z-10 hero-float"
-              >
-                {/* Product image card */}
-                <div className="card p-2 rounded-2xl overflow-hidden">
-                  <img
-                    src={showcaseProducts[0].image}
-                    alt={showcaseProducts[0].name}
-                    className="w-full aspect-square object-cover rounded-xl"
-                  />
-                </div>
+                return (
+                  <motion.div
+                    key={product.id}
+                    /**
+                     * ANIMATION: When activeIndex changes, framer-motion
+                     * smoothly animates x, scale, rotateY, opacity to new values.
+                     * This creates the "background comes to front" effect.
+                     */
+                    animate={{
+                      x: style.x,
+                      scale: style.scale,
+                      rotateY: style.rotateY,
+                      opacity: style.opacity,
+                    }}
+                    transition={{
+                      duration: 0.6,
+                      ease: [0.32, 0.72, 0, 1], // smooth deceleration
+                    }}
+                    /**
+                     * HOVER: When user hovers a side card, set it as active.
+                     * This triggers the animate transition above.
+                     */
+                    onMouseEnter={() => setActiveIndex(index)}
+                    className="absolute top-0 left-1/2 -translate-x-1/2 cursor-pointer"
+                    style={{
+                      zIndex: style.zIndex,
+                      transformStyle: 'preserve-3d',
+                    }}
+                  >
+                    {/* Product card */}
+                    <div
+                      className={`w-56 sm:w-64 rounded-2xl overflow-hidden transition-shadow duration-500 ${
+                        isCenter
+                          ? 'shadow-[0_20px_60px_rgba(0,0,0,0.5)] ring-1 ring-[var(--color-accent)]/20'
+                          : 'shadow-[0_10px_30px_rgba(0,0,0,0.3)]'
+                      }`}
+                    >
+                      {/* Product image */}
+                      <div className="aspect-square bg-[var(--color-surface)] relative overflow-hidden">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          draggable={false}
+                        />
+                        {/* Category badge — only on center card */}
+                        {isCenter && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="absolute top-3 left-3"
+                          >
+                            <span className="badge">{product.category}</span>
+                          </motion.div>
+                        )}
+                      </div>
 
-                {/* Floating label below the main card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.8, ease }}
-                  className="absolute -bottom-3 left-4 right-4 card px-4 py-3 flex items-center justify-between rounded-xl"
-                >
-                  <div>
-                    <p className="text-xs text-[var(--color-text-dim)]">{showcaseProducts[0].category}</p>
-                    <p className="text-sm font-semibold">{showcaseProducts[0].name}</p>
-                  </div>
-                  <span className="badge">$45.99</span>
-                </motion.div>
-              </motion.div>
+                      {/* Info panel — only visible on center card */}
+                      <AnimatePresence>
+                        {isCenter && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="bg-[var(--color-surface)] px-5 py-4"
+                          >
+                            <p className="text-xs text-[var(--color-text-dim)] mb-1">{product.category}</p>
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                                {product.name}
+                              </h3>
+                              <span className="text-lg font-bold glow-text">{product.price}</span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
 
-              {/* ─── Secondary Product (right, smaller, behind) ─── */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5, x: 80 }}
-                animate={{ opacity: 0.9, scale: 0.85, x: 40 }}
-                transition={{ duration: 0.8, delay: 0.45, ease }}
-                className="absolute -top-4 -right-4 sm:-right-10 z-0 w-32 sm:w-40"
-              >
-                <div className="card p-1.5 rounded-xl overflow-hidden shadow-lg shadow-black/30">
-                  <img
-                    src={showcaseProducts[1].image}
-                    alt={showcaseProducts[1].name}
-                    className="w-full aspect-square object-cover rounded-lg"
-                  />
-                </div>
-              </motion.div>
-
-              {/* ─── Tertiary Product (left, smallest, furthest behind) ─── */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.4, x: -60 }}
-                animate={{ opacity: 0.75, scale: 0.75, x: -30 }}
-                transition={{ duration: 0.8, delay: 0.55, ease }}
-                className="absolute top-8 -left-4 sm:-left-10 z-0 w-28 sm:w-32"
-              >
-                <div className="card p-1.5 rounded-xl overflow-hidden shadow-lg shadow-black/30">
-                  <img
-                    src={showcaseProducts[2].image}
-                    alt={showcaseProducts[2].name}
-                    className="w-full aspect-square object-cover rounded-lg"
-                  />
-                </div>
-              </motion.div>
+            {/* Dot indicators below carousel */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {carouselProducts.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setActiveIndex(index)}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    index === activeIndex
+                      ? 'bg-[var(--color-accent)] w-6'
+                      : 'bg-[var(--color-border)] hover:bg-[var(--color-text-dim)]'
+                  }`}
+                  aria-label={`View ${carouselProducts[index].name}`}
+                />
+              ))}
             </div>
           </div>
         </div>
