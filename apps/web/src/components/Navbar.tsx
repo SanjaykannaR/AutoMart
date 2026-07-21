@@ -2,41 +2,39 @@
  * Navbar — Fixed top navigation bar with scroll-triggered search
  * 
  * Layout:
- *   Desktop: [Logo] ——— [Nav Links] ——— [🔍 Search] [♡ Wishlist] [🛒 Cart] [Sign In]
- *   After scroll: [Logo] ——— [🔍 Search Bar] ——— [♡] [🛒] [Sign In]
- *   Mobile:  [Logo] ———————————— [♡] [🛒] [Hamburger → Drawer]
+ *   Desktop (home, top):    [Logo] ——— [Home] [Categories] [Browse] [Orders] [Account] ——— [♡] [🛒] [Sign In]
+ *   Desktop (home, scroll): [Logo] ——— [🔍 Search Bar] ——— [♡] [🛒] [Sign In]
+ *   Desktop (other pages):  [Logo] ——— [🔍 Search Bar] [🏠] [📁] [🔍] [📦] [👤] ——— [♡] [🛒] [Sign In]
+ *   Mobile:                 [Logo] ———————————— [♡] [🛒] [☰]
  * 
- * Scroll behavior:
- *   - On home page: search bar appears in navbar after scrolling past hero (~300px)
- *   - On other pages: search bar always visible
- *   - Search bar slides up smoothly when entering
- *   - Clicking search navigates to /search?q=...
+ * Key behavior:
+ *   - On HOME page top: full text nav links shown
+ *   - On HOME page scrolled: search replaces nav links
+ *   - On OTHER pages: search bar always visible, nav links become ICONS
+ *   - Icons are small, circular, with tooltips
+ *   - Heart (♡) + Cart (🛒) always visible on right
  * 
- * Icons:
- *   - Heart icon (♡): wishlist — shows count badge
- *   - Cart icon (🛒): shopping cart — shows item count badge
- *   - Both icons have lime accent badges when items > 0
- * 
- * Cart/Wishlist count:
- *   - Read from localStorage on mount
- *   - Listen for 'cart-updated' and 'wishlist-updated' custom events
- *   - Also listen for storage events (cross-tab updates)
+ * Screen size:
+ *   - Max width: 2560px (ultra-wide laptop)
  */
 'use client'
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bars3Icon, XMarkIcon, ShoppingCartIcon, MagnifyingGlassIcon, HeartIcon } from '@heroicons/react/24/outline'
+import {
+  Bars3Icon, XMarkIcon, ShoppingCartIcon, MagnifyingGlassIcon, HeartIcon,
+  HomeIcon, Squares2X2Icon, MagnifyingGlassCircleIcon, ClipboardDocumentListIcon, UserIcon
+} from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
-/** Navigation links — shown in desktop nav and mobile drawer */
+/** Navigation links — with icons for compact mode */
 const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/search', label: 'Browse Parts' },
-  { href: '/orders', label: 'My Orders' },
-  { href: '/account', label: 'Account' },
+  { href: '/', label: 'Home', icon: HomeIcon },
+  { href: '/categories', label: 'Categories', icon: Squares2X2Icon },
+  { href: '/search', label: 'Browse Parts', icon: MagnifyingGlassCircleIcon },
+  { href: '/orders', label: 'My Orders', icon: ClipboardDocumentListIcon },
+  { href: '/account', label: 'Account', icon: UserIcon },
 ]
 
 export function Navbar() {
@@ -48,16 +46,9 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  /** Check if we're on the home page — affects search bar visibility */
   const isHome = pathname === '/'
 
-  /**
-   * SCROLL LISTENER
-   * 
-   * Detects when user scrolls past hero section.
-   * On home page: show search bar after 300px scroll
-   * On other pages: always show search bar
-   */
+  /** Scroll listener — detect when user scrolls past hero */
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 300)
@@ -67,12 +58,7 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  /**
-   * CART COUNT
-   * 
-   * Reads cart items from localStorage and sums up quantities.
-   * Listens for 'cart-updated' event (dispatched when items are added/removed).
-   */
+  /** Read cart count from localStorage */
   const updateCartCount = () => {
     try {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]')
@@ -83,12 +69,7 @@ export function Navbar() {
     }
   }
 
-  /**
-   * WISHLIST COUNT
-   * 
-   * Reads wishlist items from localStorage and counts them.
-   * Listens for 'wishlist-updated' event (dispatched when items are added/removed).
-   */
+  /** Read wishlist count from localStorage */
   const updateWishlistCount = () => {
     try {
       const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]')
@@ -98,22 +79,15 @@ export function Navbar() {
     }
   }
 
-  /**
-   * MOUNT EFFECT
-   * 
-   * Initialize counts and set up event listeners.
-   * Both cart and wishlist update in real-time across components.
-   */
+  /** Initialize counts and event listeners */
   useEffect(() => {
     updateCartCount()
     updateWishlistCount()
 
-    // Listen for cart changes
     const cartHandler = () => updateCartCount()
     window.addEventListener('storage', cartHandler)
     window.addEventListener('cart-updated', cartHandler)
 
-    // Listen for wishlist changes
     const wishlistHandler = () => updateWishlistCount()
     window.addEventListener('storage', wishlistHandler)
     window.addEventListener('wishlist-updated', wishlistHandler)
@@ -126,13 +100,13 @@ export function Navbar() {
     }
   }, [])
 
-  /** Check if a nav link is currently active — shows lime underline */
+  /** Check if a nav link is active */
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
 
-  /** Handle search submission — navigates to /search?q=... */
+  /** Handle search submission */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
@@ -141,23 +115,28 @@ export function Navbar() {
     }
   }
 
-  /** Show search bar: on non-home pages always, on home page only after scroll */
+  /**
+   * Determine when to show search bar:
+   *   - On home page: only after scrolling past hero (300px)
+   *   - On all other pages: always visible
+   */
   const showSearch = !isHome || scrolled
+
+  /**
+   * Determine when to show compact icon nav (instead of text nav):
+   *   - When search bar is visible AND we're not on home page top
+   *   - This keeps nav accessible even with search bar showing
+   */
+  const showIconNav = showSearch && !isHome
 
   return (
     <>
-      {/* ═══ MAIN NAVBAR BAR ═══ 
-       * Fixed position, full width, dark surface
-       * z-50 ensures it stays above page content
-       */}
+      {/* ═══ MAIN NAVBAR BAR ═══ */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
+        <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 gap-3">
 
-            {/* ─── LOGO ─── 
-             * "Auto" in lime, "Mart" in white
-             * Links to home page
-             */}
+            {/* ─── LOGO ─── */}
             <Link href="/" className="flex items-center gap-1 shrink-0">
               <span className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
                 <span className="text-[var(--color-accent)]">Auto</span>
@@ -165,11 +144,11 @@ export function Navbar() {
               </span>
             </Link>
 
-            {/* ─── DESKTOP NAV LINKS ─── 
-             * Hidden when search bar is showing (to save space)
-             * Each link has active state with lime underline
+            {/* ─── DESKTOP TEXT NAV LINKS ─── 
+             * Only shown on HOME page when NOT scrolled
+             * Full text labels for desktop
              */}
-            <div className={`hidden md:flex items-center gap-1 transition-all duration-300 ${showSearch ? 'md:hidden' : ''}`}>
+            <div className={`hidden lg:flex items-center gap-1 ${showSearch ? 'lg:hidden' : ''}`}>
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -188,9 +167,10 @@ export function Navbar() {
               ))}
             </div>
 
-            {/* ─── SEARCH BAR (appears on scroll) ─── 
-             * Pill-shaped input with lime focus ring
-             * Slides in smoothly when scrolling past hero
+            {/* ─── SEARCH BAR ─── 
+             * Pill-shaped, slides in smoothly
+             * On home: appears after scroll
+             * On other pages: always visible
              */}
             <div
               className={`flex-1 max-w-md transition-all duration-500 ease-out ${
@@ -213,19 +193,37 @@ export function Navbar() {
               </form>
             </div>
 
-            {/* ─── RIGHT SIDE: Wishlist + Cart + Auth ─── 
-             * Heart icon → /wishlist with count badge
-             * Cart icon → /cart with count badge
-             * Sign In button (desktop only)
-             * Hamburger menu (mobile only)
+            {/* ─── ICON NAV (compact mode for non-home pages) ─── 
+             * When search bar is visible on non-home pages,
+             * show nav links as small circular icons with tooltips
+             * This saves space while keeping navigation accessible
              */}
+            {showIconNav && (
+              <div className="hidden lg:flex items-center gap-1">
+                {navLinks.map((link) => {
+                  const Icon = link.icon
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      title={link.label}
+                      className={`relative w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                        isActive(link.href)
+                          ? 'text-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                          : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04]'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* ─── RIGHT SIDE: Wishlist + Cart + Auth ─── */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
-              {/* ─── WISHLIST ICON ─── 
-               * Heart icon with count badge
-               * Badge shows in lime when items > 0
-               * Uses solid heart when items exist, outline when empty
-               */}
+              {/* Wishlist icon */}
               <Link
                 href="/wishlist"
                 className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
@@ -236,7 +234,6 @@ export function Navbar() {
                 ) : (
                   <HeartIcon className="w-5 h-5 text-[var(--color-text-dim)]" />
                 )}
-                {/* Badge — only shown when wishlist has items */}
                 {wishlistCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] text-[10px] font-bold px-1">
                     {wishlistCount}
@@ -244,10 +241,7 @@ export function Navbar() {
                 )}
               </Link>
 
-              {/* ─── CART ICON ─── 
-               * Shopping cart with count badge
-               * Badge shows in lime when items > 0
-               */}
+              {/* Cart icon */}
               <Link
                 href="/cart"
                 className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
@@ -261,7 +255,7 @@ export function Navbar() {
                 )}
               </Link>
 
-              {/* ─── SIGN IN BUTTON (desktop) ─── */}
+              {/* Sign In (desktop only) */}
               <Link
                 href="/login"
                 className="hidden md:inline-flex glass-button text-sm px-5 py-2"
@@ -269,7 +263,7 @@ export function Navbar() {
                 Sign In
               </Link>
 
-              {/* ─── HAMBURGER MENU (mobile) ─── */}
+              {/* Hamburger (mobile only) */}
               <button
                 className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
                 onClick={() => setDrawerOpen(true)}
@@ -282,22 +276,14 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* ═══ MOBILE DRAWER ═══ 
-       * Slide-in from right
-       * Contains: search, nav links, sign in button
-       * Backdrop darkens the page
-       */}
+      {/* ═══ MOBILE DRAWER ═══ */}
       {drawerOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm md:hidden"
             onClick={() => setDrawerOpen(false)}
           />
-
-          {/* Drawer panel */}
           <div className="fixed top-0 right-0 bottom-0 z-[70] w-72 bg-[var(--color-surface)] border-l border-[var(--color-border)] md:hidden flex flex-col">
-            {/* Drawer header with close button */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
               <span className="text-lg font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
                 <span className="text-[var(--color-accent)]">Auto</span>Mart
@@ -311,7 +297,7 @@ export function Navbar() {
               </button>
             </div>
 
-            {/* Mobile search bar in drawer */}
+            {/* Mobile search */}
             <div className="px-4 py-3 border-b border-[var(--color-border)]">
               <form onSubmit={(e) => { handleSearch(e); setDrawerOpen(false) }}>
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
@@ -327,25 +313,28 @@ export function Navbar() {
               </form>
             </div>
 
-            {/* Navigation links — stacked vertically */}
+            {/* Mobile nav links with icons */}
             <div className="flex-1 px-3 py-4 space-y-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setDrawerOpen(false)}
-                  className={`block px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                    isActive(link.href)
-                      ? 'text-[var(--color-text)] bg-white/[0.04]'
-                      : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.02]'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const Icon = link.icon
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setDrawerOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                      isActive(link.href)
+                        ? 'text-[var(--color-text)] bg-white/[0.04]'
+                        : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {link.label}
+                  </Link>
+                )
+              })}
             </div>
 
-            {/* Drawer footer — Sign In button */}
             <div className="px-3 pb-4">
               <Link
                 href="/login"

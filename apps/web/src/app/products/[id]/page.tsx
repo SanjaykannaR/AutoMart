@@ -84,7 +84,7 @@ export default function ProductDetailPage() {
   /** Show skeleton while product is loading */
   if (!product) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid md:grid-cols-2 gap-10">
           <div className="aspect-square skeleton rounded-2xl" />
           <div className="space-y-4">
@@ -119,7 +119,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
 
         {/* ═══════════════════════════════════════════════════════

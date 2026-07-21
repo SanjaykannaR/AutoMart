@@ -1,24 +1,32 @@
 /**
- * Hero — 3D Carousel Product Showcase (Auto-Slide Version)
+ * Hero — 3D Carousel Product Showcase (Auto-Slide + Hover)
  * 
  * Animation:
  *   - 3 products in coverflow layout
- *   - Auto-advances every 5 seconds — one image at a time
- *   - Transition takes 1.5s with smooth ease — slow enough to follow
- *   - Pauses when user hovers over any card
- *   - Hovering a side card slides it to center (also 1.5s)
+ *   - AUTO-SLIDES every 5 seconds — always running
+ *   - HOVERING a side card slides it to center (same 1.5s transition)
+ *   - CLICKING a card also slides it to center
+ *   - Smooth 1.5s glide for all transitions
  *   - No price — just name + "More" button
+ * 
+ * How it works:
+ *   - activeIndex tracks which product is centered
+ *   - Auto-advance: setInterval every 5 seconds
+ *   - Hover: setActiveIndex on mouse enter (doesn't stop auto)
+ *   - Click: setActiveIndex on click
+ *   - All transitions use same 1.5s smooth ease
  * 
  * Flow:
  *   1. Page loads → center card shows
- *   2. After 5s → next card glides to center (1.5s transition)
+ *   2. After 5s → next card glides to center (1.5s)
  *   3. Stays 5s → next card glides...
- *   4. On hover → auto-slide pauses, user can explore
- *   5. On leave → auto-slide resumes
+ *   4. User hovers side card → that card glides to center
+ *   5. Auto-slide continues from new position
+ *   6. User clicks dot → card glides to center
  */
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { SearchBar } from '@/components/SearchBar'
@@ -54,25 +62,31 @@ interface HeroProps {
 
 export function Hero({ onSearch }: HeroProps) {
   const [activeIndex, setActiveIndex] = useState(1)
-  const [isHovered, setIsHovered] = useState(false)
 
   /**
-   * Auto-advance carousel every 5 seconds.
-   * Pauses when user hovers over any card.
+   * AUTO-ADVANCE TIMER
+   * 
+   * Advances to next image every 5 seconds.
+   * Runs continuously — does NOT pause on hover.
+   * Hovering just changes which card is active,
+   * and the timer keeps going from there.
    */
   useEffect(() => {
-    if (isHovered) return // pause on hover
-
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % carouselProducts.length)
     }, 5000) // 5 seconds per image
 
     return () => clearInterval(timer)
-  }, [isHovered])
+  }, [])
 
   /**
-   * Position styles for each card based on distance from center.
-   * -1 = left, 0 = center, 1 = right
+   * POSITION STYLES
+   * 
+   * Calculates x, scale, rotateY, opacity for each card
+   * based on how far it is from the center (activeIndex).
+   *   -1 = left (smaller, behind, rotated)
+   *    0 = center (full size, front)
+   *   +1 = right (smaller, behind, rotated)
    */
   const getCardStyle = (index: number) => {
     const offset = index - activeIndex
@@ -98,7 +112,7 @@ export function Hero({ onSearch }: HeroProps) {
         <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-[var(--color-blue)] rounded-full opacity-[0.03] blur-[100px]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
+      <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-4 items-center">
 
           {/* ─── LEFT: Text + Search ─── */}
@@ -183,11 +197,7 @@ export function Hero({ onSearch }: HeroProps) {
           </div>
 
           {/* ─── RIGHT: 3D Carousel ─── */}
-          <div
-            className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-          >
+          <div className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]">
             {/* Glow behind center */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-72 h-72 rounded-full bg-[var(--color-accent)] opacity-[0.05] blur-[80px] hero-glow" />
@@ -206,10 +216,10 @@ export function Hero({ onSearch }: HeroProps) {
                   <motion.div
                     key={product.id}
                     /**
-                     * SLOW SMOOTH TRANSITION:
-                     * - duration: 1.5s — slow enough to follow the movement
+                     * SMOOTH TRANSITION:
+                     * - duration: 1.5s — slow enough to follow
                      * - ease: [0.25, 0.1, 0.25, 1] — smooth cubic-bezier
-                     * Cards glide slowly from side to center.
+                     * Works for auto-slide, hover, and click — same animation.
                      */
                     animate={{
                       x: style.x,
@@ -221,6 +231,11 @@ export function Hero({ onSearch }: HeroProps) {
                       duration: 1.5,
                       ease: [0.25, 0.1, 0.25, 1],
                     }}
+                    /**
+                     * HOVER: instantly jump to this card.
+                     * Auto-slide will continue from here after 5s.
+                     */
+                    onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => setActiveIndex(index)}
                     className="absolute top-0 left-1/2 -translate-x-1/2 cursor-pointer"
                     style={{
@@ -294,7 +309,7 @@ export function Hero({ onSearch }: HeroProps) {
               })}
             </div>
 
-            {/* Dot indicators */}
+            {/* Dot indicators — clickable */}
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
               {carouselProducts.map((_, index) => (
                 <button

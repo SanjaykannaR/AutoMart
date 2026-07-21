@@ -96,7 +96,7 @@ export default function OrderDetailPage() {
   /** Loading skeleton */
   if (!order) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="skeleton h-4 w-32 mb-8" />
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-4">
@@ -122,7 +122,7 @@ export default function OrderDetailPage() {
   const progress = ((currentIndex + 1) / statusSteps.length) * 100
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* ─── Back Link ─── */}
       <Link
         href="/orders"

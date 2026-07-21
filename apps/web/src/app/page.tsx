@@ -99,14 +99,14 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="max-w-7xl mx-auto px-4 py-8 text-center"
+          className="max-w-[2560px] mx-auto px-4 py-8 text-center"
         >
           <p className="text-[var(--color-text-dim)]">No parts found. Try a different search.</p>
         </motion.div>
       )}
 
       {results.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <section className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h2 className="text-xl font-bold mb-6" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Search Results
           </h2>
@@ -128,7 +128,7 @@ export default function HomePage() {
           SECTION 3: Browse by Category
           2×3 grid of category cards with icons and part counts
           ═══════════════════════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Section header with numbered index */}
         <div className="mb-10">
           <motion.span
@@ -189,7 +189,7 @@ export default function HomePage() {
           SECTION 4: How It Works
           3-step process with large numbered indices (01, 02, 03)
           ═══════════════════════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Section header */}
         <div className="mb-12">
           <motion.span
@@ -251,7 +251,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           SECTION 5: Trust Bar — Stats and delivery promise
           ═══════════════════════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -279,7 +279,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           SECTION 6: CTA — Final call-to-action
           ═══════════════════════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
