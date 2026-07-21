@@ -25,7 +25,7 @@ import Link from 'next/link'
 import {
   StopIcon, CogIcon, WrenchIcon, BoltIcon, Cog6ToothIcon, FireIcon,
   MagnifyingGlassIcon, ClipboardDocumentCheckIcon, TruckIcon,
-  CubeIcon, ClockIcon, UserGroupIcon, HeadphonesIcon
+  CubeIcon, ClockIcon, UsersIcon, PhoneIcon
 } from '@heroicons/react/24/outline'
 
 /**
@@ -70,8 +70,8 @@ const steps = [
 const stats = [
   { value: '10,000+', label: 'Parts Available', icon: CubeIcon },
   { value: '30 min', label: 'Avg. Delivery', icon: ClockIcon },
-  { value: '50,000+', label: 'Orders Delivered', icon: UserGroupIcon },
-  { value: '24/7', label: 'Customer Support', icon: HeadphonesIcon },
+  { value: '50,000+', label: 'Orders Delivered', icon: UsersIcon },
+  { value: '24/7', label: 'Customer Support', icon: PhoneIcon },
 ]
 
 export default function HomePage() {
