@@ -22,7 +22,10 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ProductCard } from '@/components/ProductCard'
 
-/** Featured products — placeholder data for the demo UI */
+/**
+ * Featured products — auto parts images from Unsplash.
+ * Each image is a real automotive part photo.
+ */
 const featuredProducts = [
   {
     id: 'feat-1',
@@ -30,7 +33,7 @@ const featuredProducts = [
     category: 'Brake System',
     brand: 'Bosch',
     price: 45.99,
-    imageUrl: 'https://picsum.photos/seed/feat-brake/400/400',
+    imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-2',
@@ -38,7 +41,7 @@ const featuredProducts = [
     category: 'Exhaust',
     brand: 'Akrapovic',
     price: 289.00,
-    imageUrl: 'https://picsum.photos/seed/feat-exhaust/400/400',
+    imageUrl: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-3',
@@ -46,7 +49,7 @@ const featuredProducts = [
     category: 'Electrical',
     brand: 'Philips',
     price: 124.50,
-    imageUrl: 'https://picsum.photos/seed/feat-led/400/400',
+    imageUrl: 'https://images.unsplash.com/photo-1592198084033-aade902d1aae?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-4',
@@ -54,7 +57,7 @@ const featuredProducts = [
     category: 'Suspension',
     brand: 'Bilstein',
     price: 199.99,
-    imageUrl: 'https://picsum.photos/seed/feat-shock/400/400',
+    imageUrl: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-5',
@@ -62,7 +65,7 @@ const featuredProducts = [
     category: 'Engine Parts',
     brand: 'Mobil 1',
     price: 34.99,
-    imageUrl: 'https://picsum.photos/seed/feat-oil/400/400',
+    imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-6',
@@ -70,7 +73,7 @@ const featuredProducts = [
     category: 'Transmission',
     brand: 'Exedy',
     price: 175.00,
-    imageUrl: 'https://picsum.photos/seed/feat-clutch/400/400',
+    imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=400&fit=crop&q=80',
   },
 ]
 

@@ -44,7 +44,7 @@ export function ProductCard({ product }: { product: Product }) {
         {/* Image container — aspect-square with overflow hidden for zoom effect */}
         <div className="aspect-square bg-[var(--color-bg)] relative overflow-hidden">
           <img
-            src={product.imageUrl || 'https://picsum.photos/seed/placeholder/400/400'}
+            src={product.imageUrl || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=400&fit=crop&q=80'}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
