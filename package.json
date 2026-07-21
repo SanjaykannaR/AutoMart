@@ -1,6 +1,7 @@
 {
   "name": "automart",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "services/*",
@@ -31,5 +32,10 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "globals": "^15.15.0",
+    "typescript-eslint": "^8.65.0"
   }
 }
