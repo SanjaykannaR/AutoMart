@@ -1,25 +1,39 @@
 /**
- * Footer — Site-wide footer with page links
+ * Footer — Site-wide footer with all page links
  * 
- * Sections:
- *   - Brand + tagline
- *   - Shop (Browse Parts, My Orders, Cart)
- *   - Account (Login, Register)
- *   - Support (Contact, FAQ — placeholder links)
- *   - Social icons (placeholder)
- *   - Copyright
+ * WHAT IT DOES:
+ *   - Shows links to all main pages
+ *   - Organized into sections: Shop, Account, Support
+ *   - Bottom bar with copyright and social links
+ *   - Appears on every page (added to root layout)
+ * 
+ * SECTIONS:
+ *   - Brand: AutoMart logo + tagline
+ *   - Shop: Browse Parts, Categories, My Orders, Cart, Wishlist
+ *   - Account: Sign In, Create Account, My Account
+ *   - Support: Help Center, Contact Us, Privacy Policy
+ *   - Bottom: Copyright + social links
+ * 
+ * DESIGN:
+ *   - Dark surface background
+ *   - Lime accent on hover
+ *   - Responsive: 2 cols mobile, 4 cols desktop
  */
 import Link from 'next/link'
 
+/** Footer link sections — organized by category */
 const footerLinks = {
   shop: [
     { href: '/search', label: 'Browse Parts' },
+    { href: '/categories', label: 'Categories' },
     { href: '/orders', label: 'My Orders' },
     { href: '/cart', label: 'Cart' },
+    { href: '/wishlist', label: 'Wishlist' },
   ],
   account: [
     { href: '/login', label: 'Sign In' },
     { href: '/register', label: 'Create Account' },
+    { href: '/account', label: 'My Account' },
   ],
   support: [
     { href: '#', label: 'Help Center' },
@@ -32,9 +46,17 @@ export function Footer() {
   return (
     <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* ─── Footer Grid ─── 
+         * 4 columns on desktop
+         * 2 columns on mobile
+         * Each column: section heading + links
+         */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
 
-          {/* Brand */}
+          {/* ─── BRAND COLUMN ─── 
+           * Logo + tagline + brief description
+           * Spans full width on mobile (col-span-2)
+           */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
               <span className="text-[var(--color-accent)]">Auto</span>
@@ -45,7 +67,9 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Shop */}
+          {/* ─── SHOP COLUMN ─── 
+           * Links to browsing and shopping pages
+           */}
           <div>
             <h4 className="text-xs font-semibold text-[var(--color-text)] uppercase tracking-wider mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Shop
@@ -64,7 +88,9 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Account */}
+          {/* ─── ACCOUNT COLUMN ─── 
+           * Links to auth and profile pages
+           */}
           <div>
             <h4 className="text-xs font-semibold text-[var(--color-text)] uppercase tracking-wider mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Account
@@ -83,7 +109,9 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Support */}
+          {/* ─── SUPPORT COLUMN ─── 
+           * Help and legal links
+           */}
           <div>
             <h4 className="text-xs font-semibold text-[var(--color-text)] uppercase tracking-wider mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Support
@@ -103,13 +131,15 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
+        {/* ─── BOTTOM BAR ─── 
+         * Copyright on left, social links on right
+         * Separated by a top border
+         */}
         <div className="mt-10 pt-6 border-t border-[var(--color-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-[var(--color-text-muted)]">
             &copy; {new Date().getFullYear()} AutoMart. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
-            {/* Social icons — simple text links */}
             <a href="#" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">Twitter</a>
             <a href="#" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">Instagram</a>
             <a href="#" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">GitHub</a>
