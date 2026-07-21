@@ -277,19 +277,39 @@ export function Navbar() {
                   className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] min-w-0"
                 />
 
-                {/* Voice search button */}
-                <button
-                  type="button"
-                  onClick={handleVoiceSearch}
-                  title={isListening ? 'Stop listening' : 'Search by voice'}
-                  className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-full transition-all ${
-                    isListening
-                      ? 'bg-[var(--color-coral)]/20 text-[var(--color-coral)] animate-pulse'
-                      : 'hover:bg-white/[0.08] text-[var(--color-text-muted)] hover:text-[var(--color-text-dim)]'
-                  }`}
-                >
-                  <MicrophoneIcon className="w-3.5 h-3.5" />
-                </button>
+                {/* Voice search button — with pulsing ring animation */}
+                <div className="relative shrink-0">
+                  {/* Pulsing ring when listening */}
+                  {isListening && (
+                    <span className="absolute inset-0 -m-1 rounded-full border-2 border-[var(--color-coral)] animate-ping opacity-75" />
+                  )}
+                  {isListening && (
+                    <span className="absolute inset-0 -m-1 rounded-full border border-[var(--color-coral)]/50 animate-pulse" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleVoiceSearch}
+                    title={isListening ? 'Stop listening' : 'Search by voice'}
+                    className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-all ${
+                      isListening
+                        ? 'bg-[var(--color-coral)]/25 text-[var(--color-coral)] shadow-[0_0_12px_rgba(255,82,59,0.4)]'
+                        : 'hover:bg-white/[0.08] text-[var(--color-text-muted)] hover:text-[var(--color-text-dim)]'
+                    }`}
+                  >
+                    {/* Sound wave bars when listening */}
+                    {isListening ? (
+                      <span className="flex items-end gap-[2px] h-3">
+                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0s', height: '40%' }} />
+                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.15s', height: '100%' }} />
+                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.3s', height: '60%' }} />
+                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.1s', height: '80%' }} />
+                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.25s', height: '30%' }} />
+                      </span>
+                    ) : (
+                      <MicrophoneIcon className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
 
                 {/* Image search button */}
                 <button

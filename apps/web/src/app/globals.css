@@ -371,3 +371,9 @@ h1, h2, h3, h4, h5, h6 {
   animation: scale-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
+
+/* Sound wave bars — for voice search listening animation */
+@keyframes soundBar {
+  from { height: 20%; }
+  to   { height: 100%; }
+}

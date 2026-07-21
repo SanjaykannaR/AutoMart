@@ -90,32 +90,92 @@
 - [x] TF-IDF — term frequency scoring
 - [x] Cosine Similarity — vector comparison
 
+### Phase 11: Full UI/UX Redesign (COMPLETED)
+- [x] Dark automotive industrial theme — jet black, charcoal, neon lime accent, coral CTAs
+- [x] Glassmorphism design system — translucent cards, backdrop-blur, glass borders
+- [x] Outfit + Inter font pairing
+- [x] Light theme removed — dark-only
+- [x] Max-width 2560px across all pages
+- [x] Square product images (1:1 aspect ratio)
+- [x] Hero 3D coverflow carousel — auto-slide 5s, hover detection by mouse X position
+- [x] Featured products horizontal carousel
+- [x] All category/section icons → glass circle Heroicons
+- [x] ProductCard — glass card with heart overlay + cart button
+- [x] Navbar — centered layout, icon+text nav links, glass circle buttons
+- [x] SearchBar — glass pill with voice (🎤) + camera (📷) buttons
+- [x] Wishlist page (/wishlist) — heart toggle, move to cart, remove
+- [x] Account/Settings page (/account) — profile, addresses, password, logout
+- [x] Order tracking (/track/[orderId]) — 4-step progress timeline
+- [x] Categories page (/categories) — 8 category cards with images
+- [x] Login/Register — split-screen with role selector
+- [x] Cart page — 2-column with thumbnails + summary sidebar
+- [x] Checkout page — step indicator, delivery form, order summary
+- [x] Orders page — progress bar, status badges
+- [x] Order detail — vertical timeline, delivery info sidebar
+- [x] ESLint config for monorepo (0 errors, 38 warnings)
+- [x] All Unsplash auto parts images verified working
+- [x] 4 new pages added (wishlist, account, track, categories)
+- [x] Voice search — Web Speech API, auto-search after recognition
+- [x] Image search — file picker, stores in sessionStorage, search page shows image banner
+- [x] Login/Register dispatch 'user-updated' custom event for Settings icon
+
 ---
 
-## 🔴 Balance Tasks (Priority Based)
+## 🔴 TODO for Tomorrow (2026-07-22)
 
-### 🔥 CRITICAL — Full UI/UX Redesign
-- [ ] **Share design vision** — Provide reference images, competitor sites, color/style preferences (see "How to Share Design Ideas" below)
-- [ ] **Redesign Landing Page** — Modern e-commerce hero, featured products, categories, promotions
-- [ ] **Redesign Product Listing/Catalog** — Grid/list views, filters sidebar, sorting, pagination
-- [ ] **Redesign Product Detail Page** — Image gallery, specs, reviews, add-to-cart, related products
-- [ ] **Redesign Cart & Checkout** — Step-by-step checkout, order summary, payment UI
-- [ ] **Redesign Auth Pages** — Clean login/register with social login buttons
-- [ ] **Redesign Order Tracking** — Visual status timeline, order history
-- [ ] **Global Design System** — Consistent colors, typography, spacing, components (buttons, cards, modals)
-- [ ] **Mobile-First Responsive** — Ensure all pages work perfectly on phone/tablet
-- [ ] **Update E2E Tests** — Fix Playwright selectors to match new UI
+### 🔥 CRITICAL — Must Fix
+- [ ] **Settings icon not visible in navbar** — Code logic is correct (checks for `user` OR `token` in localStorage). Most likely cause: **Docker container hasn't been rebuilt** with latest code. Run: `docker compose build web && docker compose up -d web`. If still broken after rebuild, add `console.log` to Navbar to debug localStorage state.
+- [ ] **Voice search needs better listening animation** — Current `animate-pulse` is too subtle. Need: pulsing ring/glow around mic button, "Listening..." text indicator, sound wave bars animation.
+- [ ] **Rebuild Docker container** — Many commits since last rebuild. User must confirm before running: `docker compose build web && docker compose up -d web`
 
 ### HIGH Priority — Core Functionality
-- [x] **Add ESLint config for monorepo** — ✅ Done (0 errors, 38 warnings across 9 workspaces)
-- [ ] **Verify E2E tests pass with Docker stack** — Start full Docker Compose stack, run Playwright tests, fix any failures
+- [ ] **Verify E2E tests pass with Docker stack** — 7 tests failing post-redesign (selectors need updating for new UI elements)
 - [ ] **Test MCP server endpoints with curl/Postman** — Validate all 5 tools work correctly over HTTP
+- [ ] **Search page: image search mode** — When user uploads photo via camera icon, show visual matching results (currently shows banner but doesn't do actual image matching)
+- [ ] **Mobile hamburger menu** — Navbar links hidden on mobile, need slide-out drawer with same nav links
 
 ### MEDIUM Priority — Production Ready
-- [ ] **Connect MCP server to Claude Desktop / Cursor** — Full integration test of MCP tools in real client
-- [ ] **Add loading skeletons to all pages** — Better UX during data fetch, prevents layout shift
-- [ ] **LRU Cache — recently viewed products** — DSA feature, improves performance for repeat visits
+- [ ] **Loading skeletons on all pages** — Better UX during data fetch, prevents layout shift
+- [ ] **LRU Cache — recently viewed products** — DSA feature, improves performance
+- [ ] **Connect MCP server to Claude Desktop / Cursor** — Full integration test
+- [ ] **Search bar placeholder rotation** — Cycle through suggestions like "brake pads", "oil filter", "spark plugs"
+- [ ] **Wishlist persistence** — Currently localStorage only, should sync with backend when logged in
+- [ ] **Cart persistence for logged-in users** — Sync localStorage cart with backend
 
 ### LOW Priority — Nice to Have
 - [ ] **PWA support (manifest, service worker)** — Offline capability, installable app
-- [ ] **Priority Queue — order processing queue** — DSA feature, enhances order processing architecture
+- [ ] **Priority Queue — order processing queue** — DSA feature
+- [ ] **Dark mode toggle removal cleanup** — Remove any remaining light theme CSS/components that are dead code
+- [ ] **Accessibility audit** — Ensure all glassmorphism elements meet WCAG contrast ratios
+- [ ] **Performance audit** — Lighthouse score, bundle size analysis
+- [ ] **E2E tests for new pages** — Wishlist, Account, Categories, Track order
+
+---
+
+## 📝 Notes
+
+### Design System Summary
+- **Colors**: jet black `#0A0A0A`, charcoal `#1A1A1A`, neon lime `#39FF14` (accent), coral `#FF523B` (CTAs), sky blue `#38B6FF` (secondary)
+- **Fonts**: Outfit (headings) + Inter (body)
+- **Cards**: glassmorphism — `bg-white/[0.04]` + `backdrop-blur-md` + `border-white/[0.08]`
+- **Buttons**: glass circles — `bg-white/[0.06]` + `backdrop-blur-md`
+- **Max width**: `max-w-[2560px]` everywhere
+- **Product images**: always 1:1 aspect ratio
+
+### Git Commits (UI/UX session)
+- `5dadbf9` — Full UI/UX redesign (10 phases, all pages)
+- `c506410` — Fix Unsplash images (picsum → verified auto parts URLs)
+- `2abf0fc` — Hero carousel rewrite (floating → 3D coverflow)
+- `fb83c5b` — 4 new pages (wishlist, account, track, categories)
+- `9df796c` — Navbar rework (centered, icons+text, glass circles)
+- `4c15428` — Glassmorphism UI overhaul (all components)
+- `43cd309` — Home page glass icons (categories, how it works, stats)
+- `1460d23` — Fix invalid heroicons (UserGroupIcon→UsersIcon, HeadphonesIcon→PhoneIcon)
+- `70d48de` — Settings icon + active underline positioning fix
+- `e7ac561` — Settings token fallback + wider underline
+- `516db17` — Voice/camera search + Settings bulletproof detection
+
+### Known Bugs
+- Settings icon: code is correct, likely needs Docker rebuild
+- Voice animation: too subtle, needs visual upgrade
+- 7 E2E tests failing (selectors outdated after redesign)
