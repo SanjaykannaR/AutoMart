@@ -19,7 +19,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   ShoppingCartIcon, MagnifyingGlassIcon, HeartIcon, Cog6ToothIcon,
   HomeIcon, Squares2X2Icon, WrenchIcon, ClipboardDocumentListIcon,
-  CameraIcon, MicrophoneIcon
+  CameraIcon, MicrophoneIcon, XMarkIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
@@ -276,6 +276,18 @@ export function Navbar() {
                   placeholder="Search parts..."
                   className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] min-w-0"
                 />
+
+                {/* Clear button — visible when there's text */}
+                {searchQuery.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/[0.1] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-all"
+                    title="Clear search"
+                  >
+                    <XMarkIcon className="w-3 h-3" />
+                  </button>
+                )}
 
                 {/* Voice search button — with pulsing ring animation */}
                 <div className="relative shrink-0">

@@ -116,8 +116,10 @@
 - [x] All Unsplash auto parts images verified working
 - [x] 4 new pages added (wishlist, account, track, categories)
 - [x] Voice search — Web Speech API, auto-search after recognition
+- [x] Voice search animation — pulsing ring + sound wave bars + coral glow
 - [x] Image search — file picker, stores in sessionStorage, search page shows image banner
 - [x] Login/Register dispatch 'user-updated' custom event for Settings icon
+- [x] Search bar X clear button — appears when >1 character typed, clears input
 
 ---
 
