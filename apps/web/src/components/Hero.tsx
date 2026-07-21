@@ -1,32 +1,27 @@
 /**
- * Hero — 3D Carousel Product Showcase (Auto-Slide + Hover)
+ * Hero — 3D Carousel Product Showcase (Auto-Slide + Hover Fixed)
+ * 
+ * FIX: Side cards were blocked by center card's higher z-index.
+ * Solution: Carousel container detects mouse position and slides
+ * to the nearest card based on X coordinate.
  * 
  * Animation:
  *   - 3 products in coverflow layout
  *   - AUTO-SLIDES every 5 seconds — always running
- *   - HOVERING a side card slides it to center (same 1.5s transition)
- *   - CLICKING a card also slides it to center
+ *   - HOVER: mouse X position determines which card to show
+ *   - CLICK: also works to select a card
  *   - Smooth 1.5s glide for all transitions
  *   - No price — just name + "More" button
  * 
- * How it works:
- *   - activeIndex tracks which product is centered
- *   - Auto-advance: setInterval every 5 seconds
- *   - Hover: setActiveIndex on mouse enter (doesn't stop auto)
- *   - Click: setActiveIndex on click
- *   - All transitions use same 1.5s smooth ease
- * 
- * Flow:
- *   1. Page loads → center card shows
- *   2. After 5s → next card glides to center (1.5s)
- *   3. Stays 5s → next card glides...
- *   4. User hovers side card → that card glides to center
- *   5. Auto-slide continues from new position
- *   6. User clicks dot → card glides to center
+ * How hover works:
+ *   - onMouseMove on container calculates mouse X position
+ *   - Left third → card 0, middle third → card 1, right third → card 2
+ *   - setActiveIndex called with the nearest card index
+ *   - Auto-slide continues from new position
  */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { SearchBar } from '@/components/SearchBar'
@@ -65,41 +60,54 @@ export function Hero({ onSearch }: HeroProps) {
 
   /**
    * AUTO-ADVANCE TIMER
-   * 
    * Advances to next image every 5 seconds.
-   * Runs continuously — does NOT pause on hover.
-   * Hovering just changes which card is active,
-   * and the timer keeps going from there.
+   * Runs continuously — hover just changes position.
    */
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % carouselProducts.length)
-    }, 5000) // 5 seconds per image
-
+    }, 5000)
     return () => clearInterval(timer)
   }, [])
 
   /**
-   * POSITION STYLES
+   * HOVER HANDLER — detect mouse position over carousel
    * 
-   * Calculates x, scale, rotateY, opacity for each card
-   * based on how far it is from the center (activeIndex).
-   *   -1 = left (smaller, behind, rotated)
-   *    0 = center (full size, front)
-   *   +1 = right (smaller, behind, rotated)
+   * Instead of relying on individual card hover (which gets blocked
+   * by z-index), we detect mouse X position on the container:
+   *   - Left 33% → show card 0
+   *   - Middle 33% → show card 1
+   *   - Right 33% → show card 2
+   * 
+   * This works regardless of card z-index stacking.
+   */
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left // Mouse X relative to container
+    const width = rect.width
+
+    // Determine which third the mouse is in
+    if (x < width / 3) {
+      setActiveIndex(0) // Left third → first card
+    } else if (x < (width * 2) / 3) {
+      setActiveIndex(1) // Middle third → second card
+    } else {
+      setActiveIndex(2) // Right third → third card
+    }
+  }, [])
+
+  /**
+   * POSITION STYLES for each card
    */
   const getCardStyle = (index: number) => {
     const offset = index - activeIndex
     const wrapped = offset === -2 ? 1 : offset === 2 ? -1 : offset
 
     if (wrapped === 0) {
-      // CENTER — full size, front
       return { x: 0, scale: 1, rotateY: 0, z: 10, opacity: 1, zIndex: 10 }
     } else if (wrapped === -1) {
-      // LEFT — smaller, behind, rotated
       return { x: -180, scale: 0.78, rotateY: 25, z: -1, opacity: 0.6, zIndex: 5 }
     } else {
-      // RIGHT — smaller, behind, rotated
       return { x: 180, scale: 0.78, rotateY: -25, z: -1, opacity: 0.6, zIndex: 5 }
     }
   }
@@ -196,8 +204,14 @@ export function Hero({ onSearch }: HeroProps) {
             </motion.div>
           </div>
 
-          {/* ─── RIGHT: 3D Carousel ─── */}
-          <div className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]">
+          {/* ─── RIGHT: 3D Carousel ─── 
+           * onMouseMove on container detects mouse position
+           * This fixes hover detection regardless of z-index
+           */}
+          <div
+            className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]"
+            onMouseMove={handleMouseMove}
+          >
             {/* Glow behind center */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-72 h-72 rounded-full bg-[var(--color-accent)] opacity-[0.05] blur-[80px] hero-glow" />
@@ -215,12 +229,6 @@ export function Hero({ onSearch }: HeroProps) {
                 return (
                   <motion.div
                     key={product.id}
-                    /**
-                     * SMOOTH TRANSITION:
-                     * - duration: 1.5s — slow enough to follow
-                     * - ease: [0.25, 0.1, 0.25, 1] — smooth cubic-bezier
-                     * Works for auto-slide, hover, and click — same animation.
-                     */
                     animate={{
                       x: style.x,
                       scale: style.scale,
@@ -231,11 +239,6 @@ export function Hero({ onSearch }: HeroProps) {
                       duration: 1.5,
                       ease: [0.25, 0.1, 0.25, 1],
                     }}
-                    /**
-                     * HOVER: instantly jump to this card.
-                     * Auto-slide will continue from here after 5s.
-                     */
-                    onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => setActiveIndex(index)}
                     className="absolute top-0 left-1/2 -translate-x-1/2 cursor-pointer"
                     style={{
@@ -243,15 +246,15 @@ export function Hero({ onSearch }: HeroProps) {
                       transformStyle: 'preserve-3d',
                     }}
                   >
-                    {/* Product card */}
+                    {/* Product card — square aspect ratio */}
                     <div
                       className={`w-56 sm:w-64 rounded-2xl overflow-hidden transition-shadow duration-700 ${
                         isCenter
                           ? 'shadow-[0_20px_60px_rgba(0,0,0,0.5)] ring-1 ring-[var(--color-accent)]/20'
-                          : 'shadow-[0_10px_30px_rgba(0,0,0,0.3)]'
+                          : 'shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_40px_rgba(57,255,20,0.1)]'
                       }`}
                     >
-                      {/* Product image */}
+                      {/* Product image — SQUARE */}
                       <div className="aspect-square bg-[var(--color-surface)] relative overflow-hidden">
                         <img
                           src={product.image}
@@ -272,9 +275,9 @@ export function Hero({ onSearch }: HeroProps) {
                           </motion.div>
                         )}
 
-                        {/* Dark overlay on non-center cards */}
+                        {/* Subtle overlay on non-center cards — NO pointer-events blocking */}
                         {!isCenter && (
-                          <div className="absolute inset-0 bg-black/40" />
+                          <div className="absolute inset-0 bg-black/20 pointer-events-none" />
                         )}
                       </div>
 
@@ -309,7 +312,7 @@ export function Hero({ onSearch }: HeroProps) {
               })}
             </div>
 
-            {/* Dot indicators — clickable */}
+            {/* Dot indicators */}
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
               {carouselProducts.map((_, index) => (
                 <button
