@@ -124,10 +124,10 @@ export function Navbar() {
 
   /**
    * Determine when to show compact icon nav (instead of text nav):
-   *   - When search bar is visible AND we're not on home page top
-   *   - This keeps nav accessible even with search bar showing
+   *   - When search bar is visible — on ANY page (home scrolled or other pages)
+   *   - Text links hide, icons appear to save space
    */
-  const showIconNav = showSearch && !isHome
+  const showIconNav = showSearch
 
   return (
     <>
