@@ -1,22 +1,24 @@
 /**
- * Hero — 3D Carousel Product Showcase (Smooth Version)
+ * Hero — 3D Carousel Product Showcase (Auto-Slide Version)
  * 
  * Animation:
  *   - 3 products in coverflow layout
- *   - On hover → card slides to center SLOWLY and stops
- *   - Uses long duration (800ms) + ease-out for smooth deceleration
- *   - Card "parks" in center so user can see the image clearly
- *   - No price shown — just product name + "More" button
+ *   - Auto-advances every 5 seconds — one image at a time
+ *   - Transition takes 1.5s with smooth ease — slow enough to follow
+ *   - Pauses when user hovers over any card
+ *   - Hovering a side card slides it to center (also 1.5s)
+ *   - No price — just name + "More" button
  * 
- * How it works:
- *   - activeIndex tracks which product is centered
- *   - getCardStyle returns position for each card
- *   - framer-motion animate transitions cards smoothly
- *   - CSS perspective creates 3D depth
+ * Flow:
+ *   1. Page loads → center card shows
+ *   2. After 5s → next card glides to center (1.5s transition)
+ *   3. Stays 5s → next card glides...
+ *   4. On hover → auto-slide pauses, user can explore
+ *   5. On leave → auto-slide resumes
  */
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { SearchBar } from '@/components/SearchBar'
@@ -52,6 +54,21 @@ interface HeroProps {
 
 export function Hero({ onSearch }: HeroProps) {
   const [activeIndex, setActiveIndex] = useState(1)
+  const [isHovered, setIsHovered] = useState(false)
+
+  /**
+   * Auto-advance carousel every 5 seconds.
+   * Pauses when user hovers over any card.
+   */
+  useEffect(() => {
+    if (isHovered) return // pause on hover
+
+    const timer = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % carouselProducts.length)
+    }, 5000) // 5 seconds per image
+
+    return () => clearInterval(timer)
+  }, [isHovered])
 
   /**
    * Position styles for each card based on distance from center.
@@ -66,10 +83,10 @@ export function Hero({ onSearch }: HeroProps) {
       return { x: 0, scale: 1, rotateY: 0, z: 10, opacity: 1, zIndex: 10 }
     } else if (wrapped === -1) {
       // LEFT — smaller, behind, rotated
-      return { x: -160, scale: 0.8, rotateY: 20, z: -1, opacity: 0.7, zIndex: 5 }
+      return { x: -180, scale: 0.78, rotateY: 25, z: -1, opacity: 0.6, zIndex: 5 }
     } else {
       // RIGHT — smaller, behind, rotated
-      return { x: 160, scale: 0.8, rotateY: -20, z: -1, opacity: 0.7, zIndex: 5 }
+      return { x: 180, scale: 0.78, rotateY: -25, z: -1, opacity: 0.6, zIndex: 5 }
     }
   }
 
@@ -166,7 +183,11 @@ export function Hero({ onSearch }: HeroProps) {
           </div>
 
           {/* ─── RIGHT: 3D Carousel ─── */}
-          <div className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]">
+          <div
+            className="relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
             {/* Glow behind center */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-72 h-72 rounded-full bg-[var(--color-accent)] opacity-[0.05] blur-[80px] hero-glow" />
@@ -185,10 +206,10 @@ export function Hero({ onSearch }: HeroProps) {
                   <motion.div
                     key={product.id}
                     /**
-                     * SLOW SMOOTH ANIMATION:
-                     * - duration: 0.8s (800ms) — slow enough to follow
-                     * - ease: [0.32, 0.72, 0, 1] — starts fast, decelerates smoothly, parks gently
-                     * This makes the card "glide" into position and stop cleanly.
+                     * SLOW SMOOTH TRANSITION:
+                     * - duration: 1.5s — slow enough to follow the movement
+                     * - ease: [0.25, 0.1, 0.25, 1] — smooth cubic-bezier
+                     * Cards glide slowly from side to center.
                      */
                     animate={{
                       x: style.x,
@@ -197,10 +218,10 @@ export function Hero({ onSearch }: HeroProps) {
                       opacity: style.opacity,
                     }}
                     transition={{
-                      duration: 0.8,
-                      ease: [0.32, 0.72, 0, 1],
+                      duration: 1.5,
+                      ease: [0.25, 0.1, 0.25, 1],
                     }}
-                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => setActiveIndex(index)}
                     className="absolute top-0 left-1/2 -translate-x-1/2 cursor-pointer"
                     style={{
                       zIndex: style.zIndex,
@@ -215,7 +236,7 @@ export function Hero({ onSearch }: HeroProps) {
                           : 'shadow-[0_10px_30px_rgba(0,0,0,0.3)]'
                       }`}
                     >
-                      {/* Product image — full card, always visible */}
+                      {/* Product image */}
                       <div className="aspect-square bg-[var(--color-surface)] relative overflow-hidden">
                         <img
                           src={product.image}
@@ -229,7 +250,7 @@ export function Hero({ onSearch }: HeroProps) {
                           <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4, duration: 0.4 }}
+                            transition={{ delay: 0.8, duration: 0.5 }}
                             className="absolute top-3 left-3"
                           >
                             <span className="badge">{product.category}</span>
@@ -238,7 +259,7 @@ export function Hero({ onSearch }: HeroProps) {
 
                         {/* Dark overlay on non-center cards */}
                         {!isCenter && (
-                          <div className="absolute inset-0 bg-black/30" />
+                          <div className="absolute inset-0 bg-black/40" />
                         )}
                       </div>
 
@@ -249,7 +270,7 @@ export function Hero({ onSearch }: HeroProps) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.4, delay: 0.3 }}
+                            transition={{ duration: 0.5, delay: 0.8 }}
                             className="bg-[var(--color-surface)] px-5 py-4 flex items-center justify-between"
                           >
                             <div>
