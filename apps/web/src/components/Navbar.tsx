@@ -39,18 +39,22 @@ export function Navbar() {
    * CHECK LOGIN STATE
    * 
    * Reads 'user' from localStorage.
-   * Listens for:
-   *   - 'storage' event (cross-tab changes)
-   *   - 'user-updated' custom event (same-tab login/register)
-   *   - pathname change (navigation after login)
+   * Falls back to 'token' — handles users who logged in before
+   * the 'user' key was introduced.
    */
+  const checkLogin = () => {
+    try {
+      const user = localStorage.getItem('user')
+      const token = localStorage.getItem('token')
+      // Logged in if we have a valid user entry OR just a token
+      setIsLoggedIn(
+        (!!user && user !== 'null' && user !== '') ||
+        (!!token && token !== 'null' && token !== '')
+      )
+    } catch { setIsLoggedIn(false) }
+  }
+
   useEffect(() => {
-    const checkLogin = () => {
-      try {
-        const user = localStorage.getItem('user')
-        setIsLoggedIn(!!user && user !== 'null' && user !== '')
-      } catch { setIsLoggedIn(false) }
-    }
     checkLogin()
 
     // Cross-tab changes
@@ -66,10 +70,7 @@ export function Navbar() {
 
   // Re-check login on navigation
   useEffect(() => {
-    try {
-      const user = localStorage.getItem('user')
-      setIsLoggedIn(!!user && user !== 'null' && user !== '')
-    } catch { setIsLoggedIn(false) }
+    checkLogin()
   }, [pathname])
 
   /** Cart count */
@@ -157,7 +158,7 @@ export function Navbar() {
                     </span>
                     {/* Active underline — positioned relative to THIS link */}
                     {active && (
-                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--color-accent)] rounded-full" />
+                      <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-[var(--color-accent)] rounded-full" />
                     )}
                   </Link>
                 )
