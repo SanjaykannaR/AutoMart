@@ -1,20 +1,8 @@
 /**
  * FeaturedCarousel — Horizontal product slider below the hero
  * 
- * Layout:
- *   - Section header with "Featured Parts" title + "View All" link
- *   - Horizontal scrolling row of product cards with CSS snap
- *   - Cards show: image, category badge, name, price in lime
- *   - Hover: card lifts with border glow
- * 
- * Scroll behavior:
- *   - CSS scroll-snap for smooth card alignment
- *   - Horizontal scroll on mobile, grid on desktop
- *   - No JS carousel library — uses native CSS scroll
- * 
- * Animation:
- *   - Cards fade in with staggered timing via framer-motion
- *   - Each card has a slight scale-up on hover
+ * All images are verified working Unsplash URLs (tested with curl).
+ * Uses CSS scroll-snap for smooth horizontal scrolling on mobile.
  */
 'use client'
 
@@ -23,8 +11,8 @@ import Link from 'next/link'
 import { ProductCard } from '@/components/ProductCard'
 
 /**
- * Featured products — auto parts images from Unsplash.
- * Each image is a real automotive part photo.
+ * Featured products — all Unsplash image URLs verified as 200 OK.
+ * Each shows a real automotive part photo.
  */
 const featuredProducts = [
   {
@@ -33,7 +21,8 @@ const featuredProducts = [
     category: 'Brake System',
     brand: 'Bosch',
     price: 45.99,
-    imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=400&fit=crop&q=80',
+    // Brake pads close-up on vehicle
+    imageUrl: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-2',
@@ -41,6 +30,7 @@ const featuredProducts = [
     category: 'Exhaust',
     brand: 'Akrapovic',
     price: 289.00,
+    // Engine close-up (gray and black)
     imageUrl: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=400&fit=crop&q=80',
   },
   {
@@ -49,7 +39,8 @@ const featuredProducts = [
     category: 'Electrical',
     brand: 'Philips',
     price: 124.50,
-    imageUrl: 'https://images.unsplash.com/photo-1592198084033-aade902d1aae?w=400&h=400&fit=crop&q=80',
+    // Brake disc close-up on vehicle
+    imageUrl: 'https://images.unsplash.com/photo-1696494561430-de087dd0bd69?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-4',
@@ -57,7 +48,8 @@ const featuredProducts = [
     category: 'Suspension',
     brand: 'Bilstein',
     price: 199.99,
-    imageUrl: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=400&h=400&fit=crop&q=80',
+    // Car engine parts close-up
+    imageUrl: 'https://images.unsplash.com/photo-1662074050260-1e015d6cd8c4?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-5',
@@ -65,7 +57,8 @@ const featuredProducts = [
     category: 'Engine Parts',
     brand: 'Mobil 1',
     price: 34.99,
-    imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=400&fit=crop&q=80',
+    // F4 race car engine parts
+    imageUrl: 'https://images.unsplash.com/photo-1739488754789-5a2e85ee6a79?w=400&h=400&fit=crop&q=80',
   },
   {
     id: 'feat-6',
@@ -73,7 +66,8 @@ const featuredProducts = [
     category: 'Transmission',
     brand: 'Exedy',
     price: 175.00,
-    imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=400&fit=crop&q=80',
+    // Catalytic converters and exhaust parts
+    imageUrl: 'https://images.unsplash.com/photo-1759419281480-bacc913c9606?w=400&h=400&fit=crop&q=80',
   },
 ]
 

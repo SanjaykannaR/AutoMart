@@ -10,18 +10,23 @@
  *   │  - CTA button           │                          │
  *   └─────────────────────────┴─────────────────────────┘
  * 
- * Animation (adapted from reference):
- *   - Headline slides up with staggered timing
- *   - Product image scales from 0.8 → 1.0 with slight rotation
- *   - Background glow pulses subtly
- *   - All transitions use cubic-bezier(0.16, 1, 0.3, 1) for smooth deceleration
- *   - Duration: 500-700ms per element
- *   - animate prop is always set to visible state (no whileInView needed for hero)
+ * Animation Strategy (2 layers):
+ *   1. CSS Keyframe Animations (reliable, always work):
+ *      - .animate-slide-up: elements slide up from below
+ *      - .hero-float: main product bobs up/down continuously
+ *      - .hero-glow: background glow pulses
+ *      - Staggered delays via animation-delay CSS
+ *   
+ *   2. Framer Motion (enhancement, adds smooth easing):
+ *      - Overwrites CSS with smoother cubic-bezier curves
+ *      - If framer-motion fails, CSS animations still show content
  * 
  * Product showcase:
- *   - Uses Unsplash auto parts images (reliable, high quality)
- *   - Three product cards stacked with depth effect
- *   - Main card has a floating label with price
+ *   - 3 product cards stacked with depth effect
+ *   - Main card: large, front, floating animation
+ *   - Secondary: smaller, right, slightly behind
+ *   - Tertiary: smallest, left, furthest behind
+ *   - All use verified Unsplash auto parts images
  */
 'use client'
 
@@ -30,24 +35,27 @@ import Link from 'next/link'
 import { SearchBar } from '@/components/SearchBar'
 
 /**
- * Hero product showcase items — displayed in the right panel.
- * Uses Unsplash auto parts images for reliable, relevant visuals.
+ * Hero product showcase items — verified Unsplash auto parts images.
+ * Each URL tested with curl to ensure 200 OK response.
  */
 const showcaseProducts = [
   {
     name: 'Ceramic Brake Pads',
     category: 'Brake System',
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=600&fit=crop&q=80',
+    // Close-up of brake pads on a vehicle
+    image: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=600&h=600&fit=crop&q=80',
   },
   {
-    name: 'Performance Exhaust',
-    category: 'Exhaust',
+    name: 'Engine Parts',
+    category: 'Engine',
+    // Gray and black engine close-up
     image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&h=600&fit=crop&q=80',
   },
   {
-    name: 'LED Headlight Kit',
-    category: 'Electrical',
-    image: 'https://images.unsplash.com/photo-1592198084033-aade902d1aae?w=600&h=600&fit=crop&q=80',
+    name: 'Exhaust System',
+    category: 'Exhaust',
+    // Catalytic converters and exhaust parts
+    image: 'https://images.unsplash.com/photo-1759419281480-bacc913c9606?w=600&h=600&fit=crop&q=80',
   },
 ]
 
@@ -70,7 +78,10 @@ export function Hero({ onSearch }: HeroProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
 
-          {/* ─── Left Panel: Text + Search + CTA ─── */}
+          {/* ═══════════════════════════════════════════════════════
+              LEFT PANEL: Text + Search + CTA
+              Uses CSS animate-slide-up as fallback, framer-motion as enhancement
+              ═══════════════════════════════════════════════════════ */}
           <div className="text-center lg:text-left">
 
             {/* Eyebrow text — small uppercase label */}
@@ -147,7 +158,7 @@ export function Hero({ onSearch }: HeroProps) {
                 { value: '10K+', label: 'Parts' },
                 { value: '30min', label: 'Delivery' },
                 { value: '24/7', label: 'Support' },
-              ].map((stat, i) => (
+              ].map((stat) => (
                 <div key={stat.label} className="text-center lg:text-left">
                   <p
                     className="text-lg font-bold text-[var(--color-text)]"
@@ -161,29 +172,28 @@ export function Hero({ onSearch }: HeroProps) {
             </motion.div>
           </div>
 
-          {/* ─── Right Panel: Product Showcase ─── */}
+          {/* ═══════════════════════════════════════════════════════
+              RIGHT PANEL: Product Showcase
+              3 stacked product cards with depth + floating animation
+              ═══════════════════════════════════════════════════════ */}
           <div className="relative flex items-center justify-center min-h-[400px] lg:min-h-[500px]">
 
-            {/* Glow ring behind the product — pulsing glow animation */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1, delay: 0.3, ease }}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            >
+            {/* Glow ring behind the product — CSS pulse animation */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-[var(--color-accent)] opacity-[0.06] blur-[60px] hero-glow" />
-            </motion.div>
+            </div>
 
-            {/* Product showcase — stacked images with staggered entrance + floating effect */}
+            {/* Product showcase — 3 stacked cards with depth */}
             <div className="relative w-full max-w-sm">
 
-              {/* Main product — largest, front-most, floating animation */}
+              {/* ─── Main Product (front, largest, floating) ─── */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.7, rotate: -8 }}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ duration: 0.8, delay: 0.2, ease }}
                 className="relative z-10 hero-float"
               >
+                {/* Product image card */}
                 <div className="card p-2 rounded-2xl overflow-hidden">
                   <img
                     src={showcaseProducts[0].image}
@@ -191,7 +201,8 @@ export function Hero({ onSearch }: HeroProps) {
                     className="w-full aspect-square object-cover rounded-xl"
                   />
                 </div>
-                {/* Floating label on the product card */}
+
+                {/* Floating label below the main card */}
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -206,14 +217,14 @@ export function Hero({ onSearch }: HeroProps) {
                 </motion.div>
               </motion.div>
 
-              {/* Secondary product — smaller, behind and to the right */}
+              {/* ─── Secondary Product (right, smaller, behind) ─── */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.6, x: 60 }}
-                animate={{ opacity: 0.85, scale: 0.85, x: 35 }}
-                transition={{ duration: 0.8, delay: 0.4, ease }}
-                className="absolute -top-4 -right-4 sm:-right-8 z-0 w-32 sm:w-40"
+                initial={{ opacity: 0, scale: 0.5, x: 80 }}
+                animate={{ opacity: 0.9, scale: 0.85, x: 40 }}
+                transition={{ duration: 0.8, delay: 0.45, ease }}
+                className="absolute -top-4 -right-4 sm:-right-10 z-0 w-32 sm:w-40"
               >
-                <div className="card p-1.5 rounded-xl overflow-hidden">
+                <div className="card p-1.5 rounded-xl overflow-hidden shadow-lg shadow-black/30">
                   <img
                     src={showcaseProducts[1].image}
                     alt={showcaseProducts[1].name}
@@ -222,14 +233,14 @@ export function Hero({ onSearch }: HeroProps) {
                 </div>
               </motion.div>
 
-              {/* Tertiary product — smaller, behind and to the left */}
+              {/* ─── Tertiary Product (left, smallest, furthest behind) ─── */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.5, x: -50 }}
-                animate={{ opacity: 0.7, scale: 0.75, x: -25 }}
-                transition={{ duration: 0.8, delay: 0.5, ease }}
-                className="absolute top-8 -left-4 sm:-left-8 z-0 w-28 sm:w-32"
+                initial={{ opacity: 0, scale: 0.4, x: -60 }}
+                animate={{ opacity: 0.75, scale: 0.75, x: -30 }}
+                transition={{ duration: 0.8, delay: 0.55, ease }}
+                className="absolute top-8 -left-4 sm:-left-10 z-0 w-28 sm:w-32"
               >
-                <div className="card p-1.5 rounded-xl overflow-hidden">
+                <div className="card p-1.5 rounded-xl overflow-hidden shadow-lg shadow-black/30">
                   <img
                     src={showcaseProducts[2].image}
                     alt={showcaseProducts[2].name}

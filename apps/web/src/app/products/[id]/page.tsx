@@ -62,7 +62,7 @@ const mockProduct = {
     'Hyundai Elantra 2017-2024',
     'Kia Forte 2019-2024',
   ],
-  imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&h=800&fit=crop&q=80',
+  imageUrl: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80',
   stock: 42,
 }
 
@@ -134,7 +134,7 @@ export default function ProductDetailPage() {
           <div className="card p-3 rounded-2xl overflow-hidden relative">
             {/* Product image — full aspect-square */}
             <img
-              src={product.imageUrl || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=800&fit=crop&q=80'}
+              src={product.imageUrl || 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80'}
               alt={product.name}
               className="w-full aspect-square object-cover rounded-xl"
             />
