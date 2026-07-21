@@ -1,21 +1,23 @@
 /**
  * Navbar — Fixed top navigation bar with scroll-triggered search
  * 
- * Layout:
- *   Desktop (home, top):    [Logo] ——— [Home] [Categories] [Browse] [Orders] [Account] ——— [♡] [🛒] [Sign In]
- *   Desktop (home, scroll): [Logo] ——— [🔍 Search Bar] ——— [♡] [🛒] [Sign In]
- *   Desktop (other pages):  [Logo] ——— [🔍 Search Bar] [🏠] [📁] [🔍] [📦] [👤] ——— [♡] [🛒] [Sign In]
- *   Mobile:                 [Logo] ———————————— [♡] [🛒] [☰]
+ * Layout (desktop):
+ *   Home top:    [Logo] [Home] [Categories] [Browse] [Orders] [♡] [🛒] [Sign In]
+ *   Home scroll: [Logo] [🏠][📁][🔧][📦] [🔍 Search Bar] [♡] [🛒] [Sign In]
+ *   Other pages: [Logo] [🏠][📁][🔧][📦] [🔍 Search Bar] [♡] [🛒] [Sign In]
+ *   Logged in:   [Logo] [🏠][📁][🔧][📦] [🔍 Search Bar] [♡] [🛒] [👤]
  * 
- * Key behavior:
- *   - On HOME page top: full text nav links shown
- *   - On HOME page scrolled: search replaces nav links
- *   - On OTHER pages: search bar always visible, nav links become ICONS
- *   - Icons are small, circular, with tooltips
- *   - Heart (♡) + Cart (🛒) always visible on right
+ * Key changes:
+ *   - Icons are on LEFT side of search bar (not right)
+ *   - "Browse Parts" uses wrench icon (🔧) not magnifying glass
+ *   - "Account" renamed to "Settings" with gear icon (⚙️)
+ *   - Settings only shows when user is logged in
+ *   - When logged in: Sign In button replaced with profile/settings icon
  * 
- * Screen size:
- *   - Max width: 2560px (ultra-wide laptop)
+ * Login state:
+ *   - Read from localStorage key "user"
+ *   - If user exists → show profile icon, hide Sign In
+ *   - If no user → show Sign In, hide profile icon
  */
 'use client'
 
@@ -24,17 +26,16 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Bars3Icon, XMarkIcon, ShoppingCartIcon, MagnifyingGlassIcon, HeartIcon,
-  HomeIcon, Squares2X2Icon, MagnifyingGlassCircleIcon, ClipboardDocumentListIcon, UserIcon
+  HomeIcon, Squares2X2Icon, WrenchIcon, ClipboardDocumentListIcon, Cog6ToothIcon, UserIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
-/** Navigation links — with icons for compact mode */
+/** Navigation links with icons — LEFT side of search bar */
 const navLinks = [
   { href: '/', label: 'Home', icon: HomeIcon },
   { href: '/categories', label: 'Categories', icon: Squares2X2Icon },
-  { href: '/search', label: 'Browse Parts', icon: MagnifyingGlassCircleIcon },
+  { href: '/search', label: 'Browse Parts', icon: WrenchIcon },
   { href: '/orders', label: 'My Orders', icon: ClipboardDocumentListIcon },
-  { href: '/account', label: 'Account', icon: UserIcon },
 ]
 
 export function Navbar() {
@@ -45,10 +46,11 @@ export function Navbar() {
   const [wishlistCount, setWishlistCount] = useState(0)
   const [scrolled, setScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   const isHome = pathname === '/'
 
-  /** Scroll listener — detect when user scrolls past hero */
+  /** Scroll listener */
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 300)
@@ -58,7 +60,22 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  /** Read cart count from localStorage */
+  /** Check login state from localStorage */
+  useEffect(() => {
+    const checkLogin = () => {
+      try {
+        const user = localStorage.getItem('user')
+        setIsLoggedIn(!!user && user !== 'null')
+      } catch {
+        setIsLoggedIn(false)
+      }
+    }
+    checkLogin()
+    window.addEventListener('storage', checkLogin)
+    return () => window.removeEventListener('storage', checkLogin)
+  }, [])
+
+  /** Cart count */
   const updateCartCount = () => {
     try {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]')
@@ -69,7 +86,7 @@ export function Navbar() {
     }
   }
 
-  /** Read wishlist count from localStorage */
+  /** Wishlist count */
   const updateWishlistCount = () => {
     try {
       const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]')
@@ -79,7 +96,7 @@ export function Navbar() {
     }
   }
 
-  /** Initialize counts and event listeners */
+  /** Initialize */
   useEffect(() => {
     updateCartCount()
     updateWishlistCount()
@@ -100,13 +117,13 @@ export function Navbar() {
     }
   }, [])
 
-  /** Check if a nav link is active */
+  /** Active link check */
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
 
-  /** Handle search submission */
+  /** Search submission */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
@@ -115,23 +132,15 @@ export function Navbar() {
     }
   }
 
-  /**
-   * Determine when to show search bar:
-   *   - On home page: only after scrolling past hero (300px)
-   *   - On all other pages: always visible
-   */
+  /** Show search bar: home after scroll, other pages always */
   const showSearch = !isHome || scrolled
 
-  /**
-   * Determine when to show compact icon nav (instead of text nav):
-   *   - When search bar is visible — on ANY page (home scrolled or other pages)
-   *   - Text links hide, icons appear to save space
-   */
+  /** Show icon nav: when search is visible */
   const showIconNav = showSearch
 
   return (
     <>
-      {/* ═══ MAIN NAVBAR BAR ═══ */}
+      {/* ═══ MAIN NAVBAR ═══ */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
         <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-3">
@@ -144,9 +153,8 @@ export function Navbar() {
               </span>
             </Link>
 
-            {/* ─── DESKTOP TEXT NAV LINKS ─── 
-             * Only shown on HOME page when NOT scrolled
-             * Full text labels for desktop
+            {/* ─── TEXT NAV LINKS (home page top only) ─── 
+             * Full text labels, hidden when search bar appears
              */}
             <div className={`hidden lg:flex items-center gap-1 ${showSearch ? 'lg:hidden' : ''}`}>
               {navLinks.map((link) => (
@@ -167,63 +175,71 @@ export function Navbar() {
               ))}
             </div>
 
-            {/* ─── SEARCH BAR ─── 
-             * Pill-shaped, slides in smoothly
-             * On home: appears after scroll
-             * On other pages: always visible
-             */}
-            <div
-              className={`flex-1 max-w-md transition-all duration-500 ease-out ${
-                showSearch
-                  ? 'opacity-100 translate-y-0 pointer-events-auto'
-                  : 'opacity-0 -translate-y-2 pointer-events-none'
-              }`}
-            >
-              <form onSubmit={handleSearch} className="relative">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)] focus-within:shadow-[0_0_0_2px_var(--color-accent-dim)] transition-all">
-                  <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)] shrink-0" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search parts..."
-                    className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] w-full"
-                  />
-                </div>
-              </form>
-            </div>
-
-            {/* ─── ICON NAV (compact mode for non-home pages) ─── 
-             * When search bar is visible on non-home pages,
-             * show nav links as small circular icons with tooltips
-             * This saves space while keeping navigation accessible
+            {/* ─── ICON NAV + SEARCH BAR (when search visible) ─── 
+             * Icons on LEFT side, search bar on RIGHT
+             * This replaces text links with compact icons
              */}
             {showIconNav && (
-              <div className="hidden lg:flex items-center gap-1">
-                {navLinks.map((link) => {
-                  const Icon = link.icon
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      title={link.label}
-                      className={`relative w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
-                        isActive(link.href)
-                          ? 'text-[var(--color-accent)] bg-[var(--color-accent)]/10'
-                          : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </Link>
-                  )
-                })}
+              <div className="hidden lg:flex items-center gap-2 flex-1">
+                {/* ─── ICONS (left side) ─── */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {navLinks.map((link) => {
+                    const Icon = link.icon
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        title={link.label}
+                        className={`relative w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                          isActive(link.href)
+                            ? 'text-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                            : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                {/* ─── SEARCH BAR (right of icons) ─── */}
+                <form onSubmit={handleSearch} className="flex-1 max-w-md">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)] focus-within:shadow-[0_0_0_2px_var(--color-accent-dim)] transition-all">
+                    <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)] shrink-0" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search parts..."
+                      className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] w-full"
+                    />
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* ─── SEARCH BAR (home page, standalone when no icons) ─── */}
+            {showSearch && !showIconNav && (
+              <div className="flex-1 max-w-md hidden lg:block">
+                <form onSubmit={handleSearch} className="relative">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)] focus-within:shadow-[0_0_0_2px_var(--color-accent-dim)] transition-all">
+                    <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)] shrink-0" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search parts..."
+                      className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] w-full"
+                    />
+                  </div>
+                </form>
               </div>
             )}
 
             {/* ─── RIGHT SIDE: Wishlist + Cart + Auth ─── */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
-              {/* Wishlist icon */}
+              {/* Wishlist */}
               <Link
                 href="/wishlist"
                 className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
@@ -241,7 +257,7 @@ export function Navbar() {
                 )}
               </Link>
 
-              {/* Cart icon */}
+              {/* Cart */}
               <Link
                 href="/cart"
                 className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
@@ -255,15 +271,28 @@ export function Navbar() {
                 )}
               </Link>
 
-              {/* Sign In (desktop only) */}
-              <Link
-                href="/login"
-                className="hidden md:inline-flex glass-button text-sm px-5 py-2"
-              >
-                Sign In
-              </Link>
+              {/* ─── AUTH BUTTON ─── 
+               * Not logged in: show "Sign In" button
+               * Logged in: show profile/settings icon
+               */}
+              {isLoggedIn ? (
+                <Link
+                  href="/account"
+                  className="hidden md:flex w-10 h-10 items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
+                  title="Settings"
+                >
+                  <Cog6ToothIcon className="w-5 h-5 text-[var(--color-text-dim)]" />
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="hidden md:inline-flex glass-button text-sm px-5 py-2"
+                >
+                  Sign In
+                </Link>
+              )}
 
-              {/* Hamburger (mobile only) */}
+              {/* Hamburger (mobile) */}
               <button
                 className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/[0.04] transition-colors"
                 onClick={() => setDrawerOpen(true)}
@@ -313,7 +342,7 @@ export function Navbar() {
               </form>
             </div>
 
-            {/* Mobile nav links with icons */}
+            {/* Nav links with icons */}
             <div className="flex-1 px-3 py-4 space-y-1">
               {navLinks.map((link) => {
                 const Icon = link.icon
@@ -333,16 +362,42 @@ export function Navbar() {
                   </Link>
                 )
               })}
+
+              {/* Settings — only when logged in */}
+              {isLoggedIn && (
+                <Link
+                  href="/account"
+                  onClick={() => setDrawerOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    isActive('/account')
+                      ? 'text-[var(--color-text)] bg-white/[0.04]'
+                      : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.02]'
+                  }`}
+                >
+                  <Cog6ToothIcon className="w-5 h-5" />
+                  Settings
+                </Link>
+              )}
             </div>
 
             <div className="px-3 pb-4">
-              <Link
-                href="/login"
-                onClick={() => setDrawerOpen(false)}
-                className="glass-button w-full text-center block text-sm py-3"
-              >
-                Sign In
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  href="/account"
+                  onClick={() => setDrawerOpen(false)}
+                  className="glass-button w-full text-center block text-sm py-3"
+                >
+                  Settings
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setDrawerOpen(false)}
+                  className="glass-button w-full text-center block text-sm py-3"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         </>

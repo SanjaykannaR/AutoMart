@@ -33,7 +33,7 @@ const footerLinks = {
   account: [
     { href: '/login', label: 'Sign In' },
     { href: '/register', label: 'Create Account' },
-    { href: '/account', label: 'My Account' },
+    { href: '/account', label: 'Settings' },
   ],
   support: [
     { href: '#', label: 'Help Center' },
