@@ -1,37 +1,38 @@
 /**
- * Navbar — Fixed top with centered menu + search bar
+ * Navbar — Centered menu with icons + text labels
  * 
- * Layout (desktop):
- *   [Logo] ——— [Home] [Categories] [Browse] [Orders] [🔍 Search] ——— [♡] [🛒] [Sign In]
- *                 ↑ centered menu + search bar ↑
+ * Layout:
+ *   [Logo] ——— [🏠 Home] [📁 Categories] [🔧 Browse] [📦 Orders] [🔍 Search] ——— [♡] [🛒] [⚙️]
+ *                 ↑ icons next to text, centered ↑
  * 
- * After scroll (search visible):
- *   [Logo] ——— [Home] [Categories] [Browse] [Orders] [🔍 Search] ——— [♡] [🛒] [Sign In]
+ * Each nav link has:
+ *   - Small icon (16px) on the LEFT of text
+ *   - Text label on the RIGHT of icon
+ *   - Active state: lime underline + brighter text
  * 
- * Style:
- *   - Menu + search bar are CENTERED in navbar
- *   - Nav links stay as TEXT (not icons)
- *   - Search bar has glassmorphism (blur + translucent)
- *   - Logo on left, cart/auth on right
- * 
- * Login state:
- *   - Not logged in: Sign In button
- *   - Logged in: gear icon (Settings) replaces Sign In
+ * Right side:
+ *   - Wishlist: glass circle with heart
+ *   - Cart: glass circle with cart
+ *   - Settings: glass circle with gear (ONLY when logged in)
+ *   - Sign In: coral button (when NOT logged in)
  */
 'use client'
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { ShoppingCartIcon, MagnifyingGlassIcon, HeartIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import {
+  ShoppingCartIcon, MagnifyingGlassIcon, HeartIcon, Cog6ToothIcon,
+  HomeIcon, Squares2X2Icon, WrenchIcon, ClipboardDocumentListIcon
+} from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
-/** Nav links — shown as text in center */
+/** Nav links with icons — shown in center of navbar */
 const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/search', label: 'Browse Parts' },
-  { href: '/orders', label: 'My Orders' },
+  { href: '/', label: 'Home', icon: HomeIcon },
+  { href: '/categories', label: 'Categories', icon: Squares2X2Icon },
+  { href: '/search', label: 'Browse Parts', icon: WrenchIcon },
+  { href: '/orders', label: 'My Orders', icon: ClipboardDocumentListIcon },
 ]
 
 export function Navbar() {
@@ -48,9 +49,7 @@ export function Navbar() {
       try {
         const user = localStorage.getItem('user')
         setIsLoggedIn(!!user && user !== 'null')
-      } catch {
-        setIsLoggedIn(false)
-      }
+      } catch { setIsLoggedIn(false) }
     }
     checkLogin()
     window.addEventListener('storage', checkLogin)
@@ -61,8 +60,7 @@ export function Navbar() {
   const updateCartCount = () => {
     try {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-      const count = cart.reduce((sum: number, item: any) => sum + (item.qty || 1), 0)
-      setCartCount(count)
+      setCartCount(cart.reduce((sum: number, item: any) => sum + (item.qty || 1), 0))
     } catch { setCartCount(0) }
   }
 
@@ -78,7 +76,6 @@ export function Navbar() {
   useEffect(() => {
     updateCartCount()
     updateWishlistCount()
-
     const h1 = () => updateCartCount()
     const h2 = () => updateWishlistCount()
     window.addEventListener('storage', h1)
@@ -121,32 +118,33 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* ─── CENTER: Nav Links + Search Bar ─── 
-           * All centered in the middle of the navbar
-           * Nav links as text, search bar with glass effect
-           */}
-          <div className="hidden md:flex items-center gap-6 flex-1 justify-center">
-            {/* Nav links — text labels */}
+          {/* ─── CENTER: Nav Links (icon + text) + Search Bar ─── */}
+          <div className="hidden md:flex items-center gap-5 flex-1 justify-center">
+            {/* Nav links — icon + text */}
             <div className="flex items-center gap-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`relative px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                    isActive(link.href)
-                      ? 'text-[var(--color-text)]'
-                      : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)]'
-                  }`}
-                >
-                  {link.label}
-                  {isActive(link.href) && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--color-accent)] rounded-full" />
-                  )}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const Icon = link.icon
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                      isActive(link.href)
+                        ? 'text-[var(--color-text)]'
+                        : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {link.label}
+                    {isActive(link.href) && (
+                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--color-accent)] rounded-full" />
+                    )}
+                  </Link>
+                )
+              })}
             </div>
 
-            {/* Search bar — glassmorphism style */}
+            {/* Search bar — glass style */}
             <form onSubmit={handleSearch} className="flex-1 max-w-sm">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] focus-within:border-[var(--color-accent)]/40 focus-within:bg-white/[0.1] transition-all">
                 <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)] shrink-0" />
@@ -196,7 +194,7 @@ export function Navbar() {
               )}
             </Link>
 
-            {/* Auth: Sign In or Settings gear */}
+            {/* Settings (logged in) or Sign In (not logged in) */}
             {isLoggedIn ? (
               <Link
                 href="/account"
@@ -208,7 +206,7 @@ export function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="hidden md:inline-flex px-5 py-2 rounded-full bg-[var(--color-coral)] text-white text-sm font-medium hover:bg-[var(--color-coral)]/90 transition-colors shadow-[0_4px_16px_rgba(255,82,59,0.3)]"
+                className="hidden md:inline-flex px-5 py-2 rounded-full bg-[var(--color-coral)]/85 backdrop-blur-md text-white text-sm font-medium border border-[var(--color-coral)]/30 hover:bg-[var(--color-coral)] transition-colors shadow-[0_4px_16px_rgba(255,82,59,0.25)]"
               >
                 Sign In
               </Link>

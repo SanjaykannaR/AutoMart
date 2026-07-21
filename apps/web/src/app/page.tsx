@@ -22,19 +22,20 @@ import { Hero } from '@/components/Hero'
 import { FeaturedCarousel } from '@/components/FeaturedCarousel'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import {
+  StopIcon, CogIcon, WrenchIcon, BoltIcon, Cog6ToothIcon, FireIcon
+} from '@heroicons/react/24/outline'
 
 /**
- * Category data — drives the "Browse by Category" grid.
- * Each category links to the search page with a category filter.
- * Icons use emoji for now — could be replaced with SVG icons later.
+ * Category data — with Heroicons for glass circle style.
  */
 const categories = [
-  { name: 'Brake System', icon: '🛑', count: 142, color: '#EF4444' },
-  { name: 'Engine Parts', icon: '⚙️', count: 238, color: '#F59E0B' },
-  { name: 'Suspension', icon: '🔧', count: 95, color: '#38B6FF' },
-  { name: 'Electrical', icon: '⚡', count: 187, color: '#39FF14' },
-  { name: 'Transmission', icon: '🔩', count: 76, color: '#8B5CF6' },
-  { name: 'Exhaust', icon: '💨', count: 54, color: '#FF523B' },
+  { name: 'Brake System', icon: StopIcon, count: 142, color: '#EF4444' },
+  { name: 'Engine Parts', icon: CogIcon, count: 238, color: '#F59E0B' },
+  { name: 'Suspension', icon: WrenchIcon, count: 95, color: '#38B6FF' },
+  { name: 'Electrical', icon: BoltIcon, count: 187, color: '#39FF14' },
+  { name: 'Transmission', icon: Cog6ToothIcon, count: 76, color: '#8B5CF6' },
+  { name: 'Exhaust', icon: FireIcon, count: 54, color: '#FF523B' },
 ]
 
 /**
@@ -153,35 +154,39 @@ export default function HomePage() {
 
         {/* Category grid — 2 cols mobile, 3 tablet, 6 desktop */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {categories.map((cat, index) => (
-            <motion.div
-              key={cat.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{
-                duration: 0.5,
-                delay: index * 0.06,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-            >
-              <Link href={`/search?category=${encodeURIComponent(cat.name)}`}>
-                <div className="card text-center py-8 px-4 cursor-pointer group hover:border-[var(--color-accent)]/30 transition-all duration-300">
-                  {/* Icon with subtle color glow on hover */}
-                  <div
-                    className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center text-2xl transition-all duration-300 group-hover:scale-110"
-                    style={{ backgroundColor: `${cat.color}10` }}
-                  >
-                    {cat.icon}
+          {categories.map((cat, index) => {
+            const Icon = cat.icon
+            return (
+              <motion.div
+                key={cat.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  duration: 0.5,
+                  delay: index * 0.06,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                <Link href={`/search?category=${encodeURIComponent(cat.name)}`}>
+                  <div className="card text-center py-8 px-4 cursor-pointer group hover:border-[var(--color-accent)]/30 transition-all duration-300">
+                    {/* ─── GLASS CIRCLE ICON ─── 
+                     * Circular with backdrop blur
+                     * Outline icon style
+                     * Color glow on hover
+                     */}
+                    <div className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center bg-white/[0.06] backdrop-blur-md border border-white/[0.1] group-hover:border-white/[0.2] group-hover:bg-white/[0.1] transition-all duration-300 group-hover:scale-110">
+                      <Icon className="w-6 h-6 text-[var(--color-text-dim)] group-hover:text-[var(--color-text)] transition-colors" />
+                    </div>
+                    {/* Category name */}
+                    <p className="text-sm font-medium text-[var(--color-text)] mb-1">{cat.name}</p>
+                    {/* Part count */}
+                    <p className="text-xs text-[var(--color-text-dim)]">{cat.count} parts</p>
                   </div>
-                  {/* Category name */}
-                  <p className="text-sm font-medium text-[var(--color-text)] mb-1">{cat.name}</p>
-                  {/* Part count */}
-                  <p className="text-xs text-[var(--color-text-dim)]">{cat.count} parts</p>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            )
+          })}
         </div>
       </section>
 
