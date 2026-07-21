@@ -68,6 +68,7 @@ export default function RegisterPage() {
       localStorage.setItem('token', data.token)
       // Save user data for navbar Settings icon
       localStorage.setItem('user', JSON.stringify({ email: form.email, name: form.name }))
+      window.dispatchEvent(new Event('user-updated'))
       showToast('Account created! Welcome to AutoMart.', 'success')
       router.push('/')
     } catch (err: any) {

@@ -1,20 +1,12 @@
 /**
  * Navbar — Centered menu with icons + text labels
  * 
+ * Fixes:
+ *   - Settings icon: listens for 'user-updated' custom event (same tab)
+ *   - Active underline: uses relative positioning on each link
+ * 
  * Layout:
  *   [Logo] ——— [🏠 Home] [📁 Categories] [🔧 Browse] [📦 Orders] [🔍 Search] ——— [♡] [🛒] [⚙️]
- *                 ↑ icons next to text, centered ↑
- * 
- * Each nav link has:
- *   - Small icon (16px) on the LEFT of text
- *   - Text label on the RIGHT of icon
- *   - Active state: lime underline + brighter text
- * 
- * Right side:
- *   - Wishlist: glass circle with heart
- *   - Cart: glass circle with cart
- *   - Settings: glass circle with gear (ONLY when logged in)
- *   - Sign In: coral button (when NOT logged in)
  */
 'use client'
 
@@ -27,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
-/** Nav links with icons — shown in center of navbar */
+/** Nav links with icons */
 const navLinks = [
   { href: '/', label: 'Home', icon: HomeIcon },
   { href: '/categories', label: 'Categories', icon: Squares2X2Icon },
@@ -43,18 +35,42 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  /** Check login state */
+  /**
+   * CHECK LOGIN STATE
+   * 
+   * Reads 'user' from localStorage.
+   * Listens for:
+   *   - 'storage' event (cross-tab changes)
+   *   - 'user-updated' custom event (same-tab login/register)
+   *   - pathname change (navigation after login)
+   */
   useEffect(() => {
     const checkLogin = () => {
       try {
         const user = localStorage.getItem('user')
-        setIsLoggedIn(!!user && user !== 'null')
+        setIsLoggedIn(!!user && user !== 'null' && user !== '')
       } catch { setIsLoggedIn(false) }
     }
     checkLogin()
+
+    // Cross-tab changes
     window.addEventListener('storage', checkLogin)
-    return () => window.removeEventListener('storage', checkLogin)
+    // Same-tab login/register
+    window.addEventListener('user-updated', checkLogin)
+
+    return () => {
+      window.removeEventListener('storage', checkLogin)
+      window.removeEventListener('user-updated', checkLogin)
+    }
   }, [])
+
+  // Re-check login on navigation
+  useEffect(() => {
+    try {
+      const user = localStorage.getItem('user')
+      setIsLoggedIn(!!user && user !== 'null' && user !== '')
+    } catch { setIsLoggedIn(false) }
+  }, [pathname])
 
   /** Cart count */
   const updateCartCount = () => {
@@ -120,23 +136,27 @@ export function Navbar() {
 
           {/* ─── CENTER: Nav Links (icon + text) + Search Bar ─── */}
           <div className="hidden md:flex items-center gap-5 flex-1 justify-center">
-            {/* Nav links — icon + text */}
+            {/* Nav links — icon + text, each has RELATIVE for underline */}
             <div className="flex items-center gap-1">
               {navLinks.map((link) => {
                 const Icon = link.icon
+                const active = isActive(link.href)
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                      isActive(link.href)
+                    className={`relative px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                      active
                         ? 'text-[var(--color-text)]'
                         : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)]'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    {link.label}
-                    {isActive(link.href) && (
+                    <span className="flex items-center gap-1.5">
+                      <Icon className="w-4 h-4" />
+                      {link.label}
+                    </span>
+                    {/* Active underline — positioned relative to THIS link */}
+                    {active && (
                       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--color-accent)] rounded-full" />
                     )}
                   </Link>

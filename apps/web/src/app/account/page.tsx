@@ -118,6 +118,7 @@ export default function AccountPage() {
     const updated = { ...profile, name, email, phone }
     setProfile(updated)
     localStorage.setItem('user', JSON.stringify(updated))
+    window.dispatchEvent(new Event('user-updated'))
 
     // Show success feedback
     setSaved(true)
@@ -142,6 +143,7 @@ export default function AccountPage() {
     }
     setProfile(updated)
     localStorage.setItem('user', JSON.stringify(updated))
+    window.dispatchEvent(new Event('user-updated'))
   }
 
   /**
@@ -156,6 +158,7 @@ export default function AccountPage() {
     }
     setProfile(updated)
     localStorage.setItem('user', JSON.stringify(updated))
+    window.dispatchEvent(new Event('user-updated'))
   }
 
   /**
@@ -172,6 +175,7 @@ export default function AccountPage() {
     }
     setProfile(updated)
     localStorage.setItem('user', JSON.stringify(updated))
+    window.dispatchEvent(new Event('user-updated'))
   }
 
   /**
@@ -407,6 +411,7 @@ export default function AccountPage() {
                             }
                             setProfile(updated)
                             localStorage.setItem('user', JSON.stringify(updated))
+                            window.dispatchEvent(new Event('user-updated'))
                           }}
                           className="block text-sm font-medium bg-transparent border-none outline-none text-[var(--color-text)] mb-1 w-full"
                         />
