@@ -1,6 +1,26 @@
+/**
+ * SearchBar — Unified search input with text, voice, and image search
+ * 
+ * Layout:
+ *   ┌──────────────────────────────────────────┐
+ *   │  🔍 [Search input]          📷 🎤       │
+ *   └──────────────────────────────────────────┘
+ * 
+ * Features:
+ *   - Text search: submits query via onSearch callback on Enter
+ *   - Voice search: uses Web Speech API (browser-native)
+ *   - Image search: opens file picker, uploads to CLIP search endpoint
+ *   - Full-screen voice overlay with pulsing mic animation
+ * 
+ * Styling:
+ *   - Dark input with subtle border
+ *   - Lime focus ring on input
+ *   - Coral/orange hover on action icons
+ *   - Pill-shaped (rounded-full) container
+ */
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { MagnifyingGlassIcon, MicrophoneIcon, CameraIcon } from '@heroicons/react/24/outline'
 
 interface SearchBarProps {
@@ -15,13 +35,19 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
   const [voiceText, setVoiceText] = useState('')
   const recognitionRef = useRef<any>(null)
 
+  /** Submit search on form submit (Enter key) */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (query.trim()) onSearch(query.trim())
   }
 
+  /**
+   * Start voice recognition using the Web Speech API.
+   * Falls back gracefully if the browser doesn't support it (e.g. Firefox).
+   */
   const startVoiceSearch = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
       alert('Voice search is not supported in this browser. Try Chrome or Edge.')
       return
@@ -58,12 +84,17 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
     setVoiceText('')
   }
 
+  /** Stop voice recognition */
   const stopVoiceSearch = () => {
     recognitionRef.current?.stop()
     setListening(false)
     setShowVoiceOverlay(false)
   }
 
+  /**
+   * Open file picker for image-based search.
+   * Sends selected image to the CLIP search endpoint.
+   */
   const handleImageSearch = () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -88,36 +119,69 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="relative w-full max-w-2xl">
-        <div className="glass-input flex items-center gap-3 px-4 py-3">
-          <MagnifyingGlassIcon className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
+      {/* ─── Search Input ─── */}
+      <form onSubmit={handleSubmit} className="relative w-full">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)] focus-within:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-all duration-200">
+          {/* Search icon */}
+          <MagnifyingGlassIcon className="w-5 h-5 text-[var(--color-text-dim)] shrink-0" />
+
+          {/* Text input */}
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="bg-transparent border-none outline-none flex-1 text-sm text-white placeholder-[var(--color-text-muted)]"
+            className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
           />
-          <button type="button" onClick={handleImageSearch} title="Search by image">
-            <CameraIcon className="w-5 h-5 text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors" />
+
+          {/* Image search button */}
+          <button
+            type="button"
+            onClick={handleImageSearch}
+            title="Search by image"
+            className="p-1.5 rounded-lg hover:bg-[var(--color-surface-alt)] transition-colors"
+          >
+            <CameraIcon className="w-4.5 h-4.5 text-[var(--color-text-dim)] hover:text-[var(--color-blue)] transition-colors" />
           </button>
-          <button type="button" onClick={listening ? stopVoiceSearch : startVoiceSearch} title="Voice search">
-            <MicrophoneIcon className={`w-5 h-5 transition-colors ${listening ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-accent)]'}`} />
+
+          {/* Voice search button */}
+          <button
+            type="button"
+            onClick={listening ? stopVoiceSearch : startVoiceSearch}
+            title="Voice search"
+            className="p-1.5 rounded-lg hover:bg-[var(--color-surface-alt)] transition-colors"
+          >
+            <MicrophoneIcon
+              className={`w-4.5 h-4.5 transition-colors ${
+                listening
+                  ? 'text-[var(--color-coral)]'
+                  : 'text-[var(--color-text-dim)] hover:text-[var(--color-blue)]'
+              }`}
+            />
           </button>
         </div>
       </form>
 
+      {/* ─── Voice Search Overlay ─── */}
       {showVoiceOverlay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="glass p-12 text-center max-w-md w-full mx-4">
-            <div className="w-20 h-20 rounded-full border-2 border-[var(--color-accent)] mx-auto mb-6 flex items-center justify-center animate-pulse">
-              <MicrophoneIcon className="w-10 h-10 text-[var(--color-accent)]" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="card p-12 text-center max-w-md w-full mx-4">
+            {/* Pulsing mic icon */}
+            <div className="w-20 h-20 rounded-full border-2 border-[var(--color-coral)] mx-auto mb-6 flex items-center justify-center animate-pulse">
+              <MicrophoneIcon className="w-10 h-10 text-[var(--color-coral)]" />
             </div>
-            <p className="text-lg mb-2">
+
+            {/* Status text */}
+            <p className="text-lg mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
               {listening ? 'Listening...' : voiceText || 'Say something'}
             </p>
-            <p className="text-sm text-[var(--color-text-muted)] mb-6">{voiceText}</p>
-            <button onClick={stopVoiceSearch} className="glass-button-outline text-sm px-6 py-2">
+            <p className="text-sm text-[var(--color-text-dim)] mb-6">{voiceText}</p>
+
+            {/* Cancel button */}
+            <button
+              onClick={stopVoiceSearch}
+              className="glass-button-outline text-sm px-6 py-2"
+            >
               Cancel
             </button>
           </div>

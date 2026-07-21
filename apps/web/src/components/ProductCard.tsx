@@ -1,7 +1,31 @@
+/**
+ * ProductCard — Dark industrial product card
+ * 
+ * Layout:
+ *   ┌──────────────────┐
+ *   │  [Product Image]  │  ← Full-width, aspect-square
+ *   │  [Category Badge] │  ← Lime badge, top-left
+ *   ├──────────────────┤
+ *   │  Brand (dim)      │
+ *   │  Product Name     │  ← Truncated to 2 lines
+ *   │  $Price (lime)    │  ← Glowing lime text
+ *   └──────────────────┘
+ * 
+ * Interaction:
+ *   - Hover: card lifts (translateY -2px), border glows lime
+ *   - Image scales up slightly on hover
+ *   - Entire card is a link to product detail page
+ * 
+ * Styling:
+ *   - Dark charcoal surface (#1A1A1A)
+ *   - Subtle border (#2A2A2A)
+ *   - No glass blur — solid, industrial feel
+ *   - Category badge uses lime accent
+ *   - Price in lime gradient text
+ */
 'use client'
 
 import Link from 'next/link'
-import { GlassCard } from './GlassCard'
 
 interface Product {
   id: string
@@ -15,25 +39,40 @@ interface Product {
 export function ProductCard({ product }: { product: Product }) {
   return (
     <Link href={`/products/${product.id}`}>
-      <GlassCard className="p-0 overflow-hidden group cursor-pointer">
-        <div className="aspect-square bg-[var(--color-surface-light)] relative overflow-hidden">
+      {/* Card wrapper — dark surface with border, hover effects */}
+      <div className="card overflow-hidden group cursor-pointer h-full">
+        {/* Image container — aspect-square with overflow hidden for zoom effect */}
+        <div className="aspect-square bg-[var(--color-bg)] relative overflow-hidden">
           <img
-            src={product.imageUrl || '/placeholder.svg'}
+            src={product.imageUrl || 'https://picsum.photos/seed/placeholder/400/400'}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
+
+          {/* Category badge — lime accent, top-left */}
           <div className="absolute top-3 left-3">
-            <span className="text-[10px] uppercase tracking-wider bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-white">
+            <span className="badge text-[10px]">
               {product.category}
             </span>
           </div>
         </div>
+
+        {/* Content area */}
         <div className="p-4">
-          <p className="text-xs text-[var(--color-text-muted)] mb-1">{product.brand}</p>
-          <h3 className="font-medium text-sm mb-2 line-clamp-2">{product.name}</h3>
-          <p className="text-lg font-bold glow-text">${product.price.toFixed(2)}</p>
+          {/* Brand — dimmed secondary text */}
+          <p className="text-xs text-[var(--color-text-dim)] mb-1">{product.brand}</p>
+
+          {/* Product name — truncated to 2 lines */}
+          <h3 className="text-sm font-medium mb-2 line-clamp-2 text-[var(--color-text)]">
+            {product.name}
+          </h3>
+
+          {/* Price — lime gradient text for emphasis */}
+          <p className="text-lg font-bold glow-text">
+            ${product.price.toFixed(2)}
+          </p>
         </div>
-      </GlassCard>
+      </div>
     </Link>
   )
 }
