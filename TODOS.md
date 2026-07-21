@@ -94,9 +94,21 @@
 
 ## 🔴 Balance Tasks (Priority Based)
 
+### 🔥 CRITICAL — Full UI/UX Redesign
+- [ ] **Share design vision** — Provide reference images, competitor sites, color/style preferences (see "How to Share Design Ideas" below)
+- [ ] **Redesign Landing Page** — Modern e-commerce hero, featured products, categories, promotions
+- [ ] **Redesign Product Listing/Catalog** — Grid/list views, filters sidebar, sorting, pagination
+- [ ] **Redesign Product Detail Page** — Image gallery, specs, reviews, add-to-cart, related products
+- [ ] **Redesign Cart & Checkout** — Step-by-step checkout, order summary, payment UI
+- [ ] **Redesign Auth Pages** — Clean login/register with social login buttons
+- [ ] **Redesign Order Tracking** — Visual status timeline, order history
+- [ ] **Global Design System** — Consistent colors, typography, spacing, components (buttons, cards, modals)
+- [ ] **Mobile-First Responsive** — Ensure all pages work perfectly on phone/tablet
+- [ ] **Update E2E Tests** — Fix Playwright selectors to match new UI
+
 ### HIGH Priority — Core Functionality
+- [x] **Add ESLint config for monorepo** — ✅ Done (0 errors, 38 warnings across 9 workspaces)
 - [ ] **Verify E2E tests pass with Docker stack** — Start full Docker Compose stack, run Playwright tests, fix any failures
-- [ ] **Add ESLint config for monorepo** — Enforces code quality across all services before any more code is written
 - [ ] **Test MCP server endpoints with curl/Postman** — Validate all 5 tools work correctly over HTTP
 
 ### MEDIUM Priority — Production Ready
