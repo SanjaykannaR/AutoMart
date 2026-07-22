@@ -20,7 +20,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!isAuthPage && <Navbar />}
-      <main className={`min-h-screen ${isAuthPage ? '' : 'pt-16'}`}>{children}</main>
+      <main id="main-content" className={`min-h-screen ${isAuthPage ? '' : 'pt-16'}`}>{children}</main>
       {!isAuthPage && <ConditionalFooter />}
     </>
   )

@@ -29,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
+        <a href="#main-content" className="skip-link">Skip to content</a>
         <div className="aurora-bg" />
         <ToastProvider>
           <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
