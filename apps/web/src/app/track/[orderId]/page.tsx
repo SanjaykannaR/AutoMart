@@ -135,11 +135,36 @@ export default function TrackOrderPage() {
     return trackingSteps.findIndex((s) => s.id === status)
   }
 
-  // Loading state
+  // Loading state — skeleton instead of spinner
   if (!loaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid md:grid-cols-3 gap-8">
+          {/* Left: Timeline skeleton */}
+          <div className="md:col-span-2 space-y-6">
+            <div className="h-8 w-48 skeleton" />
+            <div className="card p-6 space-y-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full skeleton shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 skeleton" />
+                    <div className="h-3 w-48 skeleton" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Right: Sidebar skeleton */}
+          <div className="space-y-4">
+            <div className="card p-5 space-y-3">
+              <div className="h-5 w-32 skeleton" />
+              <div className="h-3 w-full skeleton" />
+              <div className="h-3 w-3/4 skeleton" />
+              <div className="h-8 w-24 skeleton mt-4" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

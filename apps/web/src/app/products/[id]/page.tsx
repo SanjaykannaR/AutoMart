@@ -31,6 +31,9 @@ import { useState, useEffect } from 'react' // React hooks for state and effects
 import { useParams, useRouter } from 'next/navigation' // Next.js routing hooks
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
 import { TruckIcon, ShieldCheckIcon } from '@heroicons/react/24/outline' // Trust/shipping icons
+import { addToRecentlyViewed, loadRecentlyViewed, type RecentlyViewedProduct } from '@/lib/lru-cache' // LRU cache for recently viewed
+import Link from 'next/link' // Next.js link for recently viewed product cards
+import { ProductCard } from '@/components/ProductCard' // Product card for recently viewed
 
 /**
  * Fallback product data — used when the API is unreachable.
@@ -75,6 +78,8 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1)
   /** Add-to-cart loading state */
   const [adding, setAdding] = useState(false)
+  /** Recently viewed products (LRU cache) */
+  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedProduct[]>([])
 
   /** Fetch product data from API, fall back to mock data on error */
   useEffect(() => {
@@ -83,6 +88,21 @@ export default function ProductDetailPage() {
       .then(setProduct) // Store product data
       .catch(() => setProduct(mockProduct)) // Fallback to mock on error
   }, [id]) // Re-fetch when ID changes
+
+  /** Add to recently viewed when product loads */
+  useEffect(() => {
+    if (product) {
+      addToRecentlyViewed({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        category: product.category,
+        brand: product.brand,
+      })
+      setRecentlyViewed(loadRecentlyViewed().filter((p) => p.id !== product.id).slice(0, 6))
+    }
+  }, [product])
 
   /** Show skeleton while product is loading */
   if (!product) {
@@ -308,6 +328,44 @@ export default function ProductDetailPage() {
           </ScrollReveal>
         </div>
       </div>
+
+      {/* ═══ RECENTLY VIEWED (LRU Cache) ═══ */}
+      {recentlyViewed.length > 0 && (
+        <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-12 mt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <ScrollReveal variant="fade">
+            <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[var(--color-accent)] block mb-2">
+              Continue Browsing
+            </span>
+            <h2 className="text-xl font-bold mb-6" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              Recently Viewed
+            </h2>
+          </ScrollReveal>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {recentlyViewed.map((item, index) => (
+              <ScrollReveal key={item.id} variant="card" delay={index * 0.05}>
+                <Link href={`/products/${item.id}`}>
+                  <div className="card p-0 overflow-hidden group cursor-pointer">
+                    <div className="aspect-square overflow-hidden">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <p className="text-xs text-[var(--color-text-muted)] truncate">{item.brand}</p>
+                      <p className="text-sm font-medium truncate mt-0.5">{item.name}</p>
+                      <p className="text-sm font-bold mt-1" style={{ color: 'var(--color-accent)' }}>
+                        ${item.price.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -138,6 +138,19 @@ export function Navbar() {
   // ─── Mobile menu state ───
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  // ─── Search bar placeholder rotation ───
+  const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const placeholderSuggestions = [
+    'Search parts...',
+    'Brake pads',
+    'Oil filter',
+    'Spark plugs',
+    'LED headlights',
+    'Air filter',
+    'Clutch kit',
+    'Shock absorber',
+  ]
+
   // ─── Notification state ───
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
@@ -240,6 +253,14 @@ export function Navbar() {
   useEffect(() => {
     loadNotifications()
   }, [loadNotifications])
+
+  // ─── Rotate search placeholder every 3s ───
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % placeholderSuggestions.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
 
   // ─── Listen for notification events from other components ───
   useEffect(() => {
@@ -542,7 +563,7 @@ export function Navbar() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search parts..."
+                  placeholder={placeholderSuggestions[placeholderIndex]}
                   className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] min-w-0"
                 />
                 {searchQuery.length > 1 && (
@@ -954,7 +975,7 @@ export function Navbar() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search parts..."
+                placeholder={placeholderSuggestions[placeholderIndex]}
                 className="bg-transparent border-none outline-none flex-1 text-sm"
                 style={{ color: '#F0F0F0' }}
               />
