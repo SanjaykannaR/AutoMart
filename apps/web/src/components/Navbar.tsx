@@ -292,6 +292,22 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [profileOpen])
 
+  // ─── Mobile drawer: Escape key + body scroll lock ───
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false)
+    }
+    document.addEventListener('keydown', handleEscape)
+    document.body.style.overflow = 'hidden' // Lock body scroll
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+      document.body.style.overflow = '' // Restore body scroll
+    }
+  }, [mobileMenuOpen])
+
   /** Save selected avatar to localStorage and update state */
   const selectAvatar = (emoji: string) => {
     setUserAvatar(emoji) // Update local state
@@ -487,15 +503,6 @@ export function Navbar() {
             <img src="/logo/automart-logo.svg" alt="AutoMart" className="h-9 w-9" />
           </Link>
 
-          {/* ═══ HAMBURGER (mobile only) ═══ */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.1] text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-all"
-            aria-label="Open menu"
-          >
-            <Bars3Icon className="w-5 h-5" />
-          </button>
-
           {/* ═══ CENTER: Nav Links + Search ═══ */}
           <div className="hidden md:flex items-center gap-5 flex-1 justify-center">
 
@@ -612,11 +619,11 @@ export function Navbar() {
             />
           </div>
 
-          {/* ═══ RIGHT: Notifications + Wishlist + Cart + Profile ═══ */}
+          {/* ═══ RIGHT: Notifications + Wishlist + Cart + Hamburger + Profile ═══ */}
           <div className="flex items-center gap-2 shrink-0">
 
-            {/* ─── NOTIFICATION BELL ─── */}
-            <div className="relative">
+            {/* ─── NOTIFICATION BELL (hidden on mobile — accessible via hamburger menu) ─── */}
+            <div className="relative hidden md:block">
               <button
                 ref={notifButtonRef}
                 onClick={() => setNotifOpen((prev) => !prev)}
@@ -774,6 +781,15 @@ export function Navbar() {
               )}
             </Link>
 
+            {/* ─── HAMBURGER MENU (mobile only) ─── */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.1] text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-all"
+              aria-label="Open menu"
+            >
+              <Bars3Icon className="w-5 h-5" />
+            </button>
+
             {/* ═══════════════════════════════════════════════════════
                 PROFILE SECTION — Sign In button OR Profile Avatar
                 - NOT logged in → coral "Sign In" pill button
@@ -884,11 +900,11 @@ export function Navbar() {
         <div className="fixed inset-0 z-[100] md:hidden">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
           {/* Panel */}
-          <div className="absolute inset-y-0 left-0 w-[300px] max-w-[85vw] bg-[var(--color-surface)] border-r border-white/[0.08] shadow-2xl shadow-black/60 flex flex-col animate-[slide-in-left_0.25s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+          <div className="absolute inset-y-0 left-0 w-[300px] max-w-[85vw] bg-[#111111] border-r border-white/[0.1] shadow-2xl shadow-black/80 flex flex-col animate-[slide-in-left_0.25s_cubic-bezier(0.16,1,0.3,1)_forwards]">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
               <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5">
