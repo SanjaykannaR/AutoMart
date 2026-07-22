@@ -317,7 +317,7 @@ export function Hero({ onSearch }: HeroProps) {
           </motion.p>
         </AnimatePresence>
 
-        {/* ─── SEARCH BAR — Gemini-style gradient glow ─── */}
+        {/* ─── SEARCH BAR — Gemini-style drop shadow glow on focus ─── */}
         {/* Wrapped in a motion div for entrance animation */}
         <motion.div
           initial={{ opacity: 0, y: 15 }} // Fade up entrance
@@ -325,11 +325,9 @@ export function Hero({ onSearch }: HeroProps) {
           transition={{ duration: 0.5, delay: 0.2 }} // Delay after subtitle
           className="mb-6 max-w-2xl mx-auto" // Centered, max width constraint
         >
-          {/* Custom search wrapper — adds gradient glow border on focus */}
-          <div className="search-glow-wrapper relative rounded-full p-[2px]">
-            {/* Gradient border layer — visible only on focus */}
-            <div className="search-glow-border absolute inset-0 rounded-full opacity-0 pointer-events-none" />
-            {/* Actual search bar component */}
+          {/* Search wrapper — applies soft drop shadow glow when input is focused */}
+          <div className="search-glow-wrapper">
+            {/* Actual search bar component — no extra divs, no layout disruption */}
             <SearchBar onSearch={onSearch} placeholder="Search by part name, brand, or vehicle..." />
           </div>
         </motion.div>
