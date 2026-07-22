@@ -52,7 +52,7 @@ const bannerSlides = [
     cta: 'Shop Brakes', // Call-to-action button text
     link: '/search?category=Brake+System', // CTA button destination
     gradient: 'from-red-600/80 via-red-900/60 to-transparent', // Tailwind gradient for overlay
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920&h=600&fit=crop&q=80', // Banner background image
+    image: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1920&h=600&fit=crop&q=80', // Wheel close-up — perfect for brake sale banner
     accent: '#EF4444', // Accent color for this slide (matches brake theme)
   },
   {
