@@ -62,14 +62,6 @@
   --color-wine-dim: rgba(194, 58, 92, 0.15);
   --color-gold: #E8A838;
   --color-gold-dim: rgba(232, 168, 56, 0.15);
-
-  /* ─── Legacy aliases (keep for backward compat during migration) ─── */
-  --color-glass-bg: rgba(26, 26, 26, 0.8);
-  --color-glass-border: #2A2A2A;
-  --color-glass-hover: #222222;
-  --color-surface-light: #222222;
-  --color-text-primary: #F0F0F0;
-  --color-text-secondary: #8E8E8E;
 }
 
 /* ─── Reset & Base ─── */
