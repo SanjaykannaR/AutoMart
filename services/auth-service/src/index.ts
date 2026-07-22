@@ -808,6 +808,68 @@ app.get('/me', async (req, res) => {
   }
 })
 
+// ─── GET /users/me/wishlist ────────────────────────────────────────────────────
+// Returns the user's wishlist from Redis. Stored as JSON array.
+app.get('/users/me/wishlist', async (req, res) => {
+  const decoded = verifyToken(req)
+  if (!decoded) return errorResponse(res, 401, 'AUTH_UNAUTHORIZED', 'Authentication required.', 'Log in to access your wishlist.')
+
+  try {
+    const data = await redis.get(`wishlist:${decoded.id}`)
+    res.json(data ? JSON.parse(data) : [])
+  } catch (err) {
+    console.error('[Auth] /wishlist GET error:', err)
+    return errorResponse(res, 500, 'AUTH_SERVER_ERROR', 'Failed to load wishlist.')
+  }
+})
+
+// ─── PUT /users/me/wishlist ────────────────────────────────────────────────────
+// Replaces the user's wishlist in Redis. Expects full array in body.
+app.put('/users/me/wishlist', async (req, res) => {
+  const decoded = verifyToken(req)
+  if (!decoded) return errorResponse(res, 401, 'AUTH_UNAUTHORIZED', 'Authentication required.', 'Log in to save your wishlist.')
+
+  try {
+    const items = Array.isArray(req.body.items) ? req.body.items : []
+    await redis.set(`wishlist:${decoded.id}`, JSON.stringify(items))
+    res.json({ ok: true, count: items.length })
+  } catch (err) {
+    console.error('[Auth] /wishlist PUT error:', err)
+    return errorResponse(res, 500, 'AUTH_SERVER_ERROR', 'Failed to save wishlist.')
+  }
+})
+
+// ─── GET /users/me/cart ────────────────────────────────────────────────────────
+// Returns the user's cart from Redis. Stored as JSON array.
+app.get('/users/me/cart', async (req, res) => {
+  const decoded = verifyToken(req)
+  if (!decoded) return errorResponse(res, 401, 'AUTH_UNAUTHORIZED', 'Authentication required.', 'Log in to access your cart.')
+
+  try {
+    const data = await redis.get(`cart:${decoded.id}`)
+    res.json(data ? JSON.parse(data) : [])
+  } catch (err) {
+    console.error('[Auth] /cart GET error:', err)
+    return errorResponse(res, 500, 'AUTH_SERVER_ERROR', 'Failed to load cart.')
+  }
+})
+
+// ─── PUT /users/me/cart ────────────────────────────────────────────────────────
+// Replaces the user's cart in Redis. Expects full array in body.
+app.put('/users/me/cart', async (req, res) => {
+  const decoded = verifyToken(req)
+  if (!decoded) return errorResponse(res, 401, 'AUTH_UNAUTHORIZED', 'Authentication required.', 'Log in to save your cart.')
+
+  try {
+    const items = Array.isArray(req.body.items) ? req.body.items : []
+    await redis.set(`cart:${decoded.id}`, JSON.stringify(items))
+    res.json({ ok: true, count: items.length })
+  } catch (err) {
+    console.error('[Auth] /cart PUT error:', err)
+    return errorResponse(res, 500, 'AUTH_SERVER_ERROR', 'Failed to save cart.')
+  }
+})
+
 // ─── Health ─────────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'auth-service' }))
 
