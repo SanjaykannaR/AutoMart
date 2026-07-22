@@ -36,6 +36,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:-automart-docker-secret}
       - AUTH_SERVICE_PORT=3001
       - REDIS_URL=redis://redis:6379
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - auth_db:/data
     depends_on:

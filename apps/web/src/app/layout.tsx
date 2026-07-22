@@ -2,46 +2,37 @@
  * Root Layout — AutoMart App Shell
  * 
  * Wraps all pages with:
- *   - Navbar (fixed top navigation)
+ *   - Navbar (hidden on auth flow pages)
  *   - Toast notification system (context provider)
+ *   - Google OAuth provider (for Google Sign-In)
  *   - Decorative background glow (subtle radial gradients)
- * 
- * Font loading:
- *   - Outfit: loaded via Google Fonts in globals.css (headings)
- *   - Inter: system fallback (body text)
- * 
- * suppressHydrationWarning: needed because ThemeToggle used to add a class
- * to <html> — kept for forward compatibility.
  */
 import type { Metadata } from 'next'
 import './globals.css'
-import { Navbar } from '@/components/Navbar'
-import { ConditionalFooter } from '@/components/ConditionalFooter'
+import { LayoutShell } from '@/components/LayoutShell'
 import { ToastProvider } from '@/components/Toast'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 
 export const metadata: Metadata = {
   title: 'AutoMart - Spare Parts in 30 Mins',
   description: 'Order car and bike spare parts. Delivered in 30 minutes.',
 }
 
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preconnect to Google Fonts for faster font loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
-        {/* Decorative background — subtle lime/blue radial glows */}
         <div className="aurora-bg" />
-
-        {/* ToastProvider: any component can call showToast() via context */}
         <ToastProvider>
-          <Navbar />
-          {/* pt-16 offsets for the fixed navbar height */}
-          <main className="min-h-screen pt-16">{children}</main>
-          <ConditionalFooter />
+          <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+            <LayoutShell>{children}</LayoutShell>
+          </GoogleOAuthProvider>
         </ToastProvider>
       </body>
     </html>
