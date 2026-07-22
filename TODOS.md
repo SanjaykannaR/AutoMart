@@ -126,15 +126,15 @@
 ## 🔴 TODO for Tomorrow (2026-07-22)
 
 ### 🔥 CRITICAL — Must Fix
-- [ ] **Settings icon not visible in navbar** — Code logic is correct (checks for `user` OR `token` in localStorage). Most likely cause: **Docker container hasn't been rebuilt** with latest code. Run: `docker compose build web && docker compose up -d web`. If still broken after rebuild, add `console.log` to Navbar to debug localStorage state.
-- [ ] **Voice search needs better listening animation** — Current `animate-pulse` is too subtle. Need: pulsing ring/glow around mic button, "Listening..." text indicator, sound wave bars animation.
+- [x] **Settings icon not visible in navbar** — Fixed: added mobile hamburger drawer with all nav links (including Settings). Desktop nav already worked. Code: `Navbar.tsx` + `Bars3Icon` import + `mobileMenuOpen` state + slide-in panel.
+- [x] **Voice search needs better listening animation** — Fixed: 3-layer pulsing rings (voice-ring keyframe), stronger glow `shadow-[0_0_20px]`, 6-bar sound wave animation, "Listening..." text indicator below mic button.
 - [ ] **Rebuild Docker container** — Many commits since last rebuild. User must confirm before running: `docker compose build web && docker compose up -d web`
 
 ### HIGH Priority — Core Functionality
 - [ ] **Verify E2E tests pass with Docker stack** — 7 tests failing post-redesign (selectors need updating for new UI elements)
 - [ ] **Test MCP server endpoints with curl/Postman** — Validate all 5 tools work correctly over HTTP
 - [ ] **Search page: image search mode** — When user uploads photo via camera icon, show visual matching results (currently shows banner but doesn't do actual image matching)
-- [ ] **Mobile hamburger menu** — Navbar links hidden on mobile, need slide-out drawer with same nav links
+- [x] **Mobile hamburger menu** — Fixed: slide-in drawer from left with all nav links, search, profile/sign-in, wishlist+cart counts. Visible on `md:hidden`.
 
 ### MEDIUM Priority — Production Ready
 - [ ] **Loading skeletons on all pages** — Better UX during data fetch, prevents layout shift

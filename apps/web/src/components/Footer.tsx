@@ -58,9 +58,12 @@ export function Footer() {
            * Spans full width on mobile (col-span-2)
            */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              <span className="text-[var(--color-accent)]">Auto</span>
-              <span className="text-[var(--color-text)]">Mart</span>
+            <Link href="/" className="inline-flex items-center gap-2">
+              <img src="/logo/automart-logo.svg" alt="AutoMart" className="h-8 w-8" />
+              <span className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                <span className="text-[var(--color-accent)]">Auto</span>
+                <span className="text-[var(--color-text)]">Mart</span>
+              </span>
             </Link>
             <p className="mt-3 text-sm text-[var(--color-text-dim)] leading-relaxed max-w-xs">
               Spare parts delivered in 30 minutes. Quality parts for cars and bikes.

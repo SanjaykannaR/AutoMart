@@ -384,6 +384,18 @@ h1, h2, h3, h4, h5, h6 {
   to   { height: 100%; }
 }
 
+/* Voice search — expanding ring pulse */
+@keyframes voice-ring {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Mobile drawer — slide in from left */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    HERO — Gemini-Style Drop Shadow Glow on Search Bar
    When the search input is focused, a soft drop shadow glow

@@ -51,6 +51,7 @@ import {
   UserIcon,
   ArrowRightOnRectangleIcon,
   Cog8ToothIcon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline'
 
 // ─── Solid icons ───
@@ -133,6 +134,9 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isListening, setIsListening] = useState(false)
+
+  // ─── Mobile menu state ───
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // ─── Notification state ───
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -483,6 +487,15 @@ export function Navbar() {
             <img src="/logo/automart-logo.svg" alt="AutoMart" className="h-9 w-9" />
           </Link>
 
+          {/* ═══ HAMBURGER (mobile only) ═══ */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.1] text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-all"
+            aria-label="Open menu"
+          >
+            <Bars3Icon className="w-5 h-5" />
+          </button>
+
           {/* ═══ CENTER: Nav Links + Search ═══ */}
           <div className="hidden md:flex items-center gap-5 flex-1 justify-center">
 
@@ -537,11 +550,13 @@ export function Navbar() {
 
                 {/* Voice search */}
                 <div className="relative shrink-0">
+                  {/* Pulsing ring layers when listening */}
                   {isListening && (
-                    <span className="absolute inset-0 -m-1 rounded-full border-2 border-[var(--color-coral)] animate-ping opacity-75" />
-                  )}
-                  {isListening && (
-                    <span className="absolute inset-0 -m-1 rounded-full border border-[var(--color-coral)]/50 animate-pulse" />
+                    <>
+                      <span className="absolute inset-0 -m-2 rounded-full border-2 border-[var(--color-coral)] animate-[voice-ring_1.2s_ease-out_infinite] opacity-80" />
+                      <span className="absolute inset-0 -m-3.5 rounded-full border border-[var(--color-coral)]/50 animate-[voice-ring_1.2s_ease-out_0.4s_infinite] opacity-50" />
+                      <span className="absolute inset-0 -m-5 rounded-full border border-[var(--color-coral)]/30 animate-[voice-ring_1.2s_ease-out_0.8s_infinite] opacity-30" />
+                    </>
                   )}
                   <button
                     type="button"
@@ -549,22 +564,29 @@ export function Navbar() {
                     title={isListening ? 'Stop listening' : 'Search by voice'}
                     className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-all ${
                       isListening
-                        ? 'bg-[var(--color-coral)]/25 text-[var(--color-coral)] shadow-[0_0_12px_rgba(255,82,59,0.4)]'
+                        ? 'bg-[var(--color-coral)]/30 text-[var(--color-coral)] shadow-[0_0_20px_rgba(255,82,59,0.5)]'
                         : 'hover:bg-white/[0.08] text-[var(--color-text-muted)] hover:text-[var(--color-text-dim)]'
                     }`}
                   >
                     {isListening ? (
-                      <span className="flex items-end gap-[2px] h-3">
-                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0s', height: '40%' }} />
-                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.15s', height: '100%' }} />
-                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.3s', height: '60%' }} />
-                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.1s', height: '80%' }} />
-                        <span className="w-[2px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.5s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.25s', height: '30%' }} />
+                      <span className="flex items-end gap-[2px] h-3.5">
+                        <span className="w-[2.5px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.45s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0s', height: '35%' }} />
+                        <span className="w-[2.5px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.45s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.12s', height: '100%' }} />
+                        <span className="w-[2.5px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.45s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.24s', height: '55%' }} />
+                        <span className="w-[2.5px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.45s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.08s', height: '80%' }} />
+                        <span className="w-[2.5px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.45s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.18s', height: '45%' }} />
+                        <span className="w-[2.5px] bg-[var(--color-coral)] rounded-full animate-[soundBar_0.45s_ease-in-out_infinite_alternate]" style={{ animationDelay: '0.3s', height: '70%' }} />
                       </span>
                     ) : (
                       <MicrophoneIcon className="w-3.5 h-3.5" />
                     )}
                   </button>
+                  {/* "Listening..." text indicator */}
+                  {isListening && (
+                    <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-semibold text-[var(--color-coral)] whitespace-nowrap animate-pulse tracking-wide">
+                      Listening...
+                    </span>
+                  )}
                 </div>
 
                 {/* Image search */}
@@ -856,6 +878,139 @@ export function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* ═══ MOBILE DRAWER ═══ */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] md:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Panel */}
+          <div className="absolute inset-y-0 left-0 w-[300px] max-w-[85vw] bg-[var(--color-surface)] border-r border-white/[0.08] shadow-2xl shadow-black/60 flex flex-col animate-[slide-in-left_0.25s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5">
+                <img src="/logo/automart-logo.svg" alt="AutoMart" className="h-8 w-8" />
+                <span className="text-base font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>AutoMart</span>
+              </Link>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-all"
+                aria-label="Close menu"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search bar */}
+            <div className="px-4 py-3 border-b border-white/[0.06]">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (searchQuery.trim()) {
+                    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+                    setSearchQuery('')
+                    setMobileMenuOpen(false)
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.08]"
+              >
+                <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search parts..."
+                  className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
+                />
+              </form>
+            </div>
+
+            {/* Nav links */}
+            <div className="flex-1 overflow-y-auto py-3">
+              {navLinks.map((link) => {
+                const Icon = link.icon
+                const active = isActive(link.href)
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 mx-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      active
+                        ? 'text-[var(--color-text)] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20'
+                        : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {link.label}
+                  </Link>
+                )
+              })}
+
+              {/* Divider */}
+              <div className="mx-5 my-3 border-t border-white/[0.06]" />
+
+              {/* Extra links */}
+              <Link
+                href="/wishlist"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 mx-3 px-4 py-3 rounded-xl text-sm font-medium text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04] transition-colors"
+              >
+                <HeartIcon className="w-5 h-5" />
+                Wishlist
+                {wishlistCount > 0 && (
+                  <span className="ml-auto text-[10px] font-bold bg-[var(--color-accent)]/15 text-[var(--color-accent)] px-1.5 py-0.5 rounded-full">{wishlistCount}</span>
+                )}
+              </Link>
+              <Link
+                href="/cart"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 mx-3 px-4 py-3 rounded-xl text-sm font-medium text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04] transition-colors"
+              >
+                <ShoppingCartIcon className="w-5 h-5" />
+                Cart
+                {cartCount > 0 && (
+                  <span className="ml-auto text-[10px] font-bold bg-[var(--color-accent)]/15 text-[var(--color-accent)] px-1.5 py-0.5 rounded-full">{cartCount}</span>
+                )}
+              </Link>
+            </div>
+
+            {/* Bottom — Profile / Sign In */}
+            <div className="border-t border-white/[0.06] px-4 py-4">
+              {isLoggedIn ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-blue)]/20 border-2 border-[var(--color-accent)]/40 flex items-center justify-center text-xl">
+                    {userAvatar}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">{userName || 'User'}</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">AutoMart Member</p>
+                  </div>
+                  <button
+                    onClick={() => { handleLogout(); setMobileMenuOpen(false) }}
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
+                    title="Sign out"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[var(--color-coral)]/85 text-white text-sm font-medium hover:bg-[var(--color-coral)] transition-colors"
+                >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  Sign In
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }
