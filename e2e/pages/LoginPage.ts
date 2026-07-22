@@ -32,11 +32,13 @@ export class LoginPage {
 
   async goto() {
     await this.page.goto('/login')
-    // Wait for the form to stabilize after GoogleOAuth hydration re-render
-    await this.page.waitForLoadState('domcontentloaded')
-    await this.emailInput.waitFor({ state: 'visible', timeout: 10000 })
-    // Small buffer for AnimatePresence + Google script re-render
-    await this.page.waitForTimeout(500)
+    // Wait for page to fully load
+    await this.page.waitForLoadState('networkidle')
+    // Wait for the email input to be visible (form rendered)
+    // Use a generous timeout since GoogleOAuth + framer-motion can delay render
+    await this.emailInput.waitFor({ state: 'visible', timeout: 15000 })
+    // Extra settle time for AnimatePresence + OAuth hydration re-render
+    await this.page.waitForTimeout(1000)
   }
 
   async login(email: string, password: string) {
