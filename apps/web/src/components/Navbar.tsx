@@ -494,6 +494,7 @@ export function Navbar() {
   }
 
   return (
+    <>
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--color-surface)]/80 backdrop-blur-xl border-b border-white/[0.06]">
       <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
@@ -894,139 +895,160 @@ export function Navbar() {
           </div>
         </div>
       </div>
+    </nav>
 
-      {/* ═══ MOBILE DRAWER ═══ */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-[100] md:hidden">
-          {/* Backdrop */}
+    {/* ═══ MOBILE DRAWER — OUTSIDE <nav> so z-index is not trapped ═══ */}
+    {mobileMenuOpen && (
+      <div className="fixed inset-0 z-[9999] md:hidden">
+        {/* Backdrop — solid black, no blur */}
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: 'rgba(0,0,0,0.9)' }}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        {/* Panel — solid opaque dark background */}
+        <div
+          className="absolute inset-y-0 left-0 w-[300px] max-w-[85vw] flex flex-col"
+          style={{
+            backgroundColor: '#111111',
+            borderRight: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: '4px 0 40px rgba(0,0,0,0.9)',
+            animation: 'slide-in-left 0.25s cubic-bezier(0.16,1,0.3,1) forwards',
+          }}
+        >
+          {/* Header */}
           <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          {/* Panel */}
-          <div className="absolute inset-y-0 left-0 w-[300px] max-w-[85vw] bg-[#111111] border-r border-white/[0.1] shadow-2xl shadow-black/80 flex flex-col animate-[slide-in-left_0.25s_cubic-bezier(0.16,1,0.3,1)_forwards]">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-              <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5">
-                <img src="/logo/automart-logo.svg" alt="AutoMart" className="h-8 w-8" />
-                <span className="text-base font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>AutoMart</span>
-              </Link>
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-all"
-                aria-label="Close menu"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            </div>
+            className="flex items-center justify-between px-5 py-4"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5">
+              <img src="/logo/automart-logo.svg" alt="AutoMart" className="h-8 w-8" />
+              <span className="text-base font-bold" style={{ fontFamily: 'Outfit, sans-serif', color: '#F0F0F0' }}>AutoMart</span>
+            </Link>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-9 h-9 flex items-center justify-center rounded-full"
+              style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#ccc' }}
+              aria-label="Close menu"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
 
-            {/* Search bar */}
-            <div className="px-4 py-3 border-b border-white/[0.06]">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  if (searchQuery.trim()) {
-                    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
-                    setSearchQuery('')
-                    setMobileMenuOpen(false)
-                  }
-                }}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.08]"
-              >
-                <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search parts..."
-                  className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
-                />
-              </form>
-            </div>
+          {/* Search bar */}
+          <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (searchQuery.trim()) {
+                  router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+                  setSearchQuery('')
+                  setMobileMenuOpen(false)
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+              style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }}
+            >
+              <MagnifyingGlassIcon className="w-4 h-4 shrink-0" style={{ color: '#666' }} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search parts..."
+                className="bg-transparent border-none outline-none flex-1 text-sm"
+                style={{ color: '#F0F0F0' }}
+              />
+            </form>
+          </div>
 
-            {/* Nav links */}
-            <div className="flex-1 overflow-y-auto py-3">
-              {navLinks.map((link) => {
-                const Icon = link.icon
-                const active = isActive(link.href)
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 mx-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      active
-                        ? 'text-[var(--color-text)] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20'
-                        : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04]'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {link.label}
-                  </Link>
-                )
-              })}
-
-              {/* Divider */}
-              <div className="mx-5 my-3 border-t border-white/[0.06]" />
-
-              {/* Extra links */}
-              <Link
-                href="/wishlist"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 mx-3 px-4 py-3 rounded-xl text-sm font-medium text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04] transition-colors"
-              >
-                <HeartIcon className="w-5 h-5" />
-                Wishlist
-                {wishlistCount > 0 && (
-                  <span className="ml-auto text-[10px] font-bold bg-[var(--color-accent)]/15 text-[var(--color-accent)] px-1.5 py-0.5 rounded-full">{wishlistCount}</span>
-                )}
-              </Link>
-              <Link
-                href="/cart"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 mx-3 px-4 py-3 rounded-xl text-sm font-medium text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04] transition-colors"
-              >
-                <ShoppingCartIcon className="w-5 h-5" />
-                Cart
-                {cartCount > 0 && (
-                  <span className="ml-auto text-[10px] font-bold bg-[var(--color-accent)]/15 text-[var(--color-accent)] px-1.5 py-0.5 rounded-full">{cartCount}</span>
-                )}
-              </Link>
-            </div>
-
-            {/* Bottom — Profile / Sign In */}
-            <div className="border-t border-white/[0.06] px-4 py-4">
-              {isLoggedIn ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-blue)]/20 border-2 border-[var(--color-accent)]/40 flex items-center justify-center text-xl">
-                    {userAvatar}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate">{userName || 'User'}</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">AutoMart Member</p>
-                  </div>
-                  <button
-                    onClick={() => { handleLogout(); setMobileMenuOpen(false) }}
-                    className="w-9 h-9 flex items-center justify-center rounded-full bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
-                    title="Sign out"
-                  >
-                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
+          {/* Nav links */}
+          <div className="flex-1 overflow-y-auto py-2">
+            {navLinks.map((link) => {
+              const Icon = link.icon
+              const active = isActive(link.href)
+              return (
                 <Link
-                  href="/login"
+                  key={link.href}
+                  href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[var(--color-coral)]/85 text-white text-sm font-medium hover:bg-[var(--color-coral)] transition-colors"
+                  className="flex items-center gap-3 mx-3 px-4 py-3.5 rounded-xl text-sm font-medium"
+                  style={{
+                    color: active ? '#F0F0F0' : '#999',
+                    backgroundColor: active ? 'rgba(57,255,20,0.12)' : 'transparent',
+                    border: active ? '1px solid rgba(57,255,20,0.25)' : '1px solid transparent',
+                  }}
+                >
+                  <Icon className="w-5 h-5" />
+                  {link.label}
+                </Link>
+              )
+            })}
+
+            {/* Divider */}
+            <div className="mx-5 my-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }} />
+
+            {/* Extra links */}
+            <Link
+              href="/wishlist"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 mx-3 px-4 py-3.5 rounded-xl text-sm font-medium"
+              style={{ color: '#999' }}
+            >
+              <HeartIcon className="w-5 h-5" />
+              Wishlist
+              {wishlistCount > 0 && (
+                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(57,255,20,0.15)', color: '#39FF14' }}>{wishlistCount}</span>
+              )}
+            </Link>
+            <Link
+              href="/cart"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 mx-3 px-4 py-3.5 rounded-xl text-sm font-medium"
+              style={{ color: '#999' }}
+            >
+              <ShoppingCartIcon className="w-5 h-5" />
+              Cart
+              {cartCount > 0 && (
+                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(57,255,20,0.15)', color: '#39FF14' }}>{cartCount}</span>
+              )}
+            </Link>
+          </div>
+
+          {/* Bottom — Profile / Sign In */}
+          <div className="px-4 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            {isLoggedIn ? (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-2xl" style={{ backgroundColor: 'rgba(57,255,20,0.15)', border: '2px solid rgba(57,255,20,0.3)' }}>
+                  {userAvatar}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: '#F0F0F0' }}>{userName || 'User'}</p>
+                  <p className="text-xs" style={{ color: '#666' }}>AutoMart Member</p>
+                </div>
+                <button
+                  onClick={() => { handleLogout(); setMobileMenuOpen(false) }}
+                  className="w-9 h-9 flex items-center justify-center rounded-full"
+                  style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#EF4444' }}
+                  title="Sign out"
                 >
                   <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                  Sign In
-                </Link>
-              )}
-            </div>
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium"
+                style={{ backgroundColor: 'rgba(255,82,59,0.9)', color: '#fff' }}
+              >
+                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
-      )}
-    </nav>
+      </div>
+    )}
+    </>
   )
 }
