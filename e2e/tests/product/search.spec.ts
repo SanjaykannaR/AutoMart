@@ -26,7 +26,7 @@ test.describe('Product Search', () => {
 
   test('autocomplete input accepts typing', async ({ page }) => {
     await page.goto('/search')
-    const input = page.getByPlaceholder(/search/i)
+    const input = page.getByPlaceholder(/search by part name/i)
     await input.fill('eng')
     await expect(input).toHaveValue('eng')
   })

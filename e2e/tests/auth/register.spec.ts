@@ -9,7 +9,6 @@ test.describe('Authentication — Registration', () => {
     await expect(registerPage.nameInput).toBeVisible()
     await expect(registerPage.emailInput).toBeVisible()
     await expect(registerPage.passwordInput).toBeVisible()
-    await expect(registerPage.roleSelect).toBeVisible()
     await expect(registerPage.submitButton).toBeVisible()
   })
 
@@ -34,14 +33,5 @@ test.describe('Authentication — Registration', () => {
     await registerPage.goto()
     await registerPage.signInLink.click()
     await expect(page).toHaveURL(/\/login/)
-  })
-
-  test('should have role selector with options', async ({ page }) => {
-    const registerPage = new RegisterPage(page)
-    await registerPage.goto()
-    await expect(registerPage.roleSelect).toBeVisible()
-    // Should have 3 role options
-    const options = registerPage.roleSelect.locator('option')
-    await expect(options).toHaveCount(3)
   })
 })

@@ -65,17 +65,81 @@ function SearchContent() {
 
   /** Image search mode — shows uploaded image banner */
   const [imageSearch, setImageSearch] = useState<string | null>(null) // Image data URL or null
+  const [imageSearchLoading, setImageSearchLoading] = useState(false) // Loading state for image search
+  const [imageSearchError, setImageSearchError] = useState<string | null>(null) // Error message if image search fails
   const isImageMode = searchParams.get('mode') === 'image' // Check if URL has image mode
 
   /**
+   * Convert a base64 data URL to a File object for multipart upload.
+   */
+  const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
+    const res = await fetch(dataUrl) // Fetch the data URL
+    const blob = await res.blob() // Convert to Blob
+    return new File([blob], filename, { type: blob.type }) // Create File object
+  }
+
+  /**
+   * Send image to backend for CLIP-based visual matching.
+   * Results are displayed in the same product grid as text search.
+   */
+  const performImageSearch = async (dataUrl: string) => {
+    setImageSearchLoading(true) // Show loading state
+    setImageSearchError(null) // Clear previous errors
+    try {
+      const file = await dataUrlToFile(dataUrl, 'search-image.jpg') // Convert to File
+      const formData = new FormData() // Build multipart form
+      formData.append('image', file) // Attach image
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search/image`, {
+        method: 'POST', // Upload image
+        body: formData, // Multipart form data (no Content-Type header — browser sets it)
+      })
+
+      if (!res.ok) {
+        throw new Error(`Image search failed (HTTP ${res.status})`)
+      }
+
+      const data = await res.json() // Parse response
+      const matchResults = data.results || [] // Array of { productId, similarity, metadata }
+
+      if (matchResults.length === 0) {
+        setProducts([]) // No matches — show empty state
+        return
+      }
+
+      // Fetch full product details for each matched product ID
+      const productPromises = matchResults.slice(0, 10).map(async (match: any) => {
+        try {
+          const productRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${match.productId}`)
+          if (!productRes.ok) return null
+          const product = await productRes.json()
+          return { ...product, similarity: match.similarity } // Attach similarity score
+        } catch {
+          return null // Skip failed fetches
+        }
+      })
+
+      const fetchedProducts = (await Promise.all(productPromises)).filter(Boolean) // Remove nulls
+      setProducts(fetchedProducts) // Display matched products
+    } catch (err: any) {
+      console.error('[Image Search] Failed:', err)
+      setImageSearchError('Image matching unavailable — try text search instead')
+      setProducts([]) // Show empty state with fallback message
+    } finally {
+      setImageSearchLoading(false) // Hide loading
+    }
+  }
+
+  /**
    * On mount, check if image search mode.
-   * If so, read the stored image from sessionStorage.
+   * If so, read the stored image and trigger backend matching.
    */
   useEffect(() => {
     if (isImageMode) { // If URL indicates image search mode
       const img = sessionStorage.getItem('imageSearch') // Read stored image
       if (img) {
         setImageSearch(img) // Set the image for display
+        performImageSearch(img) // Send to backend for matching
       } else {
         router.replace('/search') // No image found — fall back to normal search
       }
@@ -258,11 +322,23 @@ function SearchContent() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <CameraIcon className="w-4 h-4 text-[var(--color-accent)]" /> {/* Camera icon */}
-              <span className="text-sm font-semibold text-[var(--color-accent)]">Image Search</span>
+              {imageSearchLoading ? (
+                <span className="text-sm font-semibold text-[var(--color-accent)]">Analyzing image...</span>
+              ) : imageSearchError ? (
+                <span className="text-sm font-semibold text-[var(--color-warning)]">Image Search</span>
+              ) : (
+                <span className="text-sm font-semibold text-[var(--color-accent)]">Image Search</span>
+              )}
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] truncate">
-              Showing results matching your uploaded photo
-            </p>
+            {imageSearchLoading ? (
+              <p className="text-xs text-[var(--color-text-muted)]">Finding matching parts using visual recognition...</p>
+            ) : imageSearchError ? (
+              <p className="text-xs text-[var(--color-warning)]">{imageSearchError}</p>
+            ) : (
+              <p className="text-xs text-[var(--color-text-muted)] truncate">
+                Showing results matching your uploaded photo
+              </p>
+            )}
           </div>
           <button
             onClick={clearImageSearch} // Clear image search
@@ -347,7 +423,7 @@ function SearchContent() {
 
         {/* Product Grid — main content area */}
         <div className="flex-1">
-          {loading ? (
+          {loading || imageSearchLoading ? (
             /* Skeleton loading state — 6 placeholder cards */
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
               {[1, 2, 3, 4, 5, 6].map((i) => (

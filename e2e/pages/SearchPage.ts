@@ -17,12 +17,12 @@ export class SearchPage {
 
   constructor(page: Page) {
     this.page = page
-    this.searchInput = page.getByPlaceholder(/search/i)
+    this.searchInput = page.getByPlaceholder(/search/i).first()
     this.categoryFilter = page.locator('select').nth(0)
     this.brandFilter = page.getByPlaceholder(/e\.g\. bosch/i)
     this.vehicleTypeFilter = page.locator('select').nth(1)
-    this.voiceButton = page.locator('button[title="Voice search"]')
-    this.imageButton = page.locator('button[title="Search by image"]')
+    this.voiceButton = page.locator('button[title="Voice search"]').last()
+    this.imageButton = page.locator('button[title="Search by image"]').last()
     this.productCards = page.locator('.glass-card')
     this.emptyState = page.getByText('No products found')
   }

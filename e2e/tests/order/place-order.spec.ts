@@ -8,7 +8,7 @@ test.describe('Order Flow', () => {
     await page.evaluate(() => localStorage.removeItem('cart'))
     await page.reload()
     await expect(page.getByText('Your cart is empty')).toBeVisible()
-    await expect(page.getByRole('link', { name: /browse parts/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /browse parts/i }).first()).toBeVisible()
   })
 
   test('checkout redirects to cart when cart is empty', async ({ page }) => {
@@ -63,6 +63,6 @@ test.describe('Order Flow', () => {
 
     await expect(page.getByText('Order Summary')).toBeVisible()
     await expect(page.getByText('Test Brake Pad')).toBeVisible()
-    await expect(page.getByText('$59.98')).toBeVisible() // 29.99 * 2
+    await expect(page.getByText('$59.98').first()).toBeVisible() // 29.99 * 2
   })
 })

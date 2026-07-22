@@ -14,9 +14,9 @@ export class CheckoutPage {
 
   constructor(page: Page) {
     this.page = page
-    this.addressInput = page.getByLabel('Address')
-    this.phoneInput = page.getByLabel('Phone')
-    this.noteInput = page.getByLabel('Note')
+    this.addressInput = page.getByPlaceholder('Street, building, landmark')
+    this.phoneInput = page.getByPlaceholder('+1 234 567 890')
+    this.noteInput = page.getByPlaceholder('Ring the doorbell')
     this.placeOrderButton = page.getByRole('button', { name: /place order/i })
     this.orderSummary = page.getByText('Order Summary')
   }

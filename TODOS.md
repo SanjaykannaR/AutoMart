@@ -128,7 +128,7 @@
 ### 🔥 CRITICAL — Must Fix
 - [x] **Settings icon not visible in navbar** — Fixed: added mobile hamburger drawer with all nav links (including Settings). Desktop nav already worked. Code: `Navbar.tsx` + `Bars3Icon` import + `mobileMenuOpen` state + slide-in panel.
 - [x] **Voice search needs better listening animation** — Fixed: 3-layer pulsing rings (voice-ring keyframe), stronger glow `shadow-[0_0_20px]`, 6-bar sound wave animation, "Listening..." text indicator below mic button.
-- [ ] **Rebuild Docker container** — Many commits since last rebuild. User must confirm before running: `docker compose build web && docker compose up -d web`
+- [x] **Rebuild Docker container** — Rebuilt all 10 containers (web + 8 services + Redis). All healthy. Web on `http://localhost:3080`.
 
 ### HIGH Priority — Core Functionality
 - [ ] **Verify E2E tests pass with Docker stack** — 7 tests failing post-redesign (selectors need updating for new UI elements)

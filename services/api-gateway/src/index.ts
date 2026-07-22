@@ -117,6 +117,7 @@ const services: Record<string, { target: string; auth: boolean }> = {
   '/api/orders': { target: `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`, auth: true },
   '/api/inventory': { target: `http://inventory-service:${process.env.INVENTORY_SERVICE_PORT || 3005}`, auth: true },
   '/api/notifications': { target: `http://notification-service:${process.env.NOTIFICATION_SERVICE_PORT || 3006}`, auth: true },
+  '/api/mcp': { target: `http://mcp-server:${process.env.MCP_SERVER_PORT || 3007}`, auth: false },
 }
 
 // Register a proxy middleware for each service. pathRewrite strips the
@@ -142,7 +143,7 @@ Object.entries(services).forEach(([path, config]) => {
 app.use((_req, res) => {
   return errorResponse(res, 404, 'GATEWAY_NOT_FOUND',
     `No route matched "${_req.method} ${_req.originalUrl}".`,
-    'Valid API routes: /api/auth, /api/products, /api/search, /api/orders, /api/inventory, /api/notifications.')
+    'Valid API routes: /api/auth, /api/products, /api/search, /api/orders, /api/inventory, /api/notifications, /api/mcp.')
 })
 
 // ─── Global error handler ──────────────────────────────────────────────────────

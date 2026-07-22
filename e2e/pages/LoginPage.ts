@@ -18,11 +18,11 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page
-    this.emailInput = page.getByLabel('Email')
-    this.passwordInput = page.getByLabel('Password')
+    this.emailInput = page.locator('input[type="email"]')
+    this.passwordInput = page.locator('input[type="password"]').first()
     this.submitButton = page.getByRole('button', { name: /sign in/i })
     this.errorMessage = page.locator('[class*="danger"], [class*="error"]')
-    this.registerLink = page.getByRole('link', { name: /register/i })
+    this.registerLink = page.getByRole('link', { name: /create account/i })
   }
 
   async goto() {

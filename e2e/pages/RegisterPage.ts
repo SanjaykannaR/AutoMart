@@ -9,17 +9,15 @@ export class RegisterPage {
   readonly nameInput: Locator
   readonly emailInput: Locator
   readonly passwordInput: Locator
-  readonly roleSelect: Locator
   readonly submitButton: Locator
   readonly errorMessage: Locator
   readonly signInLink: Locator
 
   constructor(page: Page) {
     this.page = page
-    this.nameInput = page.getByLabel('Name')
-    this.emailInput = page.getByLabel('Email')
-    this.passwordInput = page.getByLabel('Password')
-    this.roleSelect = page.getByLabel('I am a')
+    this.nameInput = page.getByPlaceholder('Your full name')
+    this.emailInput = page.locator('input[type="email"]')
+    this.passwordInput = page.getByPlaceholder('At least 8 characters')
     this.submitButton = page.getByRole('button', { name: /create account/i })
     this.errorMessage = page.locator('[class*="danger"], [class*="error"]')
     this.signInLink = page.getByRole('link', { name: /sign in/i })
