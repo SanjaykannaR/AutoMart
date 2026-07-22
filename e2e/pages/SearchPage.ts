@@ -1,24 +1,30 @@
+/**
+ * SearchPage Page Object Model
+ */
+
 import { type Page, type Locator } from '@playwright/test'
 
 export class SearchPage {
   readonly page: Page
   readonly searchInput: Locator
-  readonly searchButton: Locator
-  readonly voiceButton: Locator
-  readonly imageButton: Locator
   readonly categoryFilter: Locator
   readonly brandFilter: Locator
+  readonly vehicleTypeFilter: Locator
+  readonly voiceButton: Locator
+  readonly imageButton: Locator
   readonly productCards: Locator
+  readonly emptyState: Locator
 
   constructor(page: Page) {
     this.page = page
-    this.searchInput = page.getByPlaceholder(/search/i)
-    this.searchButton = page.getByRole('button', { name: /search/i })
-    this.voiceButton = page.locator('[title="Voice search"]')
-    this.imageButton = page.locator('[title="Search by image"]')
-    this.categoryFilter = page.getByLabel(/category/i)
-    this.brandFilter = page.getByPlaceholder(/e\.g\. Bosch/i)
-    this.productCards = page.locator('[class*="glass-card"]')
+    this.searchInput = page.getByPlaceholder(/search/i).first()
+    this.categoryFilter = page.locator('select').nth(0)
+    this.brandFilter = page.getByPlaceholder(/e\.g\. bosch/i)
+    this.vehicleTypeFilter = page.locator('select').nth(1)
+    this.voiceButton = page.locator('button[title="Voice search"]').last()
+    this.imageButton = page.locator('button[title="Search by image"]').last()
+    this.productCards = page.locator('.glass-card')
+    this.emptyState = page.getByText('No products found')
   }
 
   async goto() {

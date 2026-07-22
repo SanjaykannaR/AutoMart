@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "automart": {
+      "command": "npx",
+      "args": ["tsx", "D:\\automart\\services\\mcp-server\\src\\stdio-server.ts"],
+      "env": {
+        "MCP_SERVER_URL": "http://localhost:3007"
+      }
+    }
+  }
+}

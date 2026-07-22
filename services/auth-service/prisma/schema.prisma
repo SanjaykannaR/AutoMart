@@ -1,24 +1,28 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/auth"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/auth"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./automart_auth.db"
+  url      = "file:/data/automart_auth.db"
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("individual") // mechanic | individual | shop
-  phone     String?
-  address   String?
-  sessions  Session[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("individual") // mechanic | individual | shop
+  phone         String?
+  phoneVerified Boolean   @default(false)
+  address       String?
+  avatar        String?   @default("👤")
+  authProvider  String?   // google | apple | email
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Session {

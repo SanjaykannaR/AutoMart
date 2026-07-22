@@ -1,9 +1,16 @@
+/**
+ * Search Service — provides hybrid text search (Fuse.js + TF-IDF),
+ * autocomplete (Trie), and image search (CLIP + IVF vectors).
+ * Re-indexes products from product-service every 5 minutes to stay current.
+ */
 import express from 'express'
 import multer from 'multer'
 import { fuzzySearch, initSearchEngine, autoComplete } from './search/textSearch'
-import { searchByImage } from './search/imageSearch'
+import { searchByImage, getIndexStats } from './search/imageSearch'
 
 const app = express()
+// Multer configured for in-memory storage — images are processed immediately,
+// never written to disk. 5MB limit prevents abuse.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
@@ -19,18 +26,25 @@ const PORT = process.env.SEARCH_SERVICE_PORT || 3003
 
 app.use(express.json())
 
+/** Standardised error envelope — consistent across all AutoMart services. */
 function errorResponse(res: express.Response, status: number, code: string, message: string, hint?: string) {
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
 }
 
+// Build the in-memory search index at startup, then refresh every 5 minutes
+// to pick up new/updated products from the product service.
 initSearchEngine()
 setInterval(initSearchEngine, 5 * 60 * 1000)
 
 // ─── GET /search ───────────────────────────────────────────────────────────────
+// Hybrid text search combining Fuse.js (fuzzy matching for typos) with
+// TF-IDF (term frequency scoring for relevance). Results are post-filtered
+// by category, brand, price range, and vehicle type.
 app.get('/search', (req, res) => {
   try {
     const { q, category, brand, minPrice, maxPrice, vehicleType, limit } = req.query
 
+    // Return empty if no search criteria provided — prevents unbounded results
     if (!q && !category && !brand) {
       return res.json([])
     }
@@ -71,6 +85,8 @@ app.get('/search', (req, res) => {
 })
 
 // ─── GET /autocomplete ─────────────────────────────────────────────────────────
+// Returns prefix-based suggestions from the Trie index. Falls back to
+// Fuse.js fuzzy search if the Trie has no matches (handles mid-word queries).
 app.get('/autocomplete', (req, res) => {
   try {
     const { q } = req.query
@@ -87,6 +103,8 @@ app.get('/autocomplete', (req, res) => {
 })
 
 // ─── POST /search/image ────────────────────────────────────────────────────────
+// Accepts an image upload, generates a CLIP embedding, and searches the
+// IVF vector index for visually similar products. Requires multipart/form-data.
 app.post('/search/image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -110,7 +128,9 @@ app.post('/search/image', upload.single('image'), async (req, res) => {
   }
 })
 
-// Multer error handler
+// Multer error handler — catches file size limits and invalid uploads
+// before they reach the route handler. Placed after routes so Express
+// knows to forward multer errors here.
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
@@ -123,6 +143,11 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
       'Try uploading again with a valid image file.')
   }
   next(err)
+})
+
+// ─── GET /search/image/stats ───────────────────────────────────────────────────
+app.get('/search/image/stats', (_req, res) => {
+  res.json(getIndexStats())
 })
 
 // ─── Health ─────────────────────────────────────────────────────────────────────

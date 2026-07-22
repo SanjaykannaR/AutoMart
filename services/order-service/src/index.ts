@@ -1,3 +1,9 @@
+/**
+ * Order Service — handles order creation, retrieval, and status updates.
+ * Enforces a state machine for order lifecycle: pending → confirmed →
+ * picked → shipped → delivered (each step is cancellable except delivered).
+ * Publishes events to Redis so inventory and notification services react.
+ */
 import express from 'express'
 import { PrismaClient } from '../src/generated/order'
 import { z } from 'zod'
@@ -6,6 +12,8 @@ import Redis from 'ioredis'
 const app = express()
 const prisma = new PrismaClient()
 const PORT = process.env.ORDER_SERVICE_PORT || 3004
+// Redis is used as a pub/sub message bus — not for caching. Events are
+// published here and consumed by inventory-service and notification-service.
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
 
 app.use(express.json())
@@ -27,6 +35,11 @@ const orderSchema = z.object({
   note: z.string().optional(),
 })
 
+/**
+ * Extracts the user ID from the JWT in the Authorization header.
+ * Does NOT verify the token — the gateway's auth middleware already does.
+ * Falls back to 'anonymous' for unauthenticated requests (e.g. testing).
+ */
 function getUserId(req: express.Request): string {
   const header = req.headers.authorization
   if (!header) return 'anonymous'
@@ -40,12 +53,15 @@ function getUserId(req: express.Request): string {
 }
 
 // ─── POST /orders ──────────────────────────────────────────────────────────────
+// Creates a new order. Validates the total matches the sum of item prices
+// to prevent cart tampering. Sets estimated delivery to 30 minutes.
+// Publishes 'order:created' event to Redis for inventory and notification services.
 app.post('/orders', async (req, res) => {
   try {
     const data = orderSchema.parse(req.body)
     const userId = getUserId(req)
 
-    // Validate total matches items sum
+    // Server-side total validation — prevents client from sending a lower total
     const itemsTotal = data.items.reduce((sum, item) => sum + item.price * item.qty, 0)
     if (Math.abs(itemsTotal - data.total) > 0.01) {
       return errorResponse(res, 400, 'ORDER_TOTAL_MISMATCH',
@@ -69,6 +85,8 @@ app.post('/orders', async (req, res) => {
     })
 
     // Publish event (non-blocking — don't fail the order if Redis is down)
+    // Downstream services (inventory, notification) will miss the event but
+    // the order itself is still persisted and retrievable.
     redis.publish('order:created', JSON.stringify({
       orderId: order.id,
       userId,
@@ -127,9 +145,13 @@ app.get('/orders/:id', async (req, res) => {
 })
 
 // ─── PATCH /orders/:id/status ──────────────────────────────────────────────────
+// Updates order status with state machine validation. Each status has a
+// limited set of valid next states to prevent illegal transitions.
+// Sets deliveredAt timestamp when status becomes 'delivered'.
 app.patch('/orders/:id/status', async (req, res) => {
   try {
     const { status } = req.body
+    // All valid order statuses — used for both validation and the error hint
     const validStatuses = ['pending', 'confirmed', 'picked', 'shipped', 'delivered', 'cancelled']
     if (!status) {
       return errorResponse(res, 400, 'ORDER_MISSING_STATUS',
@@ -150,7 +172,8 @@ app.patch('/orders/:id/status', async (req, res) => {
         'Verify the order ID is correct.')
     }
 
-    // Validate status transitions
+    // State machine: only certain transitions are allowed.
+    // Once delivered or cancelled, no further changes are possible.
     const validTransitions: Record<string, string[]> = {
       pending: ['confirmed', 'cancelled'],
       confirmed: ['picked', 'cancelled'],
@@ -173,7 +196,7 @@ app.patch('/orders/:id/status', async (req, res) => {
       data,
     })
 
-    // Publish event (non-blocking)
+    // Publish event (non-blocking) — triggers notification emails/SMS
     redis.publish('order:status_changed', JSON.stringify({
       orderId: order.id,
       status: order.status,

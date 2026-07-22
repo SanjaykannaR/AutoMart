@@ -1,11 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/order"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/order"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./automart_orders.db"
+  url      = "file:/data/automart_orders.db"
 }
 
 model Order {

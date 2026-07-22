@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <!-- Neon lime gradient -->
+    <linearGradient id="limeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#39FF14"/>
+      <stop offset="100%" stop-color="#7CFF6B"/>
+    </linearGradient>
+    <!-- Glow filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="58" fill="#0A0A0A" stroke="#39FF14" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Gear teeth (12 teeth around the circle) -->
+  <g fill="url(#limeGrad)" filter="url(#glow)">
+    <!-- Top -->
+    <rect x="55" y="2" width="10" height="14" rx="2"/>
+    <!-- Top-right -->
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(30 60 60)"/>
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(60 60 60)"/>
+    <!-- Right -->
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(90 60 60)"/>
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(120 60 60)"/>
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(150 60 60)"/>
+    <!-- Bottom -->
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(180 60 60)"/>
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(210 60 60)"/>
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(240 60 60)"/>
+    <!-- Left -->
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(270 60 60)"/>
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(300 60 60)"/>
+    <rect x="55" y="2" width="10" height="14" rx="2" transform="rotate(330 60 60)"/>
+  </g>
+
+  <!-- Gear ring -->
+  <circle cx="60" cy="60" r="40" fill="none" stroke="url(#limeGrad)" stroke-width="6" filter="url(#glow)"/>
+
+  <!-- Letter A — turbo style -->
+  <g fill="url(#limeGrad)" filter="url(#glow)">
+    <!-- Left leg of A -->
+    <polygon points="42,82 52,38 56,38 48,82"/>
+    <!-- Right leg of A -->
+    <polygon points="78,82 68,38 64,38 72,82"/>
+    <!-- Crossbar of A -->
+    <rect x="46" y="60" width="28" height="5" rx="1"/>
+  </g>
+
+  <!-- Lightning bolt cutting through A -->
+  <g fill="#0A0A0A" filter="url(#glow)">
+    <polygon points="58,34 52,58 60,56 54,86 70,50 62,52 68,34"/>
+  </g>
+  <!-- Lightning bolt outline for visibility -->
+  <g fill="none" stroke="url(#limeGrad)" stroke-width="1.5" filter="url(#glow)">
+    <polygon points="58,34 52,58 60,56 54,86 70,50 62,52 68,34"/>
+  </g>
+</svg>

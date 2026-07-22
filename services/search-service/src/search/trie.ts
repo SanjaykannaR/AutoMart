@@ -16,12 +16,13 @@
  */
 
 interface TrieNode {
-  children: Map<string, TrieNode>
-  isEnd: boolean
-  frequency: number
-  word: string | null
+  children: Map<string, TrieNode> // Character → child node mapping
+  isEnd: boolean                   // Marks the end of a complete word
+  frequency: number                // Search frequency — used for ranking autocomplete results
+  word: string | null              // The complete word at this terminal node (null if not terminal)
 }
 
+/** Factory function for creating a fresh trie node with default values. */
 function createNode(): TrieNode {
   return { children: new Map(), isEnd: false, frequency: 0, word: null }
 }
@@ -55,7 +56,9 @@ export class Trie {
     node.frequency += freq
   }
 
-  /** Insert a phrase — splits on spaces and indexes each word. */
+  /** Insert a phrase — splits on spaces and indexes each word individually,
+   *  plus the full phrase as one entry. This enables both word-level and
+   *  phrase-level autocomplete (e.g. "brake pad" matches the full phrase). */
   insertPhrase(phrase: string, freq = 1): void {
     const words = phrase.toLowerCase().split(/\s+/).filter(Boolean)
     for (const word of words) {
@@ -76,7 +79,9 @@ export class Trie {
     return node.isEnd
   }
 
-  /** Return all words starting with the given prefix, sorted by frequency (descending). */
+  /** Return all words starting with the given prefix, sorted by frequency (descending).
+   *  This is the core autocomplete operation — O(k) to find the prefix node,
+   *  then O(m log m) to collect and sort m matching words. */
   autocomplete(prefix: string, limit = 10): string[] {
     const key = prefix.toLowerCase().trim()
     let node = this.root
@@ -97,7 +102,8 @@ export class Trie {
     return results.slice(0, limit).map((r) => r.word)
   }
 
-  /** Remove a word from the trie. */
+  /** Remove a word from the trie. Uses recursive cleanup to delete
+   *  empty parent nodes, keeping the trie compact. */
   remove(word: string): boolean {
     const key = word.toLowerCase()
     const found = this.exists(this.root, key, 0)

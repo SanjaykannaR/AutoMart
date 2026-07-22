@@ -1,16 +1,24 @@
+/**
+ * CheckoutPage Page Object Model
+ */
+
 import { type Page, type Locator } from '@playwright/test'
 
 export class CheckoutPage {
   readonly page: Page
   readonly addressInput: Locator
   readonly phoneInput: Locator
+  readonly noteInput: Locator
   readonly placeOrderButton: Locator
+  readonly orderSummary: Locator
 
   constructor(page: Page) {
     this.page = page
-    this.addressInput = page.getByLabel(/address/i)
-    this.phoneInput = page.getByLabel(/phone/i)
+    this.addressInput = page.getByPlaceholder('Street, building, landmark')
+    this.phoneInput = page.getByPlaceholder('+1 234 567 890')
+    this.noteInput = page.getByPlaceholder('Ring the doorbell')
     this.placeOrderButton = page.getByRole('button', { name: /place order/i })
+    this.orderSummary = page.getByText('Order Summary')
   }
 
   async goto() {

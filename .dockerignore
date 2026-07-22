@@ -1,0 +1,38 @@
+node_modules
+dist
+.next
+.turbo
+.cache
+coverage
+playwright-report
+test-results
+
+# SQLite databases (will be created at runtime)
+services/*/prisma/*.db
+services/*/prisma/*.db-journal
+
+# Generated Prisma client (will be regenerated at build time)
+services/*/src/generated
+
+# Environment files (passed via docker-compose env_file)
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

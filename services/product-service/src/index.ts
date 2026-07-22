@@ -1,3 +1,8 @@
+/**
+ * Product Service — manages the product catalog with CRUD operations.
+ * Auto-generates URL slugs from product names, supports filtering by
+ * category/brand/price/vehicle type, and includes category management.
+ */
 import express from 'express'
 import { PrismaClient } from '../src/generated/product'
 import { z } from 'zod'
@@ -25,11 +30,14 @@ const productSchema = z.object({
   imageUrl: z.string().optional(),
 })
 
+/** Deserializes the JSON-stringified compatibleVehicles field from the DB. */
 function parseProduct(p: any) {
   return { ...p, compatibleVehicles: JSON.parse(p.compatibleVehicles || '[]') }
 }
 
 // ─── GET /products ──────────────────────────────────────────────────────────────
+// Lists products with optional filters. Supports category, brand (substring
+// match), price range, vehicle type, and text search. Results are newest-first.
 app.get('/products', async (req, res) => {
   try {
     const { category, brand, minPrice, maxPrice, vehicleType, search } = req.query
@@ -38,6 +46,7 @@ app.get('/products', async (req, res) => {
     if (category) where.categoryId = category
     if (brand) where.brand = { contains: brand as string }
     if (search) where.name = { contains: search as string }
+    // When filtering by vehicleType, also include 'both' since those parts fit any vehicle
     if (vehicleType) where.vehicleType = { in: [vehicleType as string, 'both'] }
     if (minPrice || maxPrice) {
       where.price = {}
@@ -102,9 +111,12 @@ app.get('/products/slug/:slug', async (req, res) => {
 })
 
 // ─── POST /products ────────────────────────────────────────────────────────────
+// Creates a new product. Auto-generates a URL-friendly slug from the name
+// (e.g. "Brake Pad Set" → "brake-pad-set") and checks for duplicates.
 app.post('/products', async (req, res) => {
   try {
     const data = productSchema.parse(req.body)
+    // Slug: lowercase, non-alphanumeric → hyphen, trim leading/trailing hyphens
     const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
     // Check for duplicate slug
@@ -134,6 +146,8 @@ app.post('/products', async (req, res) => {
 })
 
 // ─── GET /categories ───────────────────────────────────────────────────────────
+// Returns all categories with a product count for each. The count is
+// used by the frontend to show how many parts exist in each category.
 app.get('/categories', async (_req, res) => {
   try {
     const categories = await prisma.category.findMany({ include: { _count: { select: { products: true } } } })

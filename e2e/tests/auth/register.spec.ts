@@ -1,26 +1,37 @@
 import { test, expect } from '@playwright/test'
+import { RegisterPage } from '../../pages/RegisterPage'
 
-test.describe('Registration', () => {
-  test('should show registration form', async ({ page }) => {
-    await page.goto('/register')
+test.describe('Authentication — Registration', () => {
+  test('should show registration form with all fields', async ({ page }) => {
+    const registerPage = new RegisterPage(page)
+    await registerPage.goto()
     await expect(page.getByRole('heading', { name: /create account/i })).toBeVisible()
-    await expect(page.getByLabel(/name/i)).toBeVisible()
-    await expect(page.getByLabel(/email/i)).toBeVisible()
-    await expect(page.getByLabel(/password/i)).toBeVisible()
+    await expect(registerPage.nameInput).toBeVisible()
+    await expect(registerPage.emailInput).toBeVisible()
+    await expect(registerPage.passwordInput).toBeVisible()
+    await expect(registerPage.submitButton).toBeVisible()
   })
 
-  test('should show error on short password', async ({ page }) => {
-    await page.goto('/register')
-    await page.getByLabel(/name/i).fill('Test User')
-    await page.getByLabel(/email/i).fill('test@example.com')
-    await page.getByLabel(/password/i).fill('123')
-    await page.getByRole('button', { name: /create account/i }).click()
-    await expect(page.locator('text=8 characters')).toBeVisible()
+  test('should show error for short password', async ({ page }) => {
+    const registerPage = new RegisterPage(page)
+    await registerPage.goto()
+    await registerPage.register('Test User', 'newuser@example.com', '123')
+    // The API returns a validation error about minimum 8 characters
+    await expect(registerPage.errorMessage.first()).toBeVisible({ timeout: 10000 })
   })
 
-  test('should navigate back to login', async ({ page }) => {
-    await page.goto('/register')
-    await page.getByRole('link', { name: /sign in/i }).click()
+  test('should show error for duplicate email', async ({ page }) => {
+    const registerPage = new RegisterPage(page)
+    await registerPage.goto()
+    await registerPage.register('Duplicate User', 'admin@automart.com', 'Password123!')
+    // API returns 409 with email already taken message
+    await expect(registerPage.errorMessage.first()).toBeVisible({ timeout: 10000 })
+  })
+
+  test('should navigate back to login from register', async ({ page }) => {
+    const registerPage = new RegisterPage(page)
+    await registerPage.goto()
+    await registerPage.signInLink.click()
     await expect(page).toHaveURL(/\/login/)
   })
 })

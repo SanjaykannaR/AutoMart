@@ -1,3 +1,9 @@
+/**
+ * Inventory Service — manages stock with a reserve/release/confirm pattern.
+ * This three-stage approach prevents overselling: stock is first reserved
+ * (held during checkout), then confirmed (shipped) or released (cancelled).
+ * Listens to order:created events to auto-reserve stock when orders arrive.
+ */
 import express from 'express'
 import { PrismaClient } from '../src/generated/inventory'
 import { z } from 'zod'
@@ -20,6 +26,9 @@ const reserveSchema = z.object({
 })
 
 // ─── GET /inventory/:productId ─────────────────────────────────────────────────
+// Returns the current inventory status for a product. The 'available' field
+// is always calculated (quantity - reserved) — it's never stored directly,
+// which prevents race conditions between concurrent reservations.
 app.get('/inventory/:productId', async (req, res) => {
   try {
     const item = await prisma.inventoryItem.findUnique({ where: { productId: req.params.productId } })
@@ -30,7 +39,7 @@ app.get('/inventory/:productId', async (req, res) => {
     }
     res.json({
       productId: item.productId,
-      available: item.quantity - item.reserved,
+      available: item.quantity - item.reserved, // Calculated, not stored — avoids race conditions
       quantity: item.quantity,
       reserved: item.reserved,
     })
@@ -43,6 +52,9 @@ app.get('/inventory/:productId', async (req, res) => {
 })
 
 // ─── POST /inventory/reserve ───────────────────────────────────────────────────
+// Reserves stock for an order. Increments the 'reserved' counter but does NOT
+// change total quantity — the stock is still physically present. This is called
+// by the Redis event listener when an order is created, or directly via API.
 app.post('/inventory/reserve', async (req, res) => {
   try {
     const { productId, quantity } = reserveSchema.parse(req.body)
@@ -81,6 +93,8 @@ app.post('/inventory/reserve', async (req, res) => {
 })
 
 // ─── POST /inventory/release ───────────────────────────────────────────────────
+// Releases previously reserved stock (e.g. when an order is cancelled).
+// Only decrements 'reserved' — the total quantity stays the same.
 app.post('/inventory/release', async (req, res) => {
   try {
     const { productId, quantity } = reserveSchema.parse(req.body)
@@ -118,6 +132,9 @@ app.post('/inventory/release', async (req, res) => {
 })
 
 // ─── POST /inventory/confirm ───────────────────────────────────────────────────
+// Confirms that an order has been fulfilled. Decrements BOTH 'quantity'
+// (stock is leaving the warehouse) and 'reserved' (the hold is released).
+// This is the final step in the inventory lifecycle for an order.
 app.post('/inventory/confirm', async (req, res) => {
   try {
     const { productId, quantity } = reserveSchema.parse(req.body)
@@ -158,6 +175,9 @@ app.post('/inventory/confirm', async (req, res) => {
 })
 
 // ─── Redis event listener ──────────────────────────────────────────────────────
+// Subscribes to 'order:created' events published by the order service.
+// Automatically reserves stock for each item in the order. Errors are
+// caught per-item so one bad product ID doesn't block the others.
 redis.subscribe('order:created', (err) => {
   if (err) console.error('[Inventory] Redis subscribe error:', err)
 })
