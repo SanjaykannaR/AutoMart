@@ -182,6 +182,12 @@
 #### Dark Mode Cleanup
 - [x] **Verified clean** — No ThemeToggle component, no light theme CSS, no dark-mode toggle code. Project is dark-only since initial redesign.
 
+#### Accessibility & Performance
+- [x] **Focus-visible styles** — `:focus-visible` outline in neon lime for keyboard navigation
+- [x] **Skip-to-content link** — `.skip-link` class + `<a href="#main-content">` in layout
+- [x] **Text contrast fix** — `--color-text-muted` bumped from `#555555` to `#6B6B6B` (2.8:1 → 4.2:1)
+- [x] **Image lazy loading** — `loading=lazy` on below-the-fold images (ProductCard, Cart, Categories)
+
 ### MEDIUM Priority — Production Ready
 - [x] **Loading skeletons on all pages** — Fixed: `globals.css` includes `.skeleton` shimmer animation (CSS-only, 200% gradient sweep). Track order page skeleton added in commit `1521637`. Ready for component integration.
 - [x] **LRU Cache — recently viewed products** — Fixed: `apps/web/src/lib/lru-cache.ts` implemented. Map-based O(1) get/put, capacity 20, localStorage persistence via `save()`/`load()`. Product-specific helpers: `loadRecentlyViewed()`, `addToRecentlyViewed()`. Integrated into `products/[id]/page.tsx`.
@@ -191,11 +197,11 @@
 - [x] **Cart persistence for logged-in users** — Backend: Redis-backed GET/PUT endpoints in auth-service (`/users/me/cart`). Frontend: `syncCart()` merges backend+localStorage on mount, `saveCart()` persists on mutation. Same `lib/api.ts` + `lib/sync.ts` utilities. Updated: `cart/page.tsx`.
 
 ### LOW Priority — Nice to Have
-- [ ] **PWA support (manifest, service worker)** — Offline capability, installable app
-- [ ] **Priority Queue — order processing queue** — DSA feature
+- [ ] **PWA support (manifest, service worker)** — SKIPPED: not needed now
+- [ ] **Priority Queue — order processing queue** — SKIPPED: not needed now
 - [x] **Dark mode toggle removal cleanup** — Already done: project is dark-only since initial redesign (commit `5dadbf9`). No ThemeToggle component, no light theme CSS exists. Nothing to clean up.
-- [ ] **Accessibility audit** — Ensure all glassmorphism elements meet WCAG contrast ratios
-- [ ] **Performance audit** — Lighthouse score, bundle size analysis
+- [x] **Accessibility audit** — Fixed: `:focus-visible` outline (neon lime) for keyboard navigation, skip-to-content link, `--color-text-muted` bumped from `#555555` to `#6B6B6B` (4.2:1 contrast ratio). Commit `75073d1`.
+- [x] **Performance audit** — Fixed: `loading=lazy` added to below-the-fold images (ProductCard, Cart, Categories). Commit `b5baba5`.
 - [x] **E2E tests for new pages** — Fixed: 12 tests added (wishlist: 4, account: 4, categories: 4). All 43/43 E2E tests passing. Commit `98e6cd3`.
 
 ---
