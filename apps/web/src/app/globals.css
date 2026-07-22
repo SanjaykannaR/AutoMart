@@ -426,10 +426,18 @@ h1, h2, h3, h4, h5, h6 {
    divs — just a clean box-shadow transition on the wrapper.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Search bar wrapper — no focus glow, clean look */
+/* Search bar wrapper — outside glow on focus */
 .search-glow-wrapper {
-  position: relative; /* Standard positioning context */
-  border-radius: 9999px; /* Match the pill shape of the search bar */
+  position: relative;
+  border-radius: 9999px;
+  transition: box-shadow 0.4s ease;
+}
+
+.search-glow-wrapper:focus-within {
+  box-shadow:
+    0 0 0 3px rgba(56, 182, 255, 0.20),
+    0 0 20px rgba(56, 182, 255, 0.15),
+    0 0 40px rgba(139, 92, 246, 0.08);
 }
 
 /* ─── Hero banner auto-slide progress animation ─── */
