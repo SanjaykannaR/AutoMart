@@ -1,7 +1,7 @@
 # AutoMart — Project Todos
 
 > Branch: `sanjay` (merged to `main`)
-> Last updated: 2026-07-22 (Session: Athena-god + Max — wishlist/cart sync completed)
+> Last updated: 2026-07-22 (Session: Athena-god — search bar fixes, CI fixes, merge to main)
 
 ---
 
@@ -206,6 +206,55 @@
 
 ---
 
+## 🔧 TODO — Next Session (2026-07-23)
+
+### Phase 12: Production Deployment
+- [ ] **Vercel deploy** — Deploy `apps/web` (Next.js) to Vercel. Set `NEXT_PUBLIC_API_URL` env var to production API gateway URL. Configure custom domain, previews on PRs.
+- [ ] **Railway deploy** — Deploy all 8 backend services + Redis to Railway. Use Railway's managed PostgreSQL + Redis add-ons. Set env vars per service. Configure healthcheck endpoints.
+- [ ] **Docker production build** — Optimize Dockerfiles for prod (remove dev deps, multi-stage builds verified). Add `docker-compose.prod.yml` for self-hosted alternative.
+- [ ] **Environment variables** — Audit all `.env` files, create production `.env.production` with secure secrets (JWT_SECRET, REDIS_URL, DATABASE_URL, STRIPE_KEY, etc.)
+- [ ] **CI/CD for production** — GitHub Actions deploy workflow: push to `main` → build → deploy frontend to Vercel, services to Railway.
+
+### Phase 13: PostgreSQL Migration
+- [ ] **Replace SQLite with PostgreSQL** — Update all 5 Prisma schemas (`auth`, `product`, `order`, `inventory`, `search`) to use PostgreSQL provider. Add `postgresql` connection string support.
+- [ ] **Run migrations** — `npx prisma migrate deploy` for all services against PostgreSQL. Verify schema compatibility (JSON fields, DateTime defaults, etc.)
+- [ ] **Seed data** — Update seed scripts for PostgreSQL (same test users, 24 products, 8 categories).
+- [ ] **Local dev with PostgreSQL** — Add PostgreSQL to `docker-compose.dev.yml` so local dev uses PostgreSQL (matching production).
+- [ ] **Update Docker configs** — `docker-compose.yml` and `docker-compose.dev.yml` use PostgreSQL service instead of SQLite file mounts.
+
+### Phase 14: Stripe Payment Integration
+- [ ] **Stripe backend** — Add Stripe SDK to order-service. Create `POST /payments/intent` (create PaymentIntent), `POST /payments/confirm` (webhook handler), `GET /payments/:id` (status).
+- [ ] **Webhook handling** — Stripe webhook endpoint in order-service. Handle `payment_intent.succeeded`, `payment_intent.payment_failed`. Update order status accordingly.
+- [ ] **Frontend checkout** — Replace current checkout form with Stripe Elements (card input). Integrate `@stripe/react-stripe-js`. Show payment status on order confirmation page.
+- [ ] **Order flow update** — Checkout → create PaymentIntent → confirm payment → create order → reserve inventory. Atomic flow with rollback on failure.
+- [ ] **Test mode** — Use Stripe test keys for dev/staging. Add `.env` config for `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
+
+### Phase 15: Admin Dashboard
+- [ ] **Admin pages** — `/admin` layout with sidebar nav. Pages: Dashboard (stats), Products (CRUD), Orders (list + status), Inventory (stock levels), Users (list).
+- [ ] **Admin API endpoints** — Product CRUD (create, edit, delete), Order management (status update, refund trigger), Inventory management (adjust stock, view alerts), User list.
+- [ ] **Role-based access** — Add `role` field to User model (admin/user). Middleware to protect admin routes (backend + frontend).
+- [ ] **Dashboard stats** — Total orders, revenue, products in stock, low-stock alerts, recent orders, top products.
+- [ ] **Product management** — Image upload (S3/local), bulk import (CSV), category management, product visibility toggle.
+
+### Phase 16: Email Templates
+- [ ] **Email service** — Add `nodemailer` + SMTP config to notification-service. Create email sender utility.
+- [ ] **Template engine** — Use `react-email` or `MJML` for responsive email templates.
+- [ ] **Order confirmation email** — Sent on successful payment. Includes: order summary, items, total, estimated delivery, tracking link.
+- [ ] **Shipping update email** — Sent on order status change. Status-specific templates (shipped, out for delivery, delivered).
+- [ ] **Password reset email** — Sent on password reset request. Includes reset link with token + expiry.
+- [ ] **Welcome email** — Sent on successful registration. Brand intro + quick links.
+- [ ] **Email queue** — Use Redis pub/sub (existing notification-service) to queue emails asynchronously.
+
+### Phase 17: Analytics
+- [ ] **Analytics backend** — Add `analytics` service (Express + Prisma/PostgreSQL). Events table: `event_type`, `user_id`, `product_id`, `page`, `metadata`, `timestamp`.
+- [ ] **Event tracking API** — `POST /analytics/events` — accepts batch of events. Rate-limited. Authenticated (optional: anonymous tracking).
+- [ ] **Frontend tracking** — `lib/analytics.ts` utility. Track: page views, product views, search queries, cart actions, purchases. Fire-and-forget batched requests.
+- [ ] **Admin analytics dashboard** — `/admin/analytics` page. Charts: daily orders, revenue, top products, search terms, conversion funnel. Use `recharts` or `chart.js`.
+- [ ] **Popular products** — Update MCP server's `popular-products` tool to use analytics data (view count + purchase count) instead of hardcoded data.
+- [ ] **Real-time dashboard** — WebSocket or polling for live order count, active users, revenue today.
+
+---
+
 ## 📝 Notes
 
 ### Design System Summary
@@ -254,11 +303,25 @@
 - `98e6cd3` — Add 12 E2E tests (wishlist, account, categories) — 43/43 passing
 - `1521637` — LRU cache + search placeholder rotation + track order skeleton
 - `e925fdb` — Wishlist/cart Redis persistence + MCP stdio server + Claude Desktop/Cursor configs
-- `pending` — Wishlist/cart frontend sync with backend (lib/api.ts, lib/sync.ts, page updates)
+- `5286266` — Wishlist/cart frontend sync with backend (lib/api.ts, lib/sync.ts, page updates)
+- `98e6cd3` — Add 12 E2E tests (wishlist, account, categories) — 43/43 passing
+- `75073d1` — Accessibility audit fixes (focus-visible, skip-to-content, text contrast)
+- `b5baba5` — Performance audit fixes (lazy loading images)
+- `323c3a8` — Login page fix: GoogleOAuthProvider isolated to button component
+- `202cee3` — CartItem type fix (id: string) + CSS @import order fix
+- `7d9cc77` — Search bar inner focus glow removed (keep outer glow)
+- `22a7cc1` — CSS input:focus-visible override (no inner green outline)
+- `db716d5` — Restore outside search glow wrapper
+- `7dc99d9` — Merge: search bar focus fix into main
 
 ### Known Bugs
 - ~~Settings icon: code is correct, likely needs Docker rebuild~~ — FIXED (hamburger drawer)
 - ~~Voice animation: too subtle, needs visual upgrade~~ — FIXED (6-bar wave + pulsing rings)
+- ~~7 E2E tests failing (selectors outdated after redesign)~~ — FIXED (all 43/43 passing)
+- ~~GoogleOAuth login: "element detached from DOM"~~ — FIXED (isolated provider to button)
+- ~~Mobile drawer: z-index stacking issues~~ — FIXED (moved outside nav)
+- ~~Search bar inner green focus glow~~ — FIXED (disabled on search inputs, kept outer glow)
+- ~~CartItem type mismatch (number vs string)~~ — FIXED (id now string matching Prisma)
 - ~~7 E2E tests failing (selectors outdated after redesign)~~ — FIXED (all 31 passing)
 - ~~GoogleOAuth login: "element detached from DOM"~~ — FIXED (hydration race fix)
 - ~~Mobile drawer: z-index stacking issues~~ — FIXED (moved outside nav)
