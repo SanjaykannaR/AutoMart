@@ -126,6 +126,7 @@ export default function CartPage() {
                       <img
                         src={item.imageUrl || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=200&h=200&fit=crop&q=80'}
                         alt={item.name} // Alt text for accessibility
+                        loading="lazy"
                         className="w-full h-full object-cover" // Cover container
                       />
                     </div>

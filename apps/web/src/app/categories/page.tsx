@@ -132,6 +132,7 @@ export default function CategoriesPage() {
               <img
                 src={category.image}
                 alt={category.name} // Alt text for accessibility
+                loading="lazy"
                 className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 draggable={false} // Prevent drag interference
               />

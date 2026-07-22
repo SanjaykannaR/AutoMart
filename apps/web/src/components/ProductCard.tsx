@@ -89,6 +89,7 @@ export function ProductCard({ product }: { product: Product }) {
           <img
             src={product.imageUrl || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=400&fit=crop&q=80'}
             alt={product.name}
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
 
