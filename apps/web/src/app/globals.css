@@ -377,3 +377,90 @@ h1, h2, h3, h4, h5, h6 {
   from { height: 20%; }
   to   { height: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO — Gemini-Style Gradient Glow Search Bar
+   When the search bar is focused, a gradient border glows
+   around it like Google Gemini's search input.
+   Uses a rotating conic gradient for the "moving glow" effect.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Keyframe for rotating the conic gradient border */
+@keyframes gradient-rotate {
+  0% {
+    transform: rotate(0deg); /* Start at 0 degrees */
+  }
+  100% {
+    transform: rotate(360deg); /* Full rotation */
+  }
+}
+
+/* Wrapper div that contains the search bar and glow effect */
+.search-glow-wrapper {
+  position: relative; /* Contain the absolute glow layer */
+  border-radius: 9999px; /* Full pill shape */
+}
+
+/* Animated gradient border — hidden by default, shown on focus */
+.search-glow-border {
+  /* Conic gradient creates the rotating rainbow/green glow */
+  background: conic-gradient(
+    from 0deg,
+    #39FF14,       /* Lime green — primary accent */
+    #38B6FF,       /* Sky blue — secondary accent */
+    #FF523B,       /* Coral — tertiary accent */
+    #8B5CF6,       /* Purple — extra color */
+    #39FF14        /* Back to lime green to complete the loop */
+  );
+  /* Blur the gradient edges for soft glow effect */
+  filter: blur(8px);
+  /* Rotate animation — 3 second full rotation */
+  animation: gradient-rotate 3s linear infinite;
+  /* Initially invisible */
+  opacity: 0;
+  /* Smooth transition when showing/hiding */
+  transition: opacity 0.4s ease;
+  /* Negative inset to extend outside the wrapper */
+  margin: -4px;
+  border-radius: 9999px;
+  z-index: -1; /* Behind the search bar itself */
+}
+
+/* Show the glow border when the search input inside is focused */
+.search-glow-wrapper:focus-within .search-glow-border {
+  opacity: 1; /* Make the gradient glow visible */
+}
+
+/* Also add a subtle outer box-shadow glow on focus */
+.search-glow-wrapper:focus-within {
+  box-shadow: 0 0 30px rgba(57, 255, 20, 0.15), 0 0 60px rgba(56, 182, 255, 0.08);
+  /* Green + blue soft glow around the entire search bar */
+}
+
+/* Smooth transition for the wrapper's box-shadow */
+.search-glow-wrapper {
+  transition: box-shadow 0.4s ease;
+}
+
+/* ─── Hero banner auto-slide progress animation ─── */
+/* Smooth width transition for the top progress bar */
+.hero-progress-bar {
+  transition: width 5s linear; /* Matches the 5s slide interval */
+}
+
+/* ─── Hero slide image Ken Burns effect ─── */
+/* Subtle zoom animation on banner images for visual interest */
+@keyframes ken-burns {
+  0% {
+    transform: scale(1); /* Start at normal size */
+  }
+  100% {
+    transform: scale(1.05); /* Slowly zoom in over 5 seconds */
+  }
+}
+
+/* Apply Ken Burns to active banner image */
+.search-glow-wrapper:focus-within ~ .hero-progress-bar,
+section:hover .hero-progress-bar {
+  opacity: 1;
+}
