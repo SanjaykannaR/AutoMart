@@ -391,10 +391,10 @@ export function Hero({ onSearch }: HeroProps) {
       </div>
 
       {/* ─── SLIDE NAVIGATION CONTROLS ─── */}
-      {/* Previous arrow — left side of banner */}
+      {/* Previous arrow — left side of banner (hidden on mobile) */}
       <button
         onClick={goToPrev} // Go to previous slide on click
-        className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/60 hover:bg-black/50 hover:text-white hover:border-white/20 transition-all duration-300"
+        className="hidden sm:flex absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/10 items-center justify-center text-white/60 hover:bg-black/50 hover:text-white hover:border-white/20 transition-all duration-300"
         aria-label="Previous slide" // Accessibility label
       >
         {/* Left chevron icon */}
@@ -403,10 +403,10 @@ export function Hero({ onSearch }: HeroProps) {
         </svg>
       </button>
 
-      {/* Next arrow — right side of banner */}
+      {/* Next arrow — right side of banner (hidden on mobile) */}
       <button
         onClick={goToNext} // Go to next slide on click
-        className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/60 hover:bg-black/50 hover:text-white hover:border-white/20 transition-all duration-300"
+        className="hidden sm:flex absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/10 items-center justify-center text-white/60 hover:bg-black/50 hover:text-white hover:border-white/20 transition-all duration-300"
         aria-label="Next slide" // Accessibility label
       >
         {/* Right chevron icon */}
