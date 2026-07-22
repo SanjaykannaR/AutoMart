@@ -131,7 +131,7 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
+            className="bg-transparent border-none outline-none focus-visible:outline-none focus-visible:ring-0 flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
           />
 
           {/* Clear button — appears when typing */}
