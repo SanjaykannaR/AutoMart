@@ -1,6 +1,6 @@
 /**
  * Product Detail Page — Full product view with gallery, specs, and CTA
- * 
+ *
  * Layout (desktop):
  *   ┌─────────────────────────┬─────────────────────────┐
  *   │  Left: Product Image    │  Right: Details          │
@@ -14,85 +14,88 @@
  *   │                         │  - Delivery (03)         │
  *   │                         │  - Qty selector + CTA    │
  *   └─────────────────────────┴─────────────────────────┘
- * 
- * Layout (mobile):
- *   - Image on top (full width)
- *   - Details below
- *   - Sticky "Add to Cart" bar at bottom when scrolling past CTA
- * 
+ *
  * Animation:
- *   - Product image scales in from 0.9 → 1.0
- *   - Details fade in with staggered timing
+ *   - Product image scales in with image animation
+ *   - Right-side details stagger in with card/text animations
  *   - Section indices (01, 02, 03) in lime
- * 
+ *
  * Cart behavior:
  *   - Adds to localStorage cart
  *   - Dispatches 'cart-updated' event so Navbar updates count
  *   - Redirects to /cart after adding
  */
-'use client'
+'use client' // Next.js client component directive
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { TruckIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect } from 'react' // React hooks for state and effects
+import { useParams, useRouter } from 'next/navigation' // Next.js routing hooks
+import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
+import { TruckIcon, ShieldCheckIcon } from '@heroicons/react/24/outline' // Trust/shipping icons
 
 /**
  * Fallback product data — used when the API is unreachable.
  * Provides realistic mock data for development/demo purposes.
  */
 const mockProduct = {
-  id: '1',
-  name: 'Ceramic Brake Pads',
-  category: 'Brake System',
-  brand: 'Bosch',
-  price: 45.99,
-  description: 'High-performance ceramic brake pads for sedans and SUVs. Low dust, quiet braking, and extended lifespan. Engineered for daily driving and light performance use.',
-  specifications: [
-    { key: 'Material', value: 'Ceramic Compound' },
-    { key: 'Fits', value: 'Sedan, SUV, Crossover' },
-    { key: 'Warranty', value: '2 Years' },
-    { key: 'OEM', value: 'Yes' },
-    { key: 'Position', value: 'Front' },
-    { key: 'Weight', value: '1.2 kg' },
+  id: '1', // Default product ID
+  name: 'Ceramic Brake Pads', // Product name
+  category: 'Brake System', // Category for badge
+  brand: 'Bosch', // Brand name
+  price: 45.99, // Price in dollars
+  description: 'High-performance ceramic brake pads for sedans and SUVs. Low dust, quiet braking, and extended lifespan. Engineered for daily driving and light performance use.', // Product description
+  specifications: [ // Technical specifications array
+    { key: 'Material', value: 'Ceramic Compound' }, // Material type
+    { key: 'Fits', value: 'Sedan, SUV, Crossover' }, // Vehicle compatibility
+    { key: 'Warranty', value: '2 Years' }, // Warranty period
+    { key: 'OEM', value: 'Yes' }, // OEM certification
+    { key: 'Position', value: 'Front' }, // Brake position
+    { key: 'Weight', value: '1.2 kg' }, // Product weight
   ],
-  compatibleVehicles: [
-    'Honda Civic 2016-2024',
-    'Toyota Corolla 2014-2024',
-    'Hyundai Elantra 2017-2024',
-    'Kia Forte 2019-2024',
+  compatibleVehicles: [ // Compatible vehicle list
+    'Honda Civic 2016-2024', // Civic compatibility
+    'Toyota Corolla 2014-2024', // Corolla compatibility
+    'Hyundai Elantra 2017-2024', // Elantra compatibility
+    'Kia Forte 2019-2024', // Forte compatibility
   ],
-  imageUrl: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80',
-  stock: 42,
+  imageUrl: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80', // Product image URL
+  stock: 42, // Available stock count
 }
 
+/**
+ * ProductDetailPage Component
+ * Displays a single product with image, specs, compatibility, and add-to-cart.
+ */
 export default function ProductDetailPage() {
-  const { id } = useParams()
-  const router = useRouter()
+  const { id } = useParams() // Get product ID from URL
+  const router = useRouter() // Next.js router for navigation
+
+  /** Product data — starts as null while loading */
   const [product, setProduct] = useState<typeof mockProduct | null>(null)
+  /** Quantity selector — starts at 1 */
   const [qty, setQty] = useState(1)
+  /** Add-to-cart loading state */
   const [adding, setAdding] = useState(false)
 
   /** Fetch product data from API, fall back to mock data on error */
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`)
-      .then((r) => r.json())
-      .then(setProduct)
-      .catch(() => setProduct(mockProduct))
-  }, [id])
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`) // Fetch by ID
+      .then((r) => r.json()) // Parse JSON response
+      .then(setProduct) // Store product data
+      .catch(() => setProduct(mockProduct)) // Fallback to mock on error
+  }, [id]) // Re-fetch when ID changes
 
   /** Show skeleton while product is loading */
   if (!product) {
     return (
       <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid md:grid-cols-2 gap-10">
-          <div className="aspect-square skeleton rounded-2xl" />
+          <div className="aspect-square skeleton rounded-2xl" /> {/* Image skeleton */}
           <div className="space-y-4">
-            <div className="h-4 w-24 skeleton" />
-            <div className="h-10 w-3/4 skeleton" />
-            <div className="h-4 w-20 skeleton" />
-            <div className="h-8 w-32 skeleton" />
-            <div className="h-24 skeleton" />
+            <div className="h-4 w-24 skeleton" /> {/* Badge skeleton */}
+            <div className="h-10 w-3/4 skeleton" /> {/* Name skeleton */}
+            <div className="h-4 w-20 skeleton" /> {/* Brand skeleton */}
+            <div className="h-8 w-32 skeleton" /> {/* Price skeleton */}
+            <div className="h-24 skeleton" /> {/* Description skeleton */}
           </div>
         </div>
       </div>
@@ -104,18 +107,26 @@ export default function ProductDetailPage() {
    * Dispatches a custom event so the Navbar updates its cart count.
    */
   const handleAddToCart = () => {
-    setAdding(true)
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    const existing = cart.findIndex((item: any) => item.id === product.id)
+    setAdding(true) // Show loading state
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]') // Read existing cart
+    const existing = cart.findIndex((item: any) => item.id === product.id) // Check if already in cart
     if (existing >= 0) {
-      cart[existing].qty += qty
+      cart[existing].qty += qty // Increase quantity if already in cart
     } else {
-      cart.push({ ...product, qty })
+      cart.push({ ...product, qty }) // Add new item with quantity
     }
-    localStorage.setItem('cart', JSON.stringify(cart))
-    // Notify Navbar about cart update
-    window.dispatchEvent(new Event('cart-updated'))
-    router.push('/cart')
+    localStorage.setItem('cart', JSON.stringify(cart)) // Save to localStorage
+    window.dispatchEvent(new Event('cart-updated')) // Notify Navbar about cart update
+    // Dispatch notification for the navbar bell
+    window.dispatchEvent(new CustomEvent('new-notification', {
+      detail: {
+        type: 'order' as const,
+        title: 'Added to Cart',
+        message: `${product.name} × ${qty} added to your cart.`,
+        link: '/cart',
+      },
+    }))
+    router.push('/cart') // Redirect to cart page
   }
 
   return (
@@ -126,44 +137,35 @@ export default function ProductDetailPage() {
             LEFT: Product Image
             Large image card that "floats" with subtle depth
             ═══════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        >
+        <ScrollReveal variant="image">
           <div className="card p-3 rounded-2xl overflow-hidden relative">
-            {/* Product image — full aspect-square */}
             <img
               src={product.imageUrl || 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80'}
-              alt={product.name}
-              className="w-full aspect-square object-cover rounded-xl"
+              alt={product.name} // Alt text for accessibility
+              className="w-full aspect-square object-cover rounded-xl" // Full width, square aspect
             />
-
             {/* Stock badge — top-right corner */}
             <div className="absolute top-5 right-5">
               {product.stock > 10 ? (
-                <span className="badge">In Stock</span>
+                <span className="badge">In Stock</span> // Green badge for sufficient stock
               ) : (
                 <span className="badge" style={{ background: 'var(--color-warning)', color: '#000' }}>
-                  Only {product.stock} left
+                  Only {product.stock} left {/* Warning badge for low stock */}
                 </span>
               )}
             </div>
           </div>
-        </motion.div>
+        </ScrollReveal>
 
         {/* ═══════════════════════════════════════════════════════
             RIGHT: Product Details
             Name, price, specs, compatibility, CTA
+            All elements stagger in from the right
             ═══════════════════════════════════════════════════════ */}
         <div className="space-y-6">
 
-          {/* Category badge + Name */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          >
+          {/* Category badge + Name — text animation with delay */}
+          <ScrollReveal variant="text" delay={0.1}>
             <span className="badge mb-3 inline-block">{product.category}</span>
             <h1
               className="text-3xl sm:text-4xl font-extrabold leading-tight"
@@ -172,43 +174,31 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
             <p className="text-sm text-[var(--color-text-dim)] mt-2">{product.brand}</p>
-          </motion.div>
+          </ScrollReveal>
 
           {/* Price — large lime gradient text */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <ScrollReveal variant="text" delay={0.15}>
             <p className="text-3xl sm:text-4xl font-extrabold glow-text" style={{ fontFamily: 'Outfit, sans-serif' }}>
               ${product.price.toFixed(2)}
             </p>
-          </motion.div>
+          </ScrollReveal>
 
-          {/* Description */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          >
+          {/* Description — text animation */}
+          <ScrollReveal variant="text" delay={0.2}>
             <p className="text-sm text-[var(--color-text-dim)] leading-relaxed">
               {product.description}
             </p>
-          </motion.div>
+          </ScrollReveal>
 
           {/* ═══ 01 — Specifications ═══ */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <ScrollReveal variant="card" delay={0.25}>
             <div className="card p-5">
               <div className="flex items-center gap-3 mb-4">
                 <span
                   className="text-2xl font-black text-[var(--color-accent)] opacity-30"
                   style={{ fontFamily: 'Outfit, sans-serif' }}
                 >
-                  01
+                  01 {/* Section number — decorative */}
                 </span>
                 <h3 className="font-semibold text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
                   Specifications
@@ -217,27 +207,23 @@ export default function ProductDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 {product.specifications.map((spec) => (
                   <div key={spec.key} className="flex justify-between text-sm">
-                    <span className="text-[var(--color-text-dim)]">{spec.key}</span>
-                    <span className="font-medium">{spec.value}</span>
+                    <span className="text-[var(--color-text-dim)]">{spec.key}</span> {/* Spec label */}
+                    <span className="font-medium">{spec.value}</span> {/* Spec value */}
                   </div>
                 ))}
               </div>
             </div>
-          </motion.div>
+          </ScrollReveal>
 
           {/* ═══ 02 — Compatible Vehicles ═══ */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <ScrollReveal variant="card" delay={0.3}>
             <div className="card p-5">
               <div className="flex items-center gap-3 mb-4">
                 <span
                   className="text-2xl font-black text-[var(--color-accent)] opacity-30"
                   style={{ fontFamily: 'Outfit, sans-serif' }}
                 >
-                  02
+                  02 {/* Section number */}
                 </span>
                 <h3 className="font-semibold text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
                   Compatible Vehicles
@@ -249,22 +235,18 @@ export default function ProductDetailPage() {
                     key={v}
                     className="text-xs font-medium border border-[var(--color-accent)]/20 text-[var(--color-accent)] rounded-full px-3 py-1.5"
                   >
-                    {v}
+                    {v} {/* Vehicle name as pill badge */}
                   </span>
                 ))}
               </div>
             </div>
-          </motion.div>
+          </ScrollReveal>
 
           {/* ═══ 03 — Delivery Promise ═══ */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <ScrollReveal variant="card" delay={0.35}>
             <div className="card p-5 flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-[var(--color-accent-dim)] flex items-center justify-center shrink-0">
-                <TruckIcon className="w-5 h-5 text-[var(--color-accent)]" />
+                <TruckIcon className="w-5 h-5 text-[var(--color-accent)]" /> {/* Truck icon */}
               </div>
               <div>
                 <p className="text-sm font-semibold">Delivery in 30 minutes</p>
@@ -273,60 +255,57 @@ export default function ProductDetailPage() {
                 </p>
               </div>
             </div>
-          </motion.div>
+          </ScrollReveal>
 
           {/* ═══ Quantity Selector + Add to Cart ═══ */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-4"
-          >
-            {/* Quantity controls */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-[var(--color-text-dim)]">Qty:</span>
-              <div className="flex items-center gap-0">
-                <button
-                  onClick={() => setQty(Math.max(1, qty - 1))}
-                  className="w-10 h-10 rounded-l-lg border border-[var(--color-border)] flex items-center justify-center
-                             hover:bg-[var(--color-surface-alt)] transition-colors text-lg"
-                >
-                  −
-                </button>
-                <span className="w-12 h-10 flex items-center justify-center border-y border-[var(--color-border)] text-sm font-medium">
-                  {qty}
-                </span>
-                <button
-                  onClick={() => setQty(qty + 1)}
-                  className="w-10 h-10 rounded-r-lg border border-[var(--color-border)] flex items-center justify-center
-                             hover:bg-[var(--color-surface-alt)] transition-colors text-lg"
-                >
-                  +
-                </button>
+          <ScrollReveal variant="text" delay={0.4}>
+            <div className="space-y-4">
+              {/* Quantity controls */}
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-[var(--color-text-dim)]">Qty:</span>
+                <div className="flex items-center gap-0">
+                  <button
+                    onClick={() => setQty(Math.max(1, qty - 1))} // Decrease qty, min 1
+                    className="w-10 h-10 rounded-l-lg border border-[var(--color-border)] flex items-center justify-center
+                               hover:bg-[var(--color-surface-alt)] transition-colors text-lg"
+                  >
+                    &minus; {/* Minus sign */}
+                  </button>
+                  <span className="w-12 h-10 flex items-center justify-center border-y border-[var(--color-border)] text-sm font-medium">
+                    {qty} {/* Current quantity */}
+                  </span>
+                  <button
+                    onClick={() => setQty(qty + 1)} // Increase qty
+                    className="w-10 h-10 rounded-r-lg border border-[var(--color-border)] flex items-center justify-center
+                               hover:bg-[var(--color-surface-alt)] transition-colors text-lg"
+                  >
+                    + {/* Plus sign */}
+                  </button>
+                </div>
+              </div>
+
+              {/* Add to Cart button — coral/orange pill */}
+              <button
+                onClick={handleAddToCart} // Add to cart handler
+                disabled={adding} // Disable during loading
+                className="glass-button w-full py-3.5 text-base"
+              >
+                {adding ? 'Adding...' : `Add to Cart — $${(product.price * qty).toFixed(2)}`} {/* Dynamic label */}
+              </button>
+
+              {/* Trust badges below CTA */}
+              <div className="flex items-center justify-center gap-4 text-xs text-[var(--color-text-dim)]">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheckIcon className="w-4 h-4 text-[var(--color-accent)]" /> {/* Shield icon */}
+                  <span>Secure Checkout</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <TruckIcon className="w-4 h-4 text-[var(--color-accent)]" /> {/* Truck icon */}
+                  <span>Free Delivery</span>
+                </div>
               </div>
             </div>
-
-            {/* Add to Cart button — coral/orange pill */}
-            <button
-              onClick={handleAddToCart}
-              disabled={adding}
-              className="glass-button w-full py-3.5 text-base"
-            >
-              {adding ? 'Adding...' : `Add to Cart — $${(product.price * qty).toFixed(2)}`}
-            </button>
-
-            {/* Trust badges below CTA */}
-            <div className="flex items-center justify-center gap-4 text-xs text-[var(--color-text-dim)]">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheckIcon className="w-4 h-4 text-[var(--color-accent)]" />
-                <span>Secure Checkout</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <TruckIcon className="w-4 h-4 text-[var(--color-accent)]" />
-                <span>Free Delivery</span>
-              </div>
-            </div>
-          </motion.div>
+          </ScrollReveal>
         </div>
       </div>
     </div>
