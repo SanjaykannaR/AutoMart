@@ -557,7 +557,7 @@ export function Navbar() {
 
             {/* Search bar */}
             <div className="search-glow-wrapper flex-1 max-w-sm">
-              <form onSubmit={handleSearch} className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] focus-within:border-[var(--color-accent)]/40 focus-within:bg-white/[0.1] transition-all">
+              <form onSubmit={handleSearch} className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] transition-all">
                 <MagnifyingGlassIcon className="w-4 h-4 text-[var(--color-text-dim)] shrink-0" />
                 <input
                   type="text"
