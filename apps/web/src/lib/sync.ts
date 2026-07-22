@@ -27,7 +27,7 @@ export interface WishlistItem {
 }
 
 export interface CartItem {
-  id: number | string
+  id: string // Product ID — always string (Prisma)
   name: string
   price: number
   qty: number
