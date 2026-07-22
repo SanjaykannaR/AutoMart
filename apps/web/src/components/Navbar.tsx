@@ -984,34 +984,6 @@ export function Navbar() {
               )
             })}
 
-            {/* Divider */}
-            <div className="mx-5 my-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }} />
-
-            {/* Extra links */}
-            <Link
-              href="/wishlist"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 mx-3 px-4 py-3.5 rounded-xl text-sm font-medium"
-              style={{ color: '#999' }}
-            >
-              <HeartIcon className="w-5 h-5" />
-              Wishlist
-              {wishlistCount > 0 && (
-                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(57,255,20,0.15)', color: '#39FF14' }}>{wishlistCount}</span>
-              )}
-            </Link>
-            <Link
-              href="/cart"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 mx-3 px-4 py-3.5 rounded-xl text-sm font-medium"
-              style={{ color: '#999' }}
-            >
-              <ShoppingCartIcon className="w-5 h-5" />
-              Cart
-              {cartCount > 0 && (
-                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(57,255,20,0.15)', color: '#39FF14' }}>{cartCount}</span>
-              )}
-            </Link>
           </div>
 
           {/* Bottom — Profile / Sign In */}
