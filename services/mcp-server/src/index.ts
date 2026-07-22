@@ -1,9 +1,8 @@
 /**
- * AutoMart MCP Server
- *
- * MCP (Model Context Protocol) is an open standard for connecting AI agents
- * to tools and data. This server exposes AutoMart's capabilities as MCP tools
- * that AI assistants (Claude, Cursor, etc.) can discover and call.
+ * AutoMart MCP Server — exposes platform capabilities as AI-callable tools.
+ * MCP (Model Context Protocol) is an open standard (2025-03-26) that lets
+ * AI assistants discover and invoke external tools with structured schemas.
+ * Each tool delegates to the appropriate internal microservice via HTTP.
  */
 
 import express from 'express'
@@ -13,10 +12,13 @@ const PORT = process.env.MCP_SERVER_PORT || 3007
 
 app.use(express.json())
 
+/** Standardised error envelope — consistent across all AutoMart services. */
 function errorResponse(res: express.Response, status: number, code: string, message: string, hint?: string) {
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
 }
 
+// Tool definitions follow JSON Schema format for parameter validation.
+// Each tool maps to a specific AutoMart capability backed by a microservice.
 const tools = [
   {
     name: 'search_parts',
@@ -70,6 +72,11 @@ const tools = [
     },
   },
 ]
+
+// ─── Tool implementations ──────────────────────────────────────────────────────
+// Each function calls an internal microservice and normalizes the response.
+// Errors are caught and returned as structured objects (not thrown) so the
+// MCP caller always gets a result, even if a service is down.
 
 async function searchParts(params: { query: string; category?: string; maxPrice?: number; limit?: number }) {
   const searchParams = new URLSearchParams({ q: params.query })
@@ -162,6 +169,7 @@ async function getPopularParts(params: { limit?: number }) {
   }
 }
 
+/** Dispatch map — routes tool names to their handler functions. */
 const toolHandlers: Record<string, (params: any) => Promise<any>> = {
   search_parts: searchParts,
   check_stock: checkStock,
@@ -171,10 +179,14 @@ const toolHandlers: Record<string, (params: any) => Promise<any>> = {
 }
 
 // ─── MCP endpoints ─────────────────────────────────────────────────────────────
+// Standard MCP discovery endpoint — AI agents call this first to learn
+// what tools are available and their parameter schemas.
 app.get('/mcp/tools', (_req, res) => {
   res.json({ protocol: 'model-context-protocol', version: '2025-03-26', server: 'automart', tools })
 })
 
+// Tool invocation endpoint — receives tool name + parameters, dispatches
+// to the handler, and wraps the result in a standard MCP response envelope.
 app.post('/mcp/tools/:name/call', async (req, res) => {
   const handler = toolHandlers[req.params.name]
   if (!handler) {
@@ -195,6 +207,8 @@ app.post('/mcp/tools/:name/call', async (req, res) => {
   }
 })
 
+// Lists available MCP resources (data sources AI agents can query).
+// These are metadata pointers — actual data comes from the microservices.
 app.get('/mcp/resources', (_req, res) => {
   res.json({
     resources: [

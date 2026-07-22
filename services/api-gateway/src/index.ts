@@ -1,3 +1,9 @@
+/**
+ * API Gateway — single entry point for all client traffic.
+ * Routes requests to backend microservices via http-proxy-middleware,
+ * applies rate limiting and JWT auth where needed, and returns
+ * structured error responses so the frontend always gets JSON.
+ */
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import { createProxyMiddleware } from 'http-proxy-middleware'
@@ -8,11 +14,14 @@ const PORT = process.env.API_GATEWAY_PORT || 3000
 
 app.use(express.json())
 
+/** Standardised error envelope — every API error follows this shape. */
 function errorResponse(res: express.Response, status: number, code: string, message: string, hint?: string) {
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
 }
 
 // ─── Rate limiting ─────────────────────────────────────────────────────────────
+// Prevents abuse by capping each client to 100 requests per 15-minute window.
+// Uses standard headers (RateLimit-Remaining, etc.) instead of legacy X- headers.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
@@ -26,7 +35,13 @@ const limiter = rateLimit({
 })
 app.use(limiter)
 
+// ─── Health ─────────────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'api-gateway' }))
+
 // ─── Service routing ───────────────────────────────────────────────────────────
+// Maps URL prefixes to internal microservices. Services that handle
+// sensitive data (orders, inventory, notifications) require JWT auth.
+// Docker Compose DNS resolves service names to container IPs.
 const services: Record<string, { target: string; auth: boolean }> = {
   '/api/auth': { target: `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`, auth: false },
   '/api/products': { target: `http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}`, auth: false },
@@ -36,6 +51,8 @@ const services: Record<string, { target: string; auth: boolean }> = {
   '/api/notifications': { target: `http://notification-service:${process.env.NOTIFICATION_SERVICE_PORT || 3006}`, auth: true },
 }
 
+// Register a proxy middleware for each service. pathRewrite strips the
+// prefix so downstream services receive clean routes (e.g. /api/orders/123 → /orders/123).
 Object.entries(services).forEach(([path, config]) => {
   const middlewares = config.auth ? [authMiddleware] : []
   app.use(path, ...middlewares, createProxyMiddleware({
@@ -70,9 +87,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   }
 })
 
-// ─── Health ─────────────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'api-gateway' }))
-
+// ─── Listen ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`[API Gateway] running on port ${PORT}`)
 })

@@ -32,6 +32,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { CheckCircleIcon, ClockIcon, TruckIcon, MapPinIcon } from '@heroicons/react/24/solid'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ScrollReveal } from '@/components/ScrollReveal'
 
 /**
  * Order type — what an order looks like in localStorage.
@@ -93,20 +94,17 @@ const trackingSteps = [
 ]
 
 export default function TrackOrderPage() {
-  // ─── Get order ID from URL ───
-  // /track/[orderId] → params.orderId = the order ID
+  // Get order ID from URL: /track/[orderId] → params.orderId
   const params = useParams()
   const orderId = params?.orderId as string
 
-  // ─── State ───
+  // State
   const [order, setOrder] = useState<Order | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   /**
    * LOAD ORDER FROM LOCALSTORAGE
-   * 
    * Reads the "orders" array from localStorage and finds the matching order.
-   * In production, this would be an API call to the order service.
    */
   useEffect(() => {
     try {
@@ -121,12 +119,7 @@ export default function TrackOrderPage() {
     setLoaded(true)
   }, [orderId])
 
-  /**
-   * CALCULATE PROGRESS PERCENTAGE
-   * 
-   * Maps order status to a percentage (0-100%).
-   * Used to fill the progress bar width.
-   */
+  /** Calculate progress percentage from status */
   const getProgress = (status: string): number => {
     switch (status) {
       case 'confirmed': return 0
@@ -137,17 +130,12 @@ export default function TrackOrderPage() {
     }
   }
 
-  /**
-   * FIND CURRENT STEP INDEX
-   * 
-   * Returns the index of the current status in trackingSteps array.
-   * Used to determine which steps are completed vs pending.
-   */
+  /** Find current step index in trackingSteps array */
   const getCurrentStep = (status: string): number => {
     return trackingSteps.findIndex((s) => s.id === status)
   }
 
-  // ─── LOADING STATE ───
+  // Loading state
   if (!loaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -156,27 +144,29 @@ export default function TrackOrderPage() {
     )
   }
 
-  // ─── ORDER NOT FOUND ───
+  // Order not found
   if (!order) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
-            <TruckIcon className="w-10 h-10 text-[var(--color-text-muted)]" />
+        <ScrollReveal variant="pop">
+          <div className="text-center max-w-sm">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
+              <TruckIcon className="w-10 h-10 text-[var(--color-text-muted)]" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              Order not found
+            </h1>
+            <p className="text-[var(--color-text-dim)] text-sm mb-6">
+              We couldn&apos;t find this order. Check the order ID and try again.
+            </p>
+            <Link
+              href="/orders"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] text-sm font-medium hover:bg-[var(--color-accent)]/90 transition-colors"
+            >
+              View All Orders
+            </Link>
           </div>
-          <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
-            Order not found
-          </h1>
-          <p className="text-[var(--color-text-dim)] text-sm mb-6">
-            We couldn&apos;t find this order. Check the order ID and try again.
-          </p>
-          <Link
-            href="/orders"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] text-sm font-medium hover:bg-[var(--color-accent)]/90 transition-colors"
-          >
-            View All Orders
-          </Link>
-        </div>
+        </ScrollReveal>
       </div>
     )
   }
@@ -186,177 +176,169 @@ export default function TrackOrderPage() {
 
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8 max-w-[2560px] mx-auto">
-      {/* ─── Back Button ─── */}
-      <Link
-        href="/orders"
-        className="inline-flex items-center gap-2 text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-colors mb-6"
-      >
-        <ArrowLeftIcon className="w-4 h-4" />
-        Back to Orders
-      </Link>
-
-      {/* ─── Page Header ─── */}
-      <div className="mb-8">
-        <h1
-          className="text-3xl font-extrabold"
-          style={{ fontFamily: 'Outfit, sans-serif' }}
+      {/* Back button — fade in */}
+      <ScrollReveal variant="fade">
+        <Link
+          href="/orders"
+          className="inline-flex items-center gap-2 text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-colors mb-6"
         >
-          Track Order
-        </h1>
-        <p className="text-[var(--color-text-dim)] text-sm mt-1">
-          Order #{order.id}
-        </p>
+          <ArrowLeftIcon className="w-4 h-4" />
+          Back to Orders
+        </Link>
+      </ScrollReveal>
+
+      {/* Page header — text animation */}
+      <div className="mb-8">
+        <ScrollReveal variant="text">
+          <h1
+            className="text-3xl font-extrabold"
+            style={{ fontFamily: 'Outfit, sans-serif' }}
+          >
+            Track Order
+          </h1>
+        </ScrollReveal>
+        <ScrollReveal variant="fade" delay={0.05}>
+          <p className="text-[var(--color-text-dim)] text-sm mt-1">
+            Order #{order.id}
+          </p>
+        </ScrollReveal>
       </div>
 
       <div className="grid md:grid-cols-[1fr_320px] gap-6">
-        {/* ─── LEFT: Tracking Progress ─── */}
+        {/* LEFT: Tracking Progress — slide-left animation */}
         <div className="space-y-6">
-          {/* ─── Progress Bar ─── 
-           * Shows how far along the order is
-           * Lime fill grows based on progress percentage
-           */}
-          <div className="card p-6">
-            <h3 className="text-lg font-bold mb-6" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              Delivery Progress
-            </h3>
+          <ScrollReveal variant="slide-left">
+            <div className="card p-6">
+              <h3 className="text-lg font-bold mb-6" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                Delivery Progress
+              </h3>
 
-            {/* Progress bar track */}
-            <div className="relative mb-8">
-              <div className="h-1.5 rounded-full bg-[var(--color-border)] w-full">
-                {/* Progress fill — animates width based on status */}
-                <div
-                  className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-1000 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
+              {/* Progress bar track */}
+              <div className="relative mb-8">
+                <div className="h-1.5 rounded-full bg-[var(--color-border)] w-full">
+                  <div
+                    className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-1000 ease-out"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Tracking steps — vertical timeline */}
+              <div className="space-y-0">
+                {trackingSteps.map((step, index) => {
+                  const isCompleted = index <= currentStepIndex
+                  const isCurrent = index === currentStepIndex
+                  const StepIcon = step.icon
+
+                  return (
+                    <ScrollReveal key={step.id} variant="fade" delay={index * 0.08}>
+                      <div className="flex gap-4">
+                        {/* Timeline line + icon */}
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                              isCompleted
+                                ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
+                                : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'
+                            } ${isCurrent ? 'ring-2 ring-[var(--color-accent)]/30' : ''}`}
+                          >
+                            <StepIcon className="w-5 h-5" />
+                          </div>
+                          {index < trackingSteps.length - 1 && (
+                            <div
+                              className={`w-0.5 flex-1 min-h-[40px] transition-colors ${
+                                index < currentStepIndex
+                                  ? 'bg-[var(--color-accent)]'
+                                  : 'bg-[var(--color-border)]'
+                              }`}
+                            />
+                          )}
+                        </div>
+
+                        {/* Step info */}
+                        <div className="pb-8">
+                          <p
+                            className={`font-semibold text-sm ${
+                              isCompleted ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
+                            }`}
+                            style={{ fontFamily: 'Outfit, sans-serif' }}
+                          >
+                            {step.label}
+                          </p>
+                          <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
+                            {step.description}
+                          </p>
+                          {isCompleted && (
+                            <p className="text-xs text-[var(--color-accent)] mt-1">
+                              {index < currentStepIndex ? 'Completed' : 'In Progress'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </ScrollReveal>
+                  )
+                })}
               </div>
             </div>
-
-            {/* ─── Tracking Steps ─── 
-             * Vertical timeline with icons
-             * Each step shows: icon + label + description + timestamp
-             * Completed steps: lime icon
-             * Current step: lime icon + pulse animation
-             * Pending steps: gray icon
-             */}
-            <div className="space-y-0">
-              {trackingSteps.map((step, index) => {
-                const isCompleted = index <= currentStepIndex
-                const isCurrent = index === currentStepIndex
-                const StepIcon = step.icon
-
-                return (
-                  <div key={step.id} className="flex gap-4">
-                    {/* Timeline line + icon */}
-                    <div className="flex flex-col items-center">
-                      {/* Icon circle */}
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                          isCompleted
-                            ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
-                            : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'
-                        } ${isCurrent ? 'ring-2 ring-[var(--color-accent)]/30' : ''}`}
-                      >
-                        <StepIcon className="w-5 h-5" />
-                      </div>
-                      {/* Connecting line — hidden for last step */}
-                      {index < trackingSteps.length - 1 && (
-                        <div
-                          className={`w-0.5 flex-1 min-h-[40px] transition-colors ${
-                            index < currentStepIndex
-                              ? 'bg-[var(--color-accent)]'
-                              : 'bg-[var(--color-border)]'
-                          }`}
-                        />
-                      )}
-                    </div>
-
-                    {/* Step info */}
-                    <div className="pb-8">
-                      <p
-                        className={`font-semibold text-sm ${
-                          isCompleted ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
-                        }`}
-                        style={{ fontFamily: 'Outfit, sans-serif' }}
-                      >
-                        {step.label}
-                      </p>
-                      <p className="text-xs text-[var(--color-text-dim)] mt-0.5">
-                        {step.description}
-                      </p>
-                      {/* Show timestamp if this step is completed */}
-                      {isCompleted && (
-                        <p className="text-xs text-[var(--color-accent)] mt-1">
-                          {index < currentStepIndex ? 'Completed' : 'In Progress'}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          </ScrollReveal>
         </div>
 
-        {/* ─── RIGHT: Order Summary ─── 
-         * Shows items, total, delivery address
-         * Stays visible while scrolling the progress
-         */}
+        {/* RIGHT: Order Summary — slide-right with staggered cards */}
         <div className="space-y-4">
-          {/* ─── Estimated Delivery ─── */}
-          <div className="card p-5">
-            <p className="text-xs text-[var(--color-text-dim)] mb-1">Estimated Delivery</p>
-            <p className="text-lg font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              {order.estimatedDelivery
-                ? new Date(order.estimatedDelivery).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })
-                : 'Calculating...'}
-            </p>
-          </div>
-
-          {/* ─── Delivery Address ─── */}
-          <div className="card p-5">
-            <p className="text-xs text-[var(--color-text-dim)] mb-1">Delivering to</p>
-            <p className="text-sm text-[var(--color-text)]">{order.address}</p>
-          </div>
-
-          {/* ─── Order Items ─── */}
-          <div className="card p-5">
-            <p className="text-xs text-[var(--color-text-dim)] mb-3">Order Items</p>
-            <div className="space-y-3">
-              {order.items.map((item, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  {/* Item thumbnail */}
-                  <div className="w-10 h-10 rounded-lg bg-[var(--color-surface)] overflow-hidden shrink-0">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  {/* Item info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{item.name}</p>
-                    <p className="text-xs text-[var(--color-text-dim)]">Qty: {item.qty}</p>
-                  </div>
-                  {/* Item price */}
-                  <p className="text-xs font-medium text-[var(--color-accent)]">
-                    ${(item.price * item.qty).toFixed(2)}
-                  </p>
-                </div>
-              ))}
+          <ScrollReveal variant="slide-right" delay={0.1}>
+            <div className="card p-5">
+              <p className="text-xs text-[var(--color-text-dim)] mb-1">Estimated Delivery</p>
+              <p className="text-lg font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                {order.estimatedDelivery
+                  ? new Date(order.estimatedDelivery).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : 'Calculating...'}
+              </p>
             </div>
+          </ScrollReveal>
 
-            {/* Total */}
-            <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex justify-between">
-              <span className="text-sm font-medium">Total</span>
-              <span className="text-sm font-bold text-[var(--color-accent)]">
-                ${order.total.toFixed(2)}
-              </span>
+          <ScrollReveal variant="slide-right" delay={0.15}>
+            <div className="card p-5">
+              <p className="text-xs text-[var(--color-text-dim)] mb-1">Delivering to</p>
+              <p className="text-sm text-[var(--color-text)]">{order.address}</p>
             </div>
-          </div>
+          </ScrollReveal>
+
+          <ScrollReveal variant="slide-right" delay={0.2}>
+            <div className="card p-5">
+              <p className="text-xs text-[var(--color-text-dim)] mb-3">Order Items</p>
+              <div className="space-y-3">
+                {order.items.map((item, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[var(--color-surface)] overflow-hidden shrink-0">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{item.name}</p>
+                      <p className="text-xs text-[var(--color-text-dim)]">Qty: {item.qty}</p>
+                    </div>
+                    <p className="text-xs font-medium text-[var(--color-accent)]">
+                      ${(item.price * item.qty).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex justify-between">
+                <span className="text-sm font-medium">Total</span>
+                <span className="text-sm font-bold text-[var(--color-accent)]">
+                  ${order.total.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </div>
     </div>

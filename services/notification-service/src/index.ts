@@ -1,3 +1,9 @@
+/**
+ * Notification Service — sends email and SMS notifications for order events.
+ * Subscribes to Redis channels for order:created and order:status_changed.
+ * Email goes through Resend SMTP; SMS is mocked for now.
+ * Falls back to mock mode (log-only) when no RESEND_API_KEY is set.
+ */
 import express from 'express'
 import Redis from 'ioredis'
 import nodemailer from 'nodemailer'
@@ -12,6 +18,8 @@ function errorResponse(res: express.Response, status: number, code: string, mess
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
 }
 
+// Nodemailer transport configured for Resend SMTP. In production this
+// sends real emails; in dev without RESEND_API_KEY, sendEmail() logs instead.
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.resend.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
@@ -22,6 +30,7 @@ const transporter = nodemailer.createTransport({
 })
 
 async function sendEmail(to: string, subject: string, html: string) {
+  // In mock mode (no API key), just log the email — no actual SMTP connection
   if (!process.env.RESEND_API_KEY) {
     console.log(`[Email] Mock send to ${to}: ${subject}`)
     return
@@ -36,9 +45,12 @@ async function sendEmail(to: string, subject: string, html: string) {
 
 async function sendSMS(to: string, message: string) {
   // SMS is currently mocked — no real provider configured
+  // TODO: integrate Twilio or similar when SMS notifications are needed
   console.log(`[SMS] Mock send to ${to}: ${message}`)
 }
 
+// Maps order statuses to human-readable notification content.
+// Only known statuses trigger notifications — unknown ones are logged and skipped.
 const statusMessages: Record<string, { subject: string; message: string }> = {
   confirmed: {
     subject: 'Order Confirmed',
@@ -58,6 +70,11 @@ const statusMessages: Record<string, { subject: string; message: string }> = {
   },
 }
 
+/**
+ * Processes order events from Redis and dispatches notifications.
+ * For 'order:created' events, no notification is sent (only status changes).
+ * For status changes, sends both email and SMS to the user.
+ */
 async function handleOrderEvent(message: string) {
   try {
     const data = JSON.parse(message)
@@ -111,6 +128,8 @@ redis.on('message', async (_channel, message) => {
 })
 
 // ─── Health ─────────────────────────────────────────────────────────────────────
+// Reports 'ok' only if Redis is connected; 'degraded' otherwise.
+// Also reports email provider mode so ops can tell if emails are real or mocked.
 app.get('/health', (_req, res) => {
   const redisConnected = redis.status === 'ready'
   res.json({

@@ -48,10 +48,18 @@ import {
   TagIcon,
   InformationCircleIcon,
   ArrowPathIcon,
+  UserIcon,
+  ArrowRightOnRectangleIcon,
+  Cog8ToothIcon,
 } from '@heroicons/react/24/outline'
 
 // ─── Solid icons ───
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+
+// ─── Preset avatar emojis — users pick one during profile setup ───
+const presetAvatars = [
+  '👤', '🧑', '👨', '👩', '🧔', '👱', '🧑‍🔧', '👨‍🔧', '👩‍🔧', '🏎️', '🏍️', '🔧',
+]
 
 // ─── Notification type definition ───
 interface Notification {
@@ -129,6 +137,13 @@ export function Navbar() {
   // ─── Notification state ───
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
+
+  // ─── Profile state ───
+  const [userName, setUserName] = useState('')          // User's display name from localStorage
+  const [userAvatar, setUserAvatar] = useState('👤')   // Selected emoji avatar (default: generic person)
+  const [profileOpen, setProfileOpen] = useState(false) // Profile dropdown open/closed
+  const profileRef = useRef<HTMLDivElement>(null)       // Ref for click-outside detection
+  const profileBtnRef = useRef<HTMLButtonElement>(null) // Ref for click-outside detection
 
   // ─── Derived: unread count ───
   const unreadCount = notifications.filter((n) => !n.read).length
@@ -256,6 +271,42 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [notifOpen])
 
+  // ─── Click outside to close profile dropdown ───
+  useEffect(() => {
+    if (!profileOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node) &&
+        profileBtnRef.current &&
+        !profileBtnRef.current.contains(e.target as Node)
+      ) {
+        setProfileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [profileOpen])
+
+  /** Save selected avatar to localStorage and update state */
+  const selectAvatar = (emoji: string) => {
+    setUserAvatar(emoji) // Update local state
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}') // Get existing user data
+      user.avatar = emoji // Add/update avatar field
+      localStorage.setItem('user', JSON.stringify(user)) // Persist
+      window.dispatchEvent(new Event('user-updated')) // Notify other components
+    } catch { /* ignore */ }
+  }
+
+  /** Logout — clear all user data and redirect */
+  const handleLogout = () => {
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    setProfileOpen(false)
+    window.location.href = '/' // Hard reload to clear all state
+  }
+
   /* ───────────────────────────────────────────────────────────────
    * LOGIN STATE DETECTION
    * ─────────────────────────────────────────────────────────────── */
@@ -267,6 +318,16 @@ export function Navbar() {
         (!!user && user !== 'null' && user !== '') ||
         (!!token && token !== 'null' && token !== '')
       setIsLoggedIn(loggedIn)
+
+      // Load profile data when logged in
+      if (loggedIn && user) {
+        const userData = JSON.parse(user) // Parse stored user object
+        setUserName(userData.name || userData.email?.split('@')[0] || 'User') // Name or fallback
+        setUserAvatar(userData.avatar || '👤') // Saved avatar or default
+      } else {
+        setUserName('') // Clear when logged out
+        setUserAvatar('👤')
+      }
     } catch {
       setIsLoggedIn(false)
     }
@@ -532,7 +593,7 @@ export function Navbar() {
             />
           </div>
 
-          {/* ═══ RIGHT: Notifications + Wishlist + Cart ═══ */}
+          {/* ═══ RIGHT: Notifications + Wishlist + Cart + Profile ═══ */}
           <div className="flex items-center gap-2 shrink-0">
 
             {/* ─── NOTIFICATION BELL ─── */}
@@ -693,6 +754,108 @@ export function Navbar() {
                 </span>
               )}
             </Link>
+
+            {/* ═══════════════════════════════════════════════════════
+                PROFILE SECTION — Sign In button OR Profile Avatar
+                - NOT logged in → coral "Sign In" pill button
+                - Logged in → circular avatar with gradient border ring
+                  (visually distinct from the 3 glass-circle icons)
+                ═══════════════════════════════════════════════════════ */}
+            {isLoggedIn ? (
+              /* ─── LOGGED IN: Profile Avatar with dropdown ─── */
+              <div className="relative" ref={profileRef}>
+                <button
+                  ref={profileBtnRef}
+                  onClick={() => setProfileOpen((prev) => !prev)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-blue)]/20 border-2 border-[var(--color-accent)]/40 hover:border-[var(--color-accent)]/70 hover:shadow-[0_0_20px_rgba(57,255,20,0.2)] transition-all text-xl"
+                  /* Gradient bg + accent border = visually distinct from plain glass circles */
+                  title={userName || 'Profile'}
+                  aria-label="Open profile menu"
+                >
+                  {userAvatar} {/* Emoji avatar */}
+                </button>
+
+                {/* ─── PROFILE DROPDOWN ─── */}
+                {profileOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-[var(--color-surface)] border border-white/[0.08] shadow-2xl shadow-black/50 overflow-hidden z-50">
+                    {/* Profile header — avatar + name */}
+                    <div className="px-5 py-4 border-b border-white/[0.06] bg-gradient-to-r from-[var(--color-accent)]/5 to-[var(--color-blue)]/5">
+                      <div className="flex items-center gap-3">
+                        {/* Large avatar */}
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-accent)]/25 to-[var(--color-blue)]/25 border-2 border-[var(--color-accent)]/30 flex items-center justify-center text-2xl">
+                          {userAvatar}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold truncate">{userName || 'User'}</p>
+                          <p className="text-xs text-[var(--color-text-muted)] truncate">AutoMart Member</p>
+                        </div>
+                      </div>
+
+                      {/* Preset avatar picker — choose a different emoji */}
+                      <div className="mt-3">
+                        <p className="text-[10px] text-[var(--color-text-muted)] mb-1.5 uppercase tracking-wider">Choose Avatar</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {presetAvatars.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => selectAvatar(emoji)}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg text-base transition-all ${
+                                userAvatar === emoji
+                                  ? 'bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/40 scale-110' // SELECTED: highlighted
+                                  : 'bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]' // UNSELECTED: subtle
+                              }`}
+                              title={`Set avatar to ${emoji}`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu links */}
+                    <div className="py-2">
+                      <Link
+                        href="/account"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-3 px-5 py-2.5 text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04] transition-colors"
+                      >
+                        <UserIcon className="w-4 h-4" />
+                        My Account
+                      </Link>
+                      <Link
+                        href="/settings"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-3 px-5 py-2.5 text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-white/[0.04] transition-colors"
+                      >
+                        <Cog8ToothIcon className="w-4 h-4" />
+                        Settings
+                      </Link>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="border-t border-white/[0.06] py-2">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-5 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition-colors"
+                      >
+                        <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ─── NOT LOGGED IN: Sign In pill button ─── */
+              <Link
+                href="/login"
+                className="hidden md:inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[var(--color-coral)]/85 backdrop-blur-md text-white text-sm font-medium border border-[var(--color-coral)]/30 hover:bg-[var(--color-coral)] hover:shadow-[0_4px_16px_rgba(255,82,59,0.3)] transition-all"
+              >
+                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </div>

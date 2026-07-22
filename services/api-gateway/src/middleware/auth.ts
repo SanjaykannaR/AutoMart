@@ -1,12 +1,24 @@
+/**
+ * JWT authentication middleware for the API gateway.
+ * Verifies the Bearer token from the Authorization header and attaches
+ * the decoded user payload (id, role) to the request so downstream
+ * services can trust req.user without re-validating the token.
+ */
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret'
 
+/** Extends Express Request to carry the decoded JWT payload. */
 export interface AuthRequest extends Request {
   user?: { id: string; role: string }
 }
 
+/**
+ * Middleware that validates the JWT token. Returns structured 401 errors
+ * for every failure mode (missing header, malformed scheme, empty token,
+ * expired token, invalid signature) so clients get actionable feedback.
+ */
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization
 

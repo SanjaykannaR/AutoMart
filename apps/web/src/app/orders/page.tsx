@@ -22,7 +22,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { ScrollReveal } from '@/components/ScrollReveal'
 
 interface Order {
   id: string
@@ -71,15 +71,17 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* ─── Page Heading ─── */}
-      <h1
-        className="text-2xl sm:text-3xl font-extrabold mb-8"
-        style={{ fontFamily: 'Outfit, sans-serif' }}
-      >
-        My Orders
-      </h1>
+      {/* Page heading — text animation */}
+      <ScrollReveal variant="text">
+        <h1
+          className="text-2xl sm:text-3xl font-extrabold mb-8"
+          style={{ fontFamily: 'Outfit, sans-serif' }}
+        >
+          My Orders
+        </h1>
+      </ScrollReveal>
 
-      {/* ─── Loading State ─── */}
+      {/* Loading state */}
       {loading && (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -97,20 +99,22 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* ─── Empty State ─── */}
+      {/* Empty state */}
       {!loading && orders.length === 0 && (
-        <div className="text-center py-20">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
-            <span className="text-3xl">📦</span>
+        <ScrollReveal variant="pop">
+          <div className="text-center py-20">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
+              <span className="text-3xl">📦</span>
+            </div>
+            <p className="text-[var(--color-text-dim)] mb-6">No orders yet</p>
+            <Link href="/search" className="glass-button px-8 py-3">
+              Start Shopping
+            </Link>
           </div>
-          <p className="text-[var(--color-text-dim)] mb-6">No orders yet</p>
-          <Link href="/search" className="glass-button px-8 py-3">
-            Start Shopping
-          </Link>
-        </div>
+        </ScrollReveal>
       )}
 
-      {/* ─── Orders List ─── */}
+      {/* Orders list — each card staggered with card animation */}
       {!loading && orders.length > 0 && (
         <div className="space-y-4">
           {orders.map((order, index) => {
@@ -118,12 +122,7 @@ export default function OrdersPage() {
             const progress = ((currentIndex + 1) / statusSteps.length) * 100
 
             return (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
+              <ScrollReveal key={order.id} variant="card" delay={index * 0.05}>
                 <Link href={`/orders/${order.id}`}>
                   <div className="card p-5 cursor-pointer group hover:border-[var(--color-accent)]/20 transition-all duration-300">
                     {/* Order header — ID, date, total */}
@@ -171,7 +170,7 @@ export default function OrdersPage() {
                     </div>
                   </div>
                 </Link>
-              </motion.div>
+              </ScrollReveal>
             )
           })}
         </div>
