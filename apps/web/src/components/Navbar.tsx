@@ -564,7 +564,7 @@ export function Navbar() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={placeholderSuggestions[placeholderIndex]}
-                  className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] min-w-0"
+                  className="bg-transparent border-none outline-none focus-visible:outline-none focus-visible:ring-0 flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] min-w-0"
                 />
                 {searchQuery.length > 1 && (
                   <button
@@ -976,7 +976,7 @@ export function Navbar() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={placeholderSuggestions[placeholderIndex]}
-                className="bg-transparent border-none outline-none flex-1 text-sm"
+                className="bg-transparent border-none outline-none focus-visible:outline-none focus-visible:ring-0 flex-1 text-sm"
                 style={{ color: '#F0F0F0' }}
               />
             </form>

@@ -21,7 +21,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { MagnifyingGlassIcon, MicrophoneIcon, CameraIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, MicrophoneIcon, CameraIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface SearchBarProps {
   onSearch: (query: string) => void
@@ -121,7 +121,7 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
     <>
       {/* ─── Search Input ─── */}
       <form onSubmit={handleSubmit} className="relative w-full">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)] focus-within:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-all duration-200">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] transition-all duration-200">
           {/* Search icon */}
           <MagnifyingGlassIcon className="w-5 h-5 text-[var(--color-text-dim)] shrink-0" />
 
@@ -131,8 +131,20 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="bg-transparent border-none outline-none flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
+            className="bg-transparent border-none outline-none focus-visible:outline-none focus-visible:ring-0 flex-1 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)]"
           />
+
+          {/* Clear button — appears when typing */}
+          {query.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-alt)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-all"
+              title="Clear search"
+            >
+              <XMarkIcon className="w-3 h-3" />
+            </button>
+          )}
 
           {/* Image search button */}
           <button
