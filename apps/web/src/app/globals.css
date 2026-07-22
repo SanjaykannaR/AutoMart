@@ -57,9 +57,11 @@
   --color-success: #22C55E;
   --color-warning: #F59E0B;
 
-  /* ─── Icon hover colors (wine/coral family for dark theme) ─── */
+  /* ─── Icon hover colors ─── */
   --color-wine: #C23A5C;
   --color-wine-dim: rgba(194, 58, 92, 0.15);
+  --color-gold: #E8A838;
+  --color-gold-dim: rgba(232, 168, 56, 0.15);
 
   /* ─── Legacy aliases (keep for backward compat during migration) ─── */
   --color-glass-bg: rgba(26, 26, 26, 0.8);
