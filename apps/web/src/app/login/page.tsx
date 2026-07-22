@@ -330,8 +330,8 @@ export default function LoginPage() {
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="mb-8"
             >
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-blue)]/10 border border-[var(--color-accent)]/20 mb-6">
-                <span className="text-4xl">{'\u{1F527}'}</span>
+              <div className="inline-flex items-center justify-center mb-6">
+                <img src="/logo/automart-logo.svg" alt="AutoMart" className="w-20 h-20" />
               </div>
               <h1 className="text-5xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
                 <span className="text-[var(--color-accent)]">Auto</span>
@@ -390,8 +390,8 @@ export default function LoginPage() {
           >
             {/* Mobile logo */}
             <div className="lg:hidden text-center mb-8">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-blue)]/10 border border-[var(--color-accent)]/20 mb-3">
-                <span className="text-2xl">{'\u{1F527}'}</span>
+              <div className="inline-flex items-center justify-center mb-3">
+                <img src="/logo/automart-logo.svg" alt="AutoMart" className="w-14 h-14" />
               </div>
               <h1 className="text-2xl font-extrabold" style={{ fontFamily: 'Outfit, sans-serif' }}>
                 <span className="text-[var(--color-accent)]">Auto</span>Mart

@@ -479,11 +479,8 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 gap-4">
 
           {/* ═══ LOGO ═══ */}
-          <Link href="/" className="flex items-center gap-1 shrink-0">
-            <span className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              <span className="text-[var(--color-accent)]">Auto</span>
-              <span className="text-[var(--color-text)]">Mart</span>
-            </span>
+          <Link href="/" className="flex items-center shrink-0">
+            <img src="/logo/automart-logo.svg" alt="AutoMart" className="h-9 w-9" />
           </Link>
 
           {/* ═══ CENTER: Nav Links + Search ═══ */}
