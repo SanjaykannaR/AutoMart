@@ -540,10 +540,10 @@ export function Navbar() {
               <button
                 ref={notifButtonRef}
                 onClick={() => setNotifOpen((prev) => !prev)}
-                className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.1] hover:border-white/[0.12] transition-all"
+                className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-[var(--color-blue)]/15 hover:border-[var(--color-blue)]/30 hover:shadow-[0_0_16px_rgba(56,182,255,0.15)] transition-all group/btn"
                 aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
               >
-                <BellIcon className={`w-[18px] h-[18px] ${unreadCount > 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-dim)]'}`} />
+                <BellIcon className={`w-[18px] h-[18px] transition-colors ${unreadCount > 0 ? 'text-[var(--color-accent)] group-hover/btn:text-[var(--color-blue)]' : 'text-[var(--color-text-dim)] group-hover/btn:text-[var(--color-blue)]'}`} />
                 {/* Unread badge */}
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] text-[10px] font-bold px-1 animate-pulse">
@@ -665,13 +665,13 @@ export function Navbar() {
             {/* ─── WISHLIST ─── */}
             <Link
               href="/wishlist"
-              className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.1] hover:border-white/[0.12] transition-all"
+              className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-[var(--color-wine)]/15 hover:border-[var(--color-wine)]/30 hover:shadow-[0_0_16px_rgba(194,58,92,0.15)] transition-all group/wl"
               aria-label={`Wishlist with ${wishlistCount} items`}
             >
               {wishlistCount > 0 ? (
-                <HeartSolidIcon className="w-[18px] h-[18px] text-[var(--color-accent)]" />
+                <HeartSolidIcon className="w-[18px] h-[18px] text-[var(--color-accent)] group-hover/wl:text-[var(--color-wine)] transition-colors" />
               ) : (
-                <HeartIcon className="w-[18px] h-[18px] text-[var(--color-text-dim)]" />
+                <HeartIcon className="w-[18px] h-[18px] text-[var(--color-text-dim)] group-hover/wl:text-[var(--color-wine)] transition-colors" />
               )}
               {wishlistCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] text-[10px] font-bold px-1">
@@ -683,10 +683,10 @@ export function Navbar() {
             {/* ─── CART ─── */}
             <Link
               href="/cart"
-              className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-white/[0.1] hover:border-white/[0.12] transition-all"
+              className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-md border border-white/[0.08] hover:bg-[var(--color-coral)]/15 hover:border-[var(--color-coral)]/30 hover:shadow-[0_0_16px_rgba(255,82,59,0.15)] transition-all group/cart"
               aria-label={`Shopping cart with ${cartCount} items`}
             >
-              <ShoppingCartIcon className="w-[18px] h-[18px] text-[var(--color-text-dim)]" />
+              <ShoppingCartIcon className="w-[18px] h-[18px] text-[var(--color-text-dim)] group-hover/cart:text-[var(--color-coral)] transition-colors" />
               {cartCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-bg)] text-[10px] font-bold px-1">
                   {cartCount}
