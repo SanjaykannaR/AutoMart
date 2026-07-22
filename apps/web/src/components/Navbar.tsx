@@ -173,6 +173,12 @@ export function Navbar() {
     saveNotifications(updated)
   }
 
+  /** Remove a single notification by ID */
+  const removeNotification = (id: string) => {
+    const updated = notifications.filter((n) => n.id !== id)
+    saveNotifications(updated)
+  }
+
   /** Clear all notifications */
   const clearAll = () => {
     saveNotifications([])
@@ -602,35 +608,52 @@ export function Navbar() {
                         const cfg = notifConfig[notif.type] || notifConfig.system
                         const TypeIcon = cfg.icon
                         return (
-                          <button
+                          <div
                             key={notif.id}
-                            onClick={() => handleNotifClick(notif)}
-                            className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors hover:bg-white/[0.04] ${
+                            className={`group relative px-4 py-3 flex items-start gap-3 transition-colors hover:bg-white/[0.04] ${
                               !notif.read ? 'bg-white/[0.02]' : ''
                             }`}
                           >
-                            {/* Type icon */}
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${cfg.bg}`}>
-                              <TypeIcon className={`w-4 h-4 ${cfg.color}`} />
-                            </div>
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className={`text-sm leading-snug ${!notif.read ? 'font-semibold text-[var(--color-text)]' : 'text-[var(--color-text-dim)]'}`}>
-                                  {notif.title}
-                                </p>
-                                {!notif.read && (
-                                  <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] shrink-0 mt-1.5" />
-                                )}
+                            {/* Clickable area — marks as read + navigates */}
+                            <button
+                              onClick={() => handleNotifClick(notif)}
+                              className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                            >
+                              {/* Type icon */}
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${cfg.bg}`}>
+                                <TypeIcon className={`w-4 h-4 ${cfg.color}`} />
                               </div>
-                              <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
-                                {notif.message}
-                              </p>
-                              <p className="text-[10px] text-[var(--color-text-muted)] mt-1 opacity-60">
-                                {formatTime(notif.time)}
-                              </p>
-                            </div>
-                          </button>
+                              {/* Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className={`text-sm leading-snug ${!notif.read ? 'font-semibold text-[var(--color-text)]' : 'text-[var(--color-text-dim)]'}`}>
+                                    {notif.title}
+                                  </p>
+                                  {!notif.read && (
+                                    <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] shrink-0 mt-1.5" />
+                                  )}
+                                </div>
+                                <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
+                                  {notif.message}
+                                </p>
+                                <p className="text-[10px] text-[var(--color-text-muted)] mt-1 opacity-60">
+                                  {formatTime(notif.time)}
+                                </p>
+                              </div>
+                            </button>
+
+                            {/* Delete button — appears on hover, stops propagation */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeNotification(notif.id)
+                              }}
+                              className="absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 hover:bg-white/[0.1] text-[var(--color-text-muted)] hover:text-red-400 transition-all"
+                              title="Remove notification"
+                            >
+                              <XMarkIcon className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )
                       })
                     )}
