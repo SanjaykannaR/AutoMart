@@ -10,16 +10,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("individual") // mechanic | individual | shop
-  phone     String?
-  address   String?
-  sessions  Session[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("individual") // mechanic | individual | shop
+  phone         String?
+  phoneVerified Boolean   @default(false)
+  address       String?
+  avatar        String?   @default("👤")
+  authProvider  String?   // google | apple | email
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Session {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useToast } from '@/components/Toast'
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 const OTP_LENGTH = 6
 const RESEND_SECONDS = 30
 
@@ -18,14 +19,16 @@ export default function VerifyPhonePage() {
   const [error, setError] = useState('')
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [phone, setPhone] = useState('')
+  const [authToken, setAuthToken] = useState('')
 
   useEffect(() => {
-    const pending = localStorage.getItem('pendingUser')
+    const token = localStorage.getItem('token')
     const otpPhone = localStorage.getItem('otpPhone')
-    if (!pending || !otpPhone) {
+    if (!token || !otpPhone) {
       router.push('/login')
       return
     }
+    setAuthToken(token)
     setPhone(otpPhone)
   }, [router])
 
@@ -72,12 +75,10 @@ export default function VerifyPhonePage() {
     if (pasted) {
       const newDigits = pasted.split('').concat(Array(OTP_LENGTH).fill('')).slice(0, OTP_LENGTH)
       setDigits(newDigits)
-      // Focus last filled
       const lastFilled = Math.min(pasted.length, OTP_LENGTH) - 1
       if (lastFilled >= 0) {
         inputRefs.current[lastFilled]?.focus()
       }
-      // Auto-verify if complete
       if (pasted.length === OTP_LENGTH) {
         setTimeout(() => verifyOTP(pasted), 200)
       }
@@ -85,43 +86,63 @@ export default function VerifyPhonePage() {
   }
 
   const verifyOTP = useCallback(async (otp: string) => {
-    const stored = localStorage.getItem('otpCode')
-    if (otp === stored) {
-      setLoading(true)
-      // OTP verified — complete registration
-      const pending = JSON.parse(localStorage.getItem('pendingUser') || '{}')
-      localStorage.setItem('user', JSON.stringify({
-        email: pending.email,
-        name: pending.name,
-        phone: pending.phone,
-        address: pending.address,
-        avatar: pending.avatar || '👤',
-        phoneVerified: true,
-        authProvider: pending.authProvider || 'email',
-      }))
-      localStorage.setItem('token', `token_${Date.now()}`)
-      localStorage.removeItem('pendingUser')
-      localStorage.removeItem('otpCode')
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/api/auth/otp/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ phone, code: otp }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || 'Invalid OTP')
+      }
+      const data = await res.json()
+
+      // Save updated user data
+      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem('token', data.token)
       localStorage.removeItem('otpPhone')
       window.dispatchEvent(new Event('user-updated'))
+
       showToast('Phone verified! Welcome to AutoMart 🎉', 'success')
       router.push('/')
-    } else {
-      setError('Invalid OTP. Please try again.')
+    } catch (err: any) {
+      setError(err.message)
       setDigits(Array(OTP_LENGTH).fill(''))
       inputRefs.current[0]?.focus()
+    } finally {
+      setLoading(false)
     }
-  }, [router, showToast])
+  }, [authToken, phone, router, showToast])
 
-  const handleResend = () => {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
-    localStorage.setItem('otpCode', otp)
-    setCountdown(RESEND_SECONDS)
-    setCanResend(false)
-    setDigits(Array(OTP_LENGTH).fill(''))
-    setError('')
-    inputRefs.current[0]?.focus()
-    showToast(`New OTP sent — Code: ${otp}`, 'success')
+  const handleResend = async () => {
+    try {
+      const res = await fetch(`${API}/api/auth/otp/resend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ phone }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to resend OTP')
+      }
+      const data = await res.json()
+      setCountdown(RESEND_SECONDS)
+      setCanResend(false)
+      setDigits(Array(OTP_LENGTH).fill(''))
+      setError('')
+      inputRefs.current[0]?.focus()
+      showToast(`New OTP sent${data.devCode ? ` — Code: ${data.devCode}` : ''}`, 'success')
+    } catch (err: any) {
+      showToast(err.message, 'error')
+    }
   }
 
   const maskPhone = (p: string) => {

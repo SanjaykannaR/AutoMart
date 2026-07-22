@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useToast } from '@/components/Toast'
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+
 const AVATAR_PRESETS = ['👤', '🧑', '👨', '👩', '🧔', '🧑‍🔧', '🏎️', '🏍️', '🔧', '⚡', '🛻', '🚗']
 
 const COUNTRIES = [
@@ -30,20 +32,25 @@ export default function ProfileSetupPage() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  const [authToken, setAuthToken] = useState('')
 
   useEffect(() => {
-    const pending = localStorage.getItem('pendingUser')
-    if (!pending) {
+    const token = localStorage.getItem('token')
+    const user = localStorage.getItem('user')
+    if (!token) {
       router.push('/login')
       return
     }
-    const data = JSON.parse(pending)
-    setEmail(data.email || '')
-    setName(data.name || '')
-    setAvatar(data.avatar || '👤')
+    setAuthToken(token)
+    if (user) {
+      const userData = JSON.parse(user)
+      setEmail(userData.email || '')
+      setName(userData.name || '')
+      setAvatar(userData.avatar || '👤')
+    }
   }, [router])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !phone.trim() || !address.trim()) {
       showToast('Please fill in all required fields', 'error')
@@ -55,29 +62,56 @@ export default function ProfileSetupPage() {
     }
 
     setLoading(true)
+    const fullPhone = `${countryCode}${phone}`
 
-    // Save to pendingUser
-    const pending = JSON.parse(localStorage.getItem('pendingUser') || '{}')
-    const updated = {
-      ...pending,
-      name: name.trim(),
-      phone: `${countryCode}${phone}`,
-      address: address.trim(),
-      avatar,
-    }
-    localStorage.setItem('pendingUser', JSON.stringify(updated))
+    try {
+      // Save profile to backend
+      const profileRes = await fetch(`${API}/api/auth/profile/setup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: fullPhone,
+          address: address.trim(),
+          avatar,
+        }),
+      })
+      if (!profileRes.ok) {
+        const data = await profileRes.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to save profile')
+      }
+      const profileData = await profileRes.json()
 
-    // Generate OTP (simulated)
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
-    localStorage.setItem('otpCode', otp)
-    localStorage.setItem('otpPhone', updated.phone)
+      // Update local storage with profile data
+      localStorage.setItem('user', JSON.stringify(profileData.user))
+      window.dispatchEvent(new Event('user-updated'))
 
-    // Show OTP in toast for demo (real: send via SMS API)
-    setTimeout(() => {
-      setLoading(false)
-      showToast(`OTP sent to ${updated.phone} — Code: ${otp}`, 'success')
+      // Send OTP to the phone number
+      const otpRes = await fetch(`${API}/api/auth/otp/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ phone: fullPhone }),
+      })
+      if (!otpRes.ok) {
+        const data = await otpRes.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to send OTP')
+      }
+      const otpData = await otpRes.json()
+
+      showToast(`OTP sent to ${fullPhone}${otpData.devCode ? ` — Code: ${otpData.devCode}` : ''}`, 'success')
+      localStorage.setItem('otpPhone', fullPhone)
       router.push('/auth/verify-phone')
-    }, 800)
+    } catch (err: any) {
+      showToast(err.message, 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const selectedCountry = COUNTRIES.find(c => c.code === countryCode) || COUNTRIES[0]
@@ -231,7 +265,7 @@ export default function ProfileSetupPage() {
             disabled={loading}
             className="glass-button w-full py-3 mt-2"
           >
-            {loading ? 'Sending OTP...' : 'Continue →'}
+            {loading ? 'Saving...' : 'Continue →'}
           </button>
         </form>
 

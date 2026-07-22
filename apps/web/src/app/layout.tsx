@@ -16,7 +16,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Navbar } from '@/components/Navbar'
-import { Footer } from '@/components/Footer'
+import { ConditionalFooter } from '@/components/ConditionalFooter'
 import { ToastProvider } from '@/components/Toast'
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           {/* pt-16 offsets for the fixed navbar height */}
           <main className="min-h-screen pt-16">{children}</main>
-          <Footer />
+          <ConditionalFooter />
         </ToastProvider>
       </body>
     </html>

@@ -1,7 +1,7 @@
 /**
- * Auth Service — handles user registration, login, OTP verification, and profile retrieval.
+ * Auth Service — handles user registration, login, OAuth, OTP, password reset, and profile management.
  * Uses bcrypt for password hashing (12 rounds) and JWT for session tokens.
- * OTP flow: generate 6-digit code → store in Redis (5min TTL) → verify → issue JWT.
+ * OTP flow: generate 6-digit code → store in Redis (5min TTL) → verify → mark phone verified.
  * In dev mode, OTP is logged to console (no SMS provider needed).
  */
 import express from 'express'
@@ -34,9 +34,20 @@ function errorResponse(res: express.Response, status: number, code: string, mess
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
 }
 
+// ─── JWT verification helper ────────────────────────────────────────────────────
+function verifyToken(req: express.Request): { id: string; role: string } | null {
+  const header = req.headers.authorization
+  if (!header || !header.startsWith('Bearer ')) return null
+  const token = header.split(' ')[1]
+  if (!token) return null
+  try {
+    return jwt.verify(token, JWT_SECRET) as { id: string; role: string }
+  } catch {
+    return null
+  }
+}
+
 // ─── Schemas ────────────────────────────────────────────────────────────────────
-// Zod schemas enforce input shape and types before any DB work happens.
-// role defaults to 'individual' — mechanics and shops must opt-in explicitly.
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email format — must be like user@example.com'),
@@ -49,10 +60,36 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
+const oauthSchema = z.object({
+  provider: z.enum(['google', 'apple']),
+  providerToken: z.string().min(1, 'Provider token is required'),
+})
+
+const profileSetupSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  address: z.string().min(5, 'Address must be at least 5 characters'),
+  avatar: z.string().default('👤'),
+})
+
+const updateProfileSchema = z.object({
+  name: z.string().min(2).optional(),
+  phone: z.string().min(10).optional(),
+  address: z.string().min(5).optional(),
+  avatar: z.string().optional(),
+})
+
+const passwordForgotSchema = z.object({
+  email: z.string().email('Invalid email format'),
+})
+
+const passwordResetSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  code: z.string().length(6, 'Code must be exactly 6 digits').regex(/^\d{6}$/, 'Code must be numeric'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
 // ─── POST /register ─────────────────────────────────────────────────────────────
-// Creates a new user account. Checks for duplicate email first, then
-// hashes the password with bcrypt (12 salt rounds) before storing.
-// Returns a JWT token so the user is immediately authenticated.
 app.post('/register', async (req, res) => {
   try {
     const data = registerSchema.parse(req.body)
@@ -66,12 +103,28 @@ app.post('/register', async (req, res) => {
 
     const hashed = await bcrypt.hash(data.password, 12)
     const user = await prisma.user.create({
-      data: { name: data.name, email: data.email, password: hashed, role: data.role },
+      data: {
+        name: data.name,
+        email: data.email,
+        password: hashed,
+        role: data.role,
+        authProvider: 'email',
+      },
     })
 
-    // JWT payload includes user ID and role — both needed by downstream services
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
-    res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        phoneVerified: user.phoneVerified,
+        authProvider: user.authProvider,
+      },
+    })
   } catch (err) {
     if (err instanceof z.ZodError) {
       const messages = err.errors.map(e => e.message).join('; ')
@@ -81,14 +134,12 @@ app.post('/register', async (req, res) => {
     }
     console.error('[Auth] Registration error:', err)
     return errorResponse(res, 500, 'AUTH_REGISTRATION_FAILED',
-      'An unexpected error occurred during registration. The database may be unavailable.',
+      'An unexpected error occurred during registration.',
       'Check the auth-service logs and verify the database is running.')
   }
 })
 
 // ─── POST /login ────────────────────────────────────────────────────────────────
-// Authenticates a user by email + password. Uses the same error code
-// for both "user not found" and "wrong password" to prevent email enumeration.
 app.post('/login', async (req, res) => {
   try {
     const data = loginSchema.parse(req.body)
@@ -100,16 +151,28 @@ app.post('/login', async (req, res) => {
         'Check your email address or register a new account.')
     }
 
-    // Compare password against bcrypt hash — timing-safe comparison
     const valid = await bcrypt.compare(data.password, user.password)
     if (!valid) {
       return errorResponse(res, 401, 'AUTH_INVALID_CREDENTIALS',
         `Incorrect password for "${data.email}".`,
-        'Double-check your password. If you forgot it, there is no reset flow yet — contact support.')
+        'Double-check your password or use "Forgot password" to reset it.')
     }
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        phone: user.phone,
+        phoneVerified: user.phoneVerified,
+        address: user.address,
+        authProvider: user.authProvider,
+      },
+    })
   } catch (err) {
     if (err instanceof z.ZodError) {
       const messages = err.errors.map(e => e.message).join('; ')
@@ -119,8 +182,188 @@ app.post('/login', async (req, res) => {
     }
     console.error('[Auth] Login error:', err)
     return errorResponse(res, 500, 'AUTH_LOGIN_FAILED',
-      'An unexpected error occurred during login. The database may be unavailable.',
-      'Check the auth-service logs and verify the database is running.')
+      'An unexpected error occurred during login.',
+      'Check auth-service logs for details.')
+  }
+})
+
+// ─── POST /oauth (Google + Apple) ───────────────────────────────────────────────
+// Simulated in dev mode — in production, verify the provider token with Google/Apple APIs.
+app.post('/oauth', async (req, res) => {
+  try {
+    const { provider, providerToken } = oauthSchema.parse(req.body)
+
+    // In production: verify token with Google/Apple and extract email + name
+    // For dev mode, generate a deterministic email from the provider token
+    const fakeEmail = `${provider}_${providerToken.slice(0, 8)}@automart.oauth.local`
+    const fakeName = provider === 'google' ? 'Google User' : 'Apple User'
+
+    // Find or create user by email
+    let user = await prisma.user.findUnique({ where: { email: fakeEmail } })
+
+    if (!user) {
+      // New OAuth user — create account
+      user = await prisma.user.create({
+        data: {
+          name: fakeName,
+          email: fakeEmail,
+          password: await bcrypt.hash(`oauth_${Date.now()}`, 12), // dummy password
+          authProvider: provider,
+          phoneVerified: false,
+        },
+      })
+      console.log(`[OAuth] New ${provider} user created: ${user.id}`)
+    } else {
+      console.log(`[OAuth] Existing ${provider} user logged in: ${user.id}`)
+    }
+
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        phone: user.phone,
+        phoneVerified: user.phoneVerified,
+        address: user.address,
+        authProvider: user.authProvider,
+      },
+      isNewUser: !user.phone, // If no phone, they need to complete profile setup
+    })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const messages = err.errors.map(e => e.message).join('; ')
+      return errorResponse(res, 400, 'AUTH_INVALID_INPUT',
+        `OAuth validation failed: ${messages}`,
+        'Provide a valid provider (google/apple) and provider token.')
+    }
+    console.error('[Auth] OAuth error:', err)
+    return errorResponse(res, 500, 'AUTH_OAUTH_FAILED',
+      'An unexpected error occurred during OAuth login.',
+      'Check auth-service logs for details.')
+  }
+})
+
+// ─── POST /profile/setup ────────────────────────────────────────────────────────
+// Completes profile after OAuth signup — saves name, phone, address, avatar.
+// Requires JWT authentication.
+app.post('/profile/setup', async (req, res) => {
+  try {
+    const decoded = verifyToken(req)
+    if (!decoded) {
+      return errorResponse(res, 401, 'AUTH_NO_TOKEN',
+        'Authentication required. Please log in first.',
+        'Include a valid JWT in the Authorization header.')
+    }
+
+    const data = profileSetupSchema.parse(req.body)
+
+    // Check if phone is already taken by another user
+    const cleanPhone = data.phone.replace(/[^+\d]/g, '')
+    const existingPhone = await prisma.user.findFirst({
+      where: { phone: cleanPhone, NOT: { id: decoded.id } },
+    })
+    if (existingPhone) {
+      return errorResponse(res, 409, 'AUTH_PHONE_TAKEN',
+        'This phone number is already associated with another account.',
+        'Use a different phone number or contact support.')
+    }
+
+    const user = await prisma.user.update({
+      where: { id: decoded.id },
+      data: {
+        name: data.name,
+        phone: cleanPhone,
+        address: data.address,
+        avatar: data.avatar,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatar: true,
+        phone: true,
+        phoneVerified: true,
+        address: true,
+        authProvider: true,
+      },
+    })
+
+    console.log(`[Profile] User ${user.id} completed profile setup`)
+    res.json({ user })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const messages = err.errors.map(e => e.message).join('; ')
+      return errorResponse(res, 400, 'AUTH_INVALID_INPUT',
+        `Profile setup validation failed: ${messages}`,
+        'Provide name (2+ chars), phone (10+ digits), and address (5+ chars).')
+    }
+    console.error('[Auth] Profile setup error:', err)
+    return errorResponse(res, 500, 'AUTH_PROFILE_SETUP_FAILED',
+      'Failed to save profile. Please try again.',
+      'Check auth-service logs for details.')
+  }
+})
+
+// ─── PUT /me ────────────────────────────────────────────────────────────────────
+// Updates the authenticated user's profile fields.
+app.put('/me', async (req, res) => {
+  try {
+    const decoded = verifyToken(req)
+    if (!decoded) {
+      return errorResponse(res, 401, 'AUTH_NO_TOKEN',
+        'Authentication required.',
+        'Include a valid JWT in the Authorization header.')
+    }
+
+    const data = updateProfileSchema.parse(req.body)
+
+    // Check phone uniqueness if updating
+    if (data.phone) {
+      const cleanPhone = data.phone.replace(/[^+\d]/g, '')
+      data.phone = cleanPhone
+      const existingPhone = await prisma.user.findFirst({
+        where: { phone: cleanPhone, NOT: { id: decoded.id } },
+      })
+      if (existingPhone) {
+        return errorResponse(res, 409, 'AUTH_PHONE_TAKEN',
+          'This phone number is already associated with another account.',
+          'Use a different phone number.')
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id: decoded.id },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatar: true,
+        phone: true,
+        phoneVerified: true,
+        address: true,
+        authProvider: true,
+      },
+    })
+
+    res.json({ user })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const messages = err.errors.map(e => e.message).join('; ')
+      return errorResponse(res, 400, 'AUTH_INVALID_INPUT',
+        `Profile update validation failed: ${messages}`,
+        'Check your input values.')
+    }
+    console.error('[Auth] Profile update error:', err)
+    return errorResponse(res, 500, 'AUTH_PROFILE_UPDATE_FAILED',
+      'Failed to update profile.',
+      'Check auth-service logs for details.')
   }
 })
 
@@ -135,26 +378,19 @@ const otpVerifySchema = z.object({
 })
 
 // ─── POST /otp/send ───────────────────────────────────────────────────────────
-// Generates a 6-digit OTP, stores it in Redis with 5-minute TTL.
-// In dev mode, the OTP is logged to console (read from docker logs).
-// In production, this would call an SMS provider (Twilio, Vonage, etc.)
 app.post('/otp/send', async (req, res) => {
   try {
     const { phone } = otpSendSchema.parse(req.body)
+    const cleanPhone = phone.replace(/[^+\d]/g, '')
 
-    // Generate 6-digit OTP (zero-padded)
     const code = String(Math.floor(100000 + Math.random() * 900000))
-
-    // Store in Redis with 5-minute TTL
-    // Key format: otp:<phone> → stores JSON { code, attempts: 0, createdAt }
-    const redisKey = `otp:${phone.replace(/[^+\d]/g, '')}`
+    const redisKey = `otp:${cleanPhone}`
     await redis.setex(redisKey, 300, JSON.stringify({
       code,
       attempts: 0,
       createdAt: new Date().toISOString(),
     }))
 
-    // DEV MODE: Log OTP to console (read from `docker compose logs auth-service`)
     console.log(`\n${'═'.repeat(50)}`)
     console.log(`[OTP] Phone: ${phone}`)
     console.log(`[OTP] Code:  ${code}`)
@@ -164,8 +400,6 @@ app.post('/otp/send', async (req, res) => {
     res.json({
       success: true,
       message: `OTP sent to ${phone}`,
-      // In dev mode, include OTP in response so frontend can auto-fill
-      // Remove this in production!
       ...(process.env.NODE_ENV !== 'production' && { devCode: code }),
     })
   } catch (err) {
@@ -177,21 +411,19 @@ app.post('/otp/send', async (req, res) => {
     }
     console.error('[Auth] OTP send error:', err)
     return errorResponse(res, 500, 'AUTH_OTP_SEND_FAILED',
-      'Failed to send OTP. The service may be temporarily unavailable.',
+      'Failed to send OTP.',
       'Try again in a moment.')
   }
 })
 
 // ─── POST /otp/verify ─────────────────────────────────────────────────────────
-// Verifies the OTP code against Redis. On success, finds or creates the user
-// by phone number and returns a JWT token (same as login flow).
-// Max 3 verification attempts before OTP expires.
+// Verifies OTP and marks phone as verified for the authenticated user.
 app.post('/otp/verify', async (req, res) => {
   try {
     const { phone, code } = otpVerifySchema.parse(req.body)
-    const redisKey = `otp:${phone.replace(/[^+\d]/g, '')}`
+    const cleanPhone = phone.replace(/[^+\d]/g, '')
+    const redisKey = `otp:${cleanPhone}`
 
-    // Read OTP from Redis
     const stored = await redis.get(redisKey)
     if (!stored) {
       return errorResponse(res, 400, 'AUTH_OTP_EXPIRED',
@@ -201,7 +433,6 @@ app.post('/otp/verify', async (req, res) => {
 
     const otpData = JSON.parse(stored)
 
-    // Check attempt limit (max 3 tries)
     if (otpData.attempts >= 3) {
       await redis.del(redisKey)
       return errorResponse(res, 429, 'AUTH_OTP_MAX_ATTEMPTS',
@@ -209,46 +440,70 @@ app.post('/otp/verify', async (req, res) => {
         'Request a new OTP via POST /api/auth/otp/send.')
     }
 
-    // Increment attempts
     otpData.attempts += 1
     await redis.setex(redisKey, 300, JSON.stringify(otpData))
 
-    // Verify code
     if (otpData.code !== code) {
       return errorResponse(res, 401, 'AUTH_OTP_INVALID',
         `Incorrect OTP code. ${3 - otpData.attempts} attempts remaining.`,
         'Check the code sent to your phone and try again.')
     }
 
-    // OTP valid — delete from Redis (one-time use)
+    // OTP valid — delete from Redis
     await redis.del(redisKey)
 
-    // Find or create user by phone number
-    const cleanPhone = phone.replace(/[^+\d]/g, '')
-    let user = await prisma.user.findFirst({
-      where: { email: `${cleanPhone}@otp.automart.local` },
-      select: { id: true, name: true, email: true, role: true },
-    })
+    // Try to find user by phone number and mark as verified
+    const decoded = verifyToken(req)
+    if (decoded) {
+      await prisma.user.update({
+        where: { id: decoded.id },
+        data: { phoneVerified: true },
+      })
+      console.log(`[OTP] Phone ${phone} verified for user ${decoded.id}`)
+    }
+
+    // Also find existing user by phone (for login flow)
+    let user = decoded ? await prisma.user.findUnique({ where: { id: decoded.id } }) : null
+    if (!user) {
+      user = await prisma.user.findFirst({ where: { phone: cleanPhone } })
+    }
 
     if (!user) {
-      // Auto-create account for OTP users
+      // Auto-create account for OTP-only users
       user = await prisma.user.create({
         data: {
           name: `User ${cleanPhone.slice(-4)}`,
           email: `${cleanPhone}@otp.automart.local`,
-          password: await bcrypt.hash(`otp_${Date.now()}`, 12), // dummy password
-          role: 'individual',
+          password: await bcrypt.hash(`otp_${Date.now()}`, 12),
+          phone: cleanPhone,
+          phoneVerified: true,
+          authProvider: 'phone',
         },
-        select: { id: true, name: true, email: true, role: true },
+      })
+    } else {
+      // Mark existing user's phone as verified
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { phoneVerified: true },
       })
     }
 
-    // Issue JWT
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
 
-    console.log(`[OTP] Phone ${phone} verified → user ${user.id}`)
-
-    res.json({ token, user })
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        phone: user.phone,
+        phoneVerified: true,
+        address: user.address,
+        authProvider: user.authProvider,
+      },
+    })
   } catch (err) {
     if (err instanceof z.ZodError) {
       const messages = err.errors.map(e => e.message).join('; ')
@@ -258,23 +513,20 @@ app.post('/otp/verify', async (req, res) => {
     }
     console.error('[Auth] OTP verify error:', err)
     return errorResponse(res, 500, 'AUTH_OTP_VERIFY_FAILED',
-      'Failed to verify OTP. The service may be temporarily unavailable.',
+      'Failed to verify OTP.',
       'Try again in a moment.')
   }
 })
 
 // ─── POST /otp/resend ─────────────────────────────────────────────────────────
-// Deletes existing OTP and sends a fresh one. Convenience wrapper.
 app.post('/otp/resend', async (req, res) => {
   try {
     const { phone } = otpSendSchema.parse(req.body)
     const cleanPhone = phone.replace(/[^+\d]/g, '')
     const redisKey = `otp:${cleanPhone}`
 
-    // Delete existing OTP
     await redis.del(redisKey)
 
-    // Generate new OTP
     const code = String(Math.floor(100000 + Math.random() * 900000))
     await redis.setex(redisKey, 300, JSON.stringify({
       code,
@@ -302,53 +554,147 @@ app.post('/otp/resend', async (req, res) => {
     }
     console.error('[Auth] OTP resend error:', err)
     return errorResponse(res, 500, 'AUTH_OTP_RESEND_FAILED',
-      'Failed to resend OTP. The service may be temporarily unavailable.',
+      'Failed to resend OTP.',
+      'Try again in a moment.')
+  }
+})
+
+// ─── POST /password/forgot ──────────────────────────────────────────────────────
+// Sends a 6-digit reset code to the user's email (stored in Redis).
+app.post('/password/forgot', async (req, res) => {
+  try {
+    const { email } = passwordForgotSchema.parse(req.body)
+
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (!user) {
+      // Don't reveal whether the email exists
+      return res.json({
+        success: true,
+        message: `If an account exists with "${email}", a reset code has been sent.`,
+      })
+    }
+
+    const code = String(Math.floor(100000 + Math.random() * 900000))
+    const redisKey = `pwdreset:${email}`
+    await redis.setex(redisKey, 600, JSON.stringify({ // 10-minute TTL
+      code,
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+    }))
+
+    console.log(`\n${'═'.repeat(50)}`)
+    console.log(`[PASSWORD RESET] Email: ${email}`)
+    console.log(`[PASSWORD RESET] Code:  ${code}`)
+    console.log(`[PASSWORD RESET] Valid: 10 minutes`)
+    console.log(`${'═'.repeat(50)}\n`)
+
+    res.json({
+      success: true,
+      message: `If an account exists with "${email}", a reset code has been sent.`,
+      ...(process.env.NODE_ENV !== 'production' && { devCode: code }),
+    })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const messages = err.errors.map(e => e.message).join('; ')
+      return errorResponse(res, 400, 'AUTH_INVALID_INPUT',
+        `Password reset validation failed: ${messages}`,
+        'Provide a valid email address.')
+    }
+    console.error('[Auth] Password forgot error:', err)
+    return errorResponse(res, 500, 'AUTH_PASSWORD_FORGOT_FAILED',
+      'Failed to process password reset request.',
+      'Try again in a moment.')
+  }
+})
+
+// ─── POST /password/reset ──────────────────────────────────────────────────────
+// Verifies the reset code and sets a new password.
+app.post('/password/reset', async (req, res) => {
+  try {
+    const { email, code, newPassword } = passwordResetSchema.parse(req.body)
+    const redisKey = `pwdreset:${email}`
+
+    const stored = await redis.get(redisKey)
+    if (!stored) {
+      return errorResponse(res, 400, 'AUTH_RESET_EXPIRED',
+        `No reset code found for "${email}". The code may have expired (10-minute limit).`,
+        'Request a new code via POST /api/auth/password/forgot.')
+    }
+
+    const resetData = JSON.parse(stored)
+
+    if (resetData.attempts >= 3) {
+      await redis.del(redisKey)
+      return errorResponse(res, 429, 'AUTH_RESET_MAX_ATTEMPTS',
+        'Too many failed attempts. The reset code has been invalidated.',
+        'Request a new code via POST /api/auth/password/forgot.')
+    }
+
+    resetData.attempts += 1
+    await redis.setex(redisKey, 600, JSON.stringify(resetData))
+
+    if (resetData.code !== code) {
+      return errorResponse(res, 401, 'AUTH_RESET_INVALID',
+        `Incorrect reset code. ${3 - resetData.attempts} attempts remaining.`,
+        'Check the code sent to your email and try again.')
+    }
+
+    // Code valid — update password
+    await redis.del(redisKey)
+    const hashed = await bcrypt.hash(newPassword, 12)
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashed },
+    })
+
+    console.log(`[PASSWORD RESET] Password updated for ${email}`)
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now sign in with your new password.',
+    })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const messages = err.errors.map(e => e.message).join('; ')
+      return errorResponse(res, 400, 'AUTH_INVALID_INPUT',
+        `Password reset validation failed: ${messages}`,
+        'Provide a valid email, 6-digit code, and password (8+ chars).')
+    }
+    console.error('[Auth] Password reset error:', err)
+    return errorResponse(res, 500, 'AUTH_PASSWORD_RESET_FAILED',
+      'Failed to reset password.',
       'Try again in a moment.')
   }
 })
 
 // ─── GET /me ────────────────────────────────────────────────────────────────────
-// Returns the profile for the authenticated user. This endpoint
-// verifies the JWT itself (not relying on gateway middleware) so
-// it can be called directly by internal services as well.
 app.get('/me', async (req, res) => {
   try {
-    const header = req.headers.authorization
-    if (!header || !header.startsWith('Bearer ')) {
+    const decoded = verifyToken(req)
+    if (!decoded) {
       return errorResponse(res, 401, 'AUTH_NO_TOKEN',
-        'No authorization token provided. The request is missing the "Authorization: Bearer <token>" header.',
+        'No authorization token provided.',
         'Include a valid JWT token in the Authorization header.')
-    }
-
-    const token = header.split(' ')[1]
-    if (!token) {
-      return errorResponse(res, 401, 'AUTH_EMPTY_TOKEN',
-        'Authorization header is present but the token is empty.',
-        'Include the full JWT token after "Bearer ".')
-    }
-
-    let decoded: { id: string }
-    try {
-      decoded = jwt.verify(token, JWT_SECRET) as { id: string }
-    } catch (jwtErr: any) {
-      if (jwtErr.name === 'TokenExpiredError') {
-        return errorResponse(res, 401, 'AUTH_TOKEN_EXPIRED',
-          'Your session has expired. The JWT token is no longer valid.',
-          'Please log in again to get a fresh token.')
-      }
-      return errorResponse(res, 401, 'AUTH_TOKEN_INVALID',
-        'The JWT token is malformed or was signed with a different secret.',
-        'Make sure you are using the exact token from the login/register response.')
     }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, name: true, email: true, role: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatar: true,
+        phone: true,
+        phoneVerified: true,
+        address: true,
+        authProvider: true,
+      },
     })
     if (!user) {
       return errorResponse(res, 404, 'AUTH_USER_NOT_FOUND',
-        `User with ID "${decoded.id}" no longer exists in the database.`,
-        'The account may have been deleted. Please register again.')
+        `User with ID "${decoded.id}" no longer exists.`,
+        'Please register again.')
     }
 
     res.json(user)

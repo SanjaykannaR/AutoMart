@@ -12,7 +12,9 @@ import { authMiddleware } from './middleware/auth'
 const app = express()
 const PORT = process.env.API_GATEWAY_PORT || 3000
 
-app.use(express.json())
+// NOTE: Do NOT use express.json() here — it consumes the request body
+// before http-proxy-middleware can forward it, causing empty bodies on
+// proxied POST/PUT/PATCH requests.
 
 /** Standardised error envelope — every API error follows this shape. */
 function errorResponse(res: express.Response, status: number, code: string, message: string, hint?: string) {
