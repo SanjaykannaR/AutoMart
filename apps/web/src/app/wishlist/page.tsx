@@ -37,22 +37,12 @@ import Link from 'next/link' // Next.js client-side navigation
 import { TrashIcon, ShoppingCartIcon } from '@heroicons/react/24/outline' // Delete and cart icons
 import { HeartIcon } from '@heroicons/react/24/solid' // Filled heart icon (for empty state)
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
-
-/**
- * WishlistItem type — what each saved item looks like.
- * Stored in localStorage, so all fields must be serializable.
- */
-interface WishlistItem {
-  id: number // Product ID — used for links and cart matching
-  name: string // Product name — displayed on card
-  price: number // Price in dollars — shown with $ prefix
-  image: string // Image URL — displayed as card thumbnail
-  category: string // Category name — shown as badge/tag
-}
+import { syncWishlist, saveWishlist, saveCart, type WishlistItem } from '@/lib/sync' // Backend sync utilities
 
 /**
  * WishlistPage Component
  * Displays saved wishlist items with move-to-cart and remove actions.
+ * Syncs with backend when user is logged in, localStorage when guest.
  */
 export default function WishlistPage() {
   // State
@@ -60,28 +50,26 @@ export default function WishlistPage() {
   const [loaded, setLoaded] = useState(false) // Loaded flag for hydration safety
 
   /**
-   * LOAD WISHLIST FROM LOCALSTORAGE
-   * Runs once on mount. Reads the JSON array from localStorage.
+   * LOAD WISHLIST
+   * If logged in: fetch from backend, merge with localStorage, persist both.
+   * If guest: read from localStorage only.
    */
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('wishlist') // Read wishlist
-      if (saved) {
-        setItems(JSON.parse(saved)) // Parse and store
-      }
-    } catch {
-      setItems([]) // If JSON is corrupted, treat as empty
-    }
-    setLoaded(true) // Mark as loaded
+    syncWishlist().then((merged) => {
+      setItems(merged)
+      setLoaded(true)
+    }).catch(() => {
+      setLoaded(true)
+    })
   }, []) // Run once on mount
 
   /**
-   * SAVE WISHLIST TO LOCALSTORAGE
-   * Whenever items change, write back to localStorage for persistence.
+   * SAVE WISHLIST
+   * Whenever items change, save to localStorage + backend (if logged in).
    */
   useEffect(() => {
     if (loaded) { // Only save after initial load
-      localStorage.setItem('wishlist', JSON.stringify(items))
+      saveWishlist(items) // Saves to localStorage + PUT to backend
     }
   }, [items, loaded]) // Re-run when items or loaded change
 
@@ -89,7 +77,7 @@ export default function WishlistPage() {
    * REMOVE FROM WISHLIST
    * Filters out the item with the given ID.
    */
-  const removeItem = (id: number) => {
+  const removeItem = (id: number | string) => {
     setItems((prev) => prev.filter((item) => item.id !== id)) // Filter out item
   }
 
@@ -108,7 +96,7 @@ export default function WishlistPage() {
       } else {
         cart.push({ ...item, qty: 1 }) // Add new item with quantity 1
       }
-      localStorage.setItem('cart', JSON.stringify(cart)) // Save updated cart
+      saveCart(cart) // Save to localStorage + backend
       window.dispatchEvent(new Event('cart-updated')) // Notify navbar
       removeItem(item.id) // Remove from wishlist
     } catch {

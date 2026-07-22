@@ -27,6 +27,7 @@ import Link from 'next/link' // Next.js client-side navigation
 import { TrashIcon } from '@heroicons/react/24/outline' // Trash/delete icon
 import { useToast } from '@/components/Toast' // Toast notification context
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
+import { syncCart, saveCart } from '@/lib/sync' // Backend sync utilities
 
 /**
  * CartItem type — what each item in the cart looks like.
@@ -50,11 +51,14 @@ export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]) // Cart items array
   const [mounted, setMounted] = useState(false) // Hydration flag
 
-  /** Load cart from localStorage on mount */
+  /** Load cart from backend (if logged in) or localStorage on mount */
   useEffect(() => {
-    setMounted(true) // Mark as mounted for hydration safety
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]') // Read cart
-    setItems(cart) // Set cart items
+    syncCart().then((merged) => {
+      setItems(merged)
+      setMounted(true)
+    }).catch(() => {
+      setMounted(true)
+    })
   }, []) // Run once on mount
 
   /**
