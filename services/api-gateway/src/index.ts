@@ -107,43 +107,61 @@ app.use('/api/auth/otp/resend', otpSendLimiter)
 app.use('/api/auth/otp/verify', authLimiter)
 
 // ─── Service routing ─────────────────────────────────────────────────────────
-// Maps URL prefixes to internal microservices. Services that handle
-// sensitive data (orders, inventory, notifications) require JWT auth.
+// All /api/* routes are handled by a single proxy mount point.
+// Express strips /api, leaving paths like /orders/123 intact.
+// http-proxy-middleware's `router` option picks the target by prefix.
+// Auth is applied inline for protected routes.
+//
 // Docker Compose DNS resolves service names to container IPs.
-const services: Record<string, { target: string; auth: boolean }> = {
-  '/api/auth': { target: `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`, auth: false },
-  '/api/products': { target: `http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}`, auth: false },
-  '/api/search': { target: `http://search-service:${process.env.SEARCH_SERVICE_PORT || 3003}`, auth: false },
-  '/api/orders': { target: `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`, auth: true },
-  '/api/inventory': { target: `http://inventory-service:${process.env.INVENTORY_SERVICE_PORT || 3005}`, auth: true },
-  '/api/notifications': { target: `http://notification-service:${process.env.NOTIFICATION_SERVICE_PORT || 3006}`, auth: true },
-  '/api/mcp': { target: `http://mcp-server:${process.env.MCP_SERVER_PORT || 3007}`, auth: false },
-}
 
-// Register a proxy middleware for each service. pathRewrite strips the
-// prefix so downstream services receive clean routes (e.g. /api/orders/123 → /orders/123).
-Object.entries(services).forEach(([path, config]) => {
-  const middlewares = config.auth ? [authMiddleware] : []
-  app.use(path, ...middlewares, createProxyMiddleware({
-    target: config.target,
+const protectedPaths = ['/orders', '/payments', '/inventory', '/notifications']
+const publicPaths = ['/payments/webhook'] // Stripe webhooks — no auth token
+
+// Single proxy for all /api/* — Express strips "/api" so req.url = "/orders/123"
+app.use('/api',
+  // Auth gate: protected paths require a token, public paths bypass auth
+  (req, res, next) => {
+    if (publicPaths.some(p => req.url.startsWith(p))) return next()
+    if (protectedPaths.some(p => req.url.startsWith(p))) {
+      return authMiddleware(req, res, next)
+    }
+    next()
+  },
+  createProxyMiddleware({
     changeOrigin: true,
-    pathRewrite: { [`^${path}`]: '' },
+    // Dynamic target: http-proxy-middleware picks the upstream based on path prefix
+    router: {
+      '/auth':        `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`,
+      '/products':    `http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}`,
+      '/search':      `http://search-service:${process.env.SEARCH_SERVICE_PORT || 3003}`,
+      '/orders':      `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`,
+      '/payments':    `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`,
+      '/inventory':   `http://inventory-service:${process.env.INVENTORY_SERVICE_PORT || 3005}`,
+      '/notifications': `http://notification-service:${process.env.NOTIFICATION_SERVICE_PORT || 3006}`,
+      '/mcp':         `http://mcp-server:${process.env.MCP_SERVER_PORT || 3007}`,
+    },
+    // Auth-service routes don't have an /auth prefix (e.g. /login not /auth/login),
+    // so strip it before forwarding. Other services keep their prefix.
+    pathRewrite: (path: string) => {
+      if (path.startsWith('/auth')) return path.replace(/^\/auth/, '') || '/'
+      return path
+    },
     onError: (err: Error, _req: express.Request, res: express.Response) => {
-      console.error(`[Gateway] Proxy error for ${path}:`, err.message)
+      console.error(`[Gateway] Proxy error:`, err.message)
       if (!res.headersSent) {
         return errorResponse(res, 502, 'GATEWAY_SERVICE_UNREACHABLE',
-          `The service at "${path}" is not responding (${config.target}).`,
-          `Check that the service is running on the expected port. ${err.message}`)
+          `A downstream service is not responding.`,
+          `Check that services are running. ${err.message}`)
       }
     },
-  } as any))
-})
+  } as any)
+)
 
 // ─── 404 for unmatched routes ──────────────────────────────────────────────────
 app.use((_req, res) => {
   return errorResponse(res, 404, 'GATEWAY_NOT_FOUND',
     `No route matched "${_req.method} ${_req.originalUrl}".`,
-    'Valid API routes: /api/auth, /api/products, /api/search, /api/orders, /api/inventory, /api/notifications, /api/mcp.')
+    'Valid API routes: /api/auth, /api/products, /api/search, /api/orders, /api/payments, /api/inventory, /api/notifications, /api/mcp.')
 })
 
 // ─── Global error handler ──────────────────────────────────────────────────────

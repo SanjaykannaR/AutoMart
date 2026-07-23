@@ -240,41 +240,14 @@
 - [ ] **Test mode** — Use Stripe test keys for dev/staging
 - [ ] **Order flow atomicity** — Checkout → PaymentIntent → confirm → create order → reserve inventory (with rollback)
 
-### Phase 15: Admin Dashboard 🔄 IN PROGRESS
-- [x] **Admin API endpoints (auth-service)** — ✅ FULL BACKEND DONE (12 routes):
-  - `POST /admin/bootstrap` — One-time first admin creation
-  - `POST /admin/login` — Admin-specific login (validates role=admin)
-  - `POST /admin/create-admin` — Create additional admins (admin-only)
-  - `GET /admin/me` — Current admin profile
-  - `PATCH /admin/change-password` — Admin password change (requires current password)
-  - `PATCH /admin/change-username` — Admin display name update
-  - `POST /admin/forgot-password` — Admin password reset (6-digit code via Redis)
-  - `POST /admin/reset-password` — Verify code + set new password
-  - `GET /admin/users` — List all users (pagination, search, role filter)
-  - `GET /admin/users/:id` — User detail
-  - `PATCH /admin/users/:id` — Update user role (promote/demote)
-  - `DELETE /admin/users/:id` — Delete user (self-delete + admin-delete protection)
-- [x] **Banner model** — ✅ Added to `auth-service/prisma/schema.prisma`: `Banner` with `headline`, `subtitle`, `badge`, `cta`, `link`, `gradient`, `image`, `accent`, `isActive`, `order`.
-- [x] **Banner API endpoints** — ✅ FULL CRUD (6 routes):
-  - `GET /banners/public` — Active banners (no auth)
-  - `GET /admin/banners` — List all (admin)
-  - `POST /admin/banners` — Create banner
-  - `PATCH /admin/banners/:id` — Update banner
-  - `DELETE /admin/banners/:id` — Delete banner
-  - `PATCH /admin/banners/reorder` — Reorder (transaction-based)
-- [x] **Admin layout** — ✅ `apps/web/src/app/admin/layout.tsx` (233 lines): Sidebar nav with Dashboard, Products, Orders, Inventory, Users, Banners links. Glassmorphism dark theme.
-- [x] **Admin login page** — ✅ `apps/web/src/app/admin/login/page.tsx` (183 lines): Admin-specific login form with role validation.
-- [x] **Admin forgot password** — ✅ `apps/web/src/app/admin/forgot-password/page.tsx` (130 lines): Email input + code verification.
-- [x] **Admin reset password** — ✅ `apps/web/src/app/admin/reset-password/page.tsx` (185 lines): Code + new password form.
-- [x] **Admin auth utility** — ✅ `apps/web/src/lib/admin-auth.ts` (129 lines): Token management, role guards, API helpers.
-- [x] **Admin dashboard page** — ✅ `apps/web/src/app/admin/page.tsx` (220 lines): Stat cards (products, users, banners, inventory), recent users list, quick actions sidebar.
-- [x] **Admin banners page** — ✅ `apps/web/src/app/admin/banners/page.tsx` (420 lines): Full CRUD with create/edit modal, reorder (up/down arrows), active toggle, delete confirmation.
-- [x] **Admin products page** — ✅ `apps/web/src/app/admin/products/page.tsx` (320 lines): Product list with search, category/vehicle filters, stock badges, create modal.
-- [x] **Admin orders page** — ✅ `apps/web/src/app/admin/orders/page.tsx` (290 lines): Order list with status filter, expandable detail panel, inline status update, status badges.
-- [x] **Admin inventory page** — ✅ `apps/web/src/app/admin/inventory/page.tsx` (240 lines): Stock levels with summary cards (total/in-stock/low/out), per-product inventory lookup, status badges.
-- [x] **Admin users page** — ✅ `apps/web/src/app/admin/users/page.tsx` (310 lines): Paginated user list, search/role filter, inline role change dropdown, delete with confirmation, self-protection.
-- [x] **Admin settings page** — ✅ `apps/web/src/app/admin/settings/page.tsx` (280 lines): Change username, change password (requires current password), admin account info card.
-- [x] **LayoutShell update** — ✅ Added `/admin` to AUTH_PAGES to hide customer navbar on admin routes.
+### Phase 15: Admin Dashboard ✅ COMPLETE (committed `f0869c6`)
+- [x] **Admin API endpoints (auth-service)** — ✅ 12 routes: bootstrap, login, create-admin, me, change-password, change-username, forgot/reset-password, users CRUD, role management
+- [x] **Banner model + CRUD** — ✅ Banner schema + 6 routes (public, admin CRUD, reorder)
+- [x] **All admin pages** — ✅ 9 pages: layout, login, forgot-password, reset-password, dashboard, products, orders, inventory, users, banners, settings
+- [x] **Admin auth utility** — ✅ `lib/admin-auth.tsx` (129 lines): Token mgmt + role guards
+- [x] **LayoutShell update** — ✅ `/admin` added to AUTH_PAGES
+- [x] **Banner Supabase migrations** — ✅ `migration-banners.sql` (23 lines) + `migration-banner-storage.sql` (45 lines): banners table + banner-images storage bucket + RLS policies
+- [x] **Docker infrastructure** — ✅ Healthcheck start_period 15s → 60s (4 services). API Gateway pathRewrite fixed. Product-service entrypoint simplified.
 - [x] **Phase 15 COMPLETE** — Full admin system: backend (24 API routes) + frontend (11 pages: layout, login, forgot-password, reset-password, dashboard, banners, products, orders, inventory, users, settings).
 
 ### Phase 16: Email Templates
@@ -362,18 +335,21 @@
 
 | Agent | Status | Last Seen | Current Task |
 |-------|--------|-----------|--------------|
-| Athena-GOD | 🟢 Active | 17:18 | Phase 14+15: Stripe + Admin frontend (uncommitted) |
+| Athena-GOD | 🟢 Active | 18:23 | Phase 14: Stripe + infra fixes (uncommitted) |
 | Athena-MAX | 🟡 Monitoring | — | Waiting for activity |
 
 ### Monitor Log
 - `2026-07-23 08:35` — Monitoring started. Phase 13 partial.
-- `2026-07-23 08:36` — Supabase setup files detected (setup.sql + README.md).
+- `2026-07-23 08:36` — Supabase setup files detected.
 - `2026-07-23 08:47` — docker-compose.yml simplified, .env files updated.
-- `2026-07-23 16:55` — 2 commits: Phase 13 ✅ COMPLETE. Phase 15 admin backend started (Banner model + 18 routes).
-- `2026-07-23 17:18` — **MASSIVE PROGRESS**: 11 modified + 7 untracked files (1109 insertions).
-  - **Phase 14 (Stripe)**: payments.ts (173 lines), checkout rewrite (318 lines), success page (161 lines), API gateway route, docker-compose Stripe env vars
-  - **Phase 15 (Admin)**: admin layout (233 lines), login page (183 lines), forgot-password (130 lines), reset-password (185 lines), admin-auth.ts (129 lines)
-  - Total new code: ~1512 lines across 8 new files
+- `2026-07-23 16:55` — 2 commits: Phase 13 ✅ COMPLETE. Phase 15 admin backend started.
+- `2026-07-23 17:18` — Massive progress: Phase 14 Stripe + Phase 15 admin frontend.
+- `2026-07-23 17:36` — **COMMIT `f0869c6`**: Phase 15 ✅ COMPLETE (16 files, 3959 insertions).
+- `2026-07-23 18:23` — **NEW FILES**: `migration-banners.sql` (23 lines) + `migration-banner-storage.sql` (45 lines) — Supabase SQL for banners table + storage bucket + RLS policies.
+- `2026-07-23 18:23` — **docker-compose.yml**: healthcheck start_period 15s → 60s (4 services). FRONTEND_URL + API_URL added to order-service.
+- `2026-07-23 18:23` — **API Gateway fix**: pathRewrite `^${path}` → `^/api` (fixes proxy routing). /api/payments added to error message.
+- `2026-07-23 18:23` — **product-service entrypoint**: Simplified — removed debug ls + prisma migrate deploy + seed, just starts server.
+- `2026-07-23 18:23` — **admin-auth.tsx** replaces deleted admin-auth.ts. TODOS.md cleaned up (-54 lines).
 
 ---
 

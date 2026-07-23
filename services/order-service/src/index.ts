@@ -8,6 +8,7 @@ import express from 'express'
 import { PrismaClient } from '../src/generated/order'
 import { z } from 'zod'
 import Redis from 'ioredis'
+import paymentsRouter from './payments'
 
 const app = express()
 const prisma = new PrismaClient()
@@ -210,6 +211,9 @@ app.patch('/orders/:id/status', async (req, res) => {
       'Check order-service logs for details.')
   }
 })
+
+// ─── Stripe Payments ────────────────────────────────────────────────────────
+app.use('/payments', paymentsRouter)
 
 // ─── Health ─────────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'order-service' }))

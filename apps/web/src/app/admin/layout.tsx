@@ -83,6 +83,9 @@ const NAV_ITEMS = [
   },
 ]
 
+/** Pages that don't need admin auth (login, forgot-password, reset-password) */
+const PUBLIC_ADMIN_PAGES = ['/admin/login', '/admin/forgot-password', '/admin/reset-password']
+
 /** Inner layout component that uses admin auth context */
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAdminAuth()
@@ -90,8 +93,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  // Auth gate: redirect to login if not authenticated (skip while loading)
-  if (!loading && !user) {
+  // Check if current page is a public admin page (no auth required)
+  const isPublicPage = PUBLIC_ADMIN_PAGES.some(p => pathname.startsWith(p))
+
+  // Auth gate: redirect to login if not authenticated (skip for public pages and while loading)
+  if (!loading && !user && !isPublicPage) {
     router.push('/admin/login')
     return null
   }
@@ -106,6 +112,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     )
+  }
+
+  // Public pages (login, forgot-password, reset-password) render without sidebar
+  if (isPublicPage) {
+    return <>{children}</>
   }
 
   return (

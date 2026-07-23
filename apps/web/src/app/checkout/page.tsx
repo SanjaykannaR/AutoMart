@@ -1,120 +1,131 @@
 /**
- * Checkout Page — Delivery details + order placement
+ * Checkout Page — Delivery details + Stripe payment
  *
  * Layout (desktop):
  *   ┌─────────────────────────────────────────────────────┐
- *   │  Step Indicator: 01 Delivery -> 02 Review -> 03 Done │
+ *   │  Step Indicator: 01 Delivery -> 02 Payment -> 03 Done│
  *   ├─────────────────────────┬─────────────────────────┤
  *   │  Left: Delivery Form    │  Right: Order Summary    │
  *   │  - Address textarea     │  - Item list             │
  *   │  - Phone input          │  - Subtotal + delivery   │
  *   │  - Note input           │  - Total (lime)          │
- *   │                         │  - Place Order CTA       │
+ *   │                         │  - Pay with Card CTA     │
  *   └─────────────────────────┴─────────────────────────┘
- *
- * Animation:
- *   - Page heading fades up on scroll
- *   - Step indicator pops in
- *   - Delivery form slides in from left
- *   - Order summary slides in from right
- *   - Each form section staggers in with card animation
  *
  * Flow:
  *   1. User fills delivery details
- *   2. Reviews order summary
- *   3. Clicks "Place Order"
- *   4. Order sent to API -> clears cart -> redirects to order detail
- *
- * Validation:
- *   - Address and phone are required
- *   - Place Order button is disabled until both are filled
+ *   2. Clicks "Pay with Card"
+ *   3. Order created (status: pending)
+ *   4. Stripe Checkout Session created
+ *   5. User redirected to Stripe-hosted payment page
+ *   6. After payment → redirected to /checkout/success
  */
-'use client' // Next.js client component directive
+'use client'
 
-import { useState, useEffect } from 'react' // React hooks for state and effects
-import { useRouter } from 'next/navigation' // Next.js router for redirect
-import { useToast } from '@/components/Toast' // Toast notification context
-import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
-import { MapPinIcon, PhoneIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline' // Form icons
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useToast } from '@/components/Toast'
+import { ScrollReveal } from '@/components/ScrollReveal'
+import { MapPinIcon, PhoneIcon, CreditCardIcon, LockClosedIcon } from '@heroicons/react/24/outline'
+import { Suspense } from 'react'
 
-/**
- * CartItem type — what each item in the order looks like.
- */
 interface CartItem {
-  id: string // Product ID
-  name: string // Product name
-  price: number // Price per unit
-  qty: number // Quantity ordered
+  id: string
+  name: string
+  price: number
+  qty: number
+  image?: string
 }
 
-/**
- * CheckoutPage Component
- * Handles delivery form, order review, and order placement.
- */
-export default function CheckoutPage() {
-  const router = useRouter() // Next.js router
-  const { showToast } = useToast() // Toast notification function
+function CheckoutContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { showToast } = useToast()
 
-  /** Cart items loaded from localStorage */
   const [items, setItems] = useState<CartItem[]>([])
-  /** Form fields */
-  const [address, setAddress] = useState('') // Delivery address
-  const [phone, setPhone] = useState('') // Phone number
-  const [note, setNote] = useState('') // Optional delivery note
-  /** Order placement loading state */
+  const [address, setAddress] = useState('')
+  const [phone, setPhone] = useState('')
+  const [note, setNote] = useState('')
   const [placing, setPlacing] = useState(false)
 
-  /** Load cart from localStorage on mount; redirect if empty */
+  // Check if user returned from cancelled payment
   useEffect(() => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]') // Read cart
-    if (cart.length === 0) router.push('/cart') // Redirect to cart if empty
-    setItems(cart) // Set items for display
-  }, []) // Run once on mount
+    if (searchParams.get('cancelled') === 'true') {
+      showToast('Payment was cancelled. Your order was not placed.', 'info')
+    }
+  }, [searchParams, showToast])
 
-  /** Calculate order total */
+  // Load cart from localStorage
+  useEffect(() => {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
+    if (cart.length === 0) router.push('/cart')
+    setItems(cart)
+  }, [router])
+
   const total = items.reduce((sum: number, item: any) => sum + item.price * item.qty, 0)
 
   /**
-   * Place order via API.
-   * On success: clears cart, shows toast, redirects to order detail.
-   * On failure: shows error toast.
+   * Handle checkout — creates order + Stripe session, then redirects.
    */
-  const placeOrder = async () => {
-    setPlacing(true) // Show loading state
+  const handleCheckout = async () => {
+    setPlacing(true)
     try {
-      const token = localStorage.getItem('token') // Get auth token
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
-        method: 'POST', // Create new order
+      const token = localStorage.getItem('token')
+
+      // Step 1: Create order (status: pending)
+      const orderRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json', // JSON body
-          Authorization: `Bearer ${token}`, // Auth token
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ items, address, phone, note, total }), // Order data
+        body: JSON.stringify({ items, address, phone, note, total }),
       })
-      const order = await res.json() // Parse order response
-      localStorage.removeItem('cart') // Clear cart
-      window.dispatchEvent(new Event('cart-updated')) // Notify Navbar
-      // Dispatch order confirmation notification
-      window.dispatchEvent(new CustomEvent('new-notification', {
-        detail: {
-          type: 'order' as const,
-          title: 'Order Confirmed!',
-          message: `Your order #${order.id?.slice(0, 8) || ''} has been placed. Total: $${total.toFixed(2)}`,
-          link: `/orders/${order.id}`,
+
+      if (!orderRes.ok) {
+        const err = await orderRes.json()
+        throw new Error(err.message || 'Failed to create order')
+      }
+
+      const order = await orderRes.json()
+
+      // Step 2: Create Stripe Checkout Session
+      const paymentRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/create-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      }))
-      showToast('Order placed successfully!', 'success') // Success toast
-      router.push(`/orders/${order.id}`) // Redirect to order detail
-    } catch {
-      showToast('Order failed. Please try again.', 'error') // Error toast
-    } finally {
-      setPlacing(false) // Hide loading state
+        body: JSON.stringify({
+          items: items.map(i => ({ name: i.name, price: i.price, qty: i.qty, image: i.image })),
+          orderId: order.id,
+          total,
+          address,
+          phone,
+        }),
+      })
+
+      if (!paymentRes.ok) {
+        const err = await paymentRes.json()
+        throw new Error(err.message || 'Failed to create payment session')
+      }
+
+      const { url } = await paymentRes.json()
+
+      // Step 3: Clear cart and redirect to Stripe
+      localStorage.removeItem('cart')
+      window.dispatchEvent(new Event('cart-updated'))
+
+      // Redirect to Stripe Checkout
+      window.location.href = url
+    } catch (err: any) {
+      showToast(err.message || 'Checkout failed. Please try again.', 'error')
+      setPlacing(false)
     }
   }
 
   return (
     <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Page heading — text animation */}
       <ScrollReveal variant="text">
         <h1
           className="text-2xl sm:text-3xl font-extrabold mb-8"
@@ -124,44 +135,38 @@ export default function CheckoutPage() {
         </h1>
       </ScrollReveal>
 
-      {/* Step indicator — pop animation */}
+      {/* Step indicator */}
       <ScrollReveal variant="pop">
         <div className="flex items-center gap-2 mb-10">
           {[
-            { num: '01', label: 'Delivery' }, // Step 1 — active
-            { num: '02', label: 'Review' }, // Step 2 — inactive
-            { num: '03', label: 'Done' }, // Step 3 — inactive
+            { num: '01', label: 'Delivery', active: true },
+            { num: '02', label: 'Payment', active: false },
+            { num: '03', label: 'Done', active: false },
           ].map((step, index) => (
             <div key={step.num} className="flex items-center gap-2">
               <span
                 className={`text-xs font-bold ${
-                  index === 0
-                    ? 'text-[var(--color-accent)]' // Active step — lime
-                    : 'text-[var(--color-text-dim)] opacity-40' // Inactive — dimmed
+                  step.active
+                    ? 'text-[var(--color-accent)]'
+                    : 'text-[var(--color-text-dim)] opacity-40'
                 }`}
                 style={{ fontFamily: 'Outfit, sans-serif' }}
               >
-                {step.num} {/* Step number */}
+                {step.num}
               </span>
               <span className={`text-sm ${
-                index === 0 ? 'text-[var(--color-text)]' : 'text-[var(--color-text-dim)] opacity-40'
+                step.active ? 'text-[var(--color-text)]' : 'text-[var(--color-text-dim)] opacity-40'
               }`}>
-                {step.label} {/* Step label */}
+                {step.label}
               </span>
-              {index < 2 && (
-                // Divider line between steps
-                <div className="w-8 h-px bg-[var(--color-border)] mx-2" />
-              )}
+              {index < 2 && <div className="w-8 h-px bg-[var(--color-border)] mx-2" />}
             </div>
           ))}
         </div>
       </ScrollReveal>
 
       <div className="grid lg:grid-cols-5 gap-8">
-        {/* ═══════════════════════════════════════════════════════
-            LEFT: Delivery Form (takes 3/5 width on desktop)
-            Slides in from left with staggered card sections
-            ═══════════════════════════════════════════════════════ */}
+        {/* LEFT: Delivery Form */}
         <div className="lg:col-span-3">
           <ScrollReveal variant="slide-left">
             <div className="card p-6">
@@ -169,48 +174,45 @@ export default function CheckoutPage() {
                 className="font-semibold mb-6 flex items-center gap-2"
                 style={{ fontFamily: 'Outfit, sans-serif' }}
               >
-                <MapPinIcon className="w-5 h-5 text-[var(--color-accent)]" /> {/* Map pin icon */}
+                <MapPinIcon className="w-5 h-5 text-[var(--color-accent)]" />
                 Delivery Details
               </h2>
 
               <div className="space-y-4">
-                {/* Address field — required */}
                 <div>
                   <label className="text-sm text-[var(--color-text-dim)] block mb-1.5">Address *</label>
                   <textarea
-                    value={address} // Controlled by state
-                    onChange={(e) => setAddress(e.target.value)} // Update on change
-                    className="glass-input resize-none" // Glass style, not resizable
-                    rows={3} // 3 rows tall
-                    placeholder="Street, building, landmark" // Placeholder hint
-                    required // HTML required validation
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="glass-input resize-none"
+                    rows={3}
+                    placeholder="Street, building, landmark"
+                    required
                   />
                 </div>
 
-                {/* Phone field — required */}
                 <div>
                   <label className="text-sm text-[var(--color-text-dim)] block mb-1.5">Phone *</label>
                   <input
-                    type="tel" // Telephone input type
-                    value={phone} // Controlled by state
-                    onChange={(e) => setPhone(e.target.value)} // Update on change
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     className="glass-input"
-                    placeholder="+1 234 567 890" // Placeholder hint
-                    required // HTML required validation
+                    placeholder="+1 234 567 890"
+                    required
                   />
                 </div>
 
-                {/* Note field — optional */}
                 <div>
                   <label className="text-sm text-[var(--color-text-dim)] block mb-1.5">
                     Note <span className="opacity-50">(optional)</span>
                   </label>
                   <input
                     type="text"
-                    value={note} // Controlled by state
-                    onChange={(e) => setNote(e.target.value)} // Update on change
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
                     className="glass-input"
-                    placeholder="e.g. Ring the doorbell" // Placeholder hint
+                    placeholder="e.g. Ring the doorbell"
                   />
                 </div>
               </div>
@@ -218,10 +220,7 @@ export default function CheckoutPage() {
           </ScrollReveal>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════
-            RIGHT: Order Summary (takes 2/5 width on desktop)
-            Slides in from right
-            ═══════════════════════════════════════════════════════ */}
+        {/* RIGHT: Order Summary + Pay Button */}
         <div className="lg:col-span-2">
           <ScrollReveal variant="slide-right" delay={0.1}>
             <div className="card p-6 sticky top-24">
@@ -232,59 +231,88 @@ export default function CheckoutPage() {
                 Order Summary
               </h2>
 
-              {/* Item list — each item as a row */}
+              {/* Item list */}
               <div className="space-y-3 mb-4">
                 {items.map((item: any) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span className="text-[var(--color-text-dim)] truncate mr-4">
-                      {item.name} <span className="opacity-50">&times;{item.qty}</span> {/* Name x qty */}
+                      {item.name} <span className="opacity-50">&times;{item.qty}</span>
                     </span>
                     <span className="font-medium shrink-0">${(item.price * item.qty).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Divider */}
               <div className="glass-divider" />
 
               {/* Subtotal + delivery */}
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--color-text-dim)]">Subtotal</span>
-                  <span>${total.toFixed(2)}</span> {/* Subtotal amount */}
+                  <span>${total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--color-text-dim)]">Delivery</span>
-                  <span className="text-[var(--color-accent)]">Free</span> {/* Free delivery */}
+                  <span className="text-[var(--color-accent)]">Free</span>
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="glass-divider" />
 
-              {/* Total — large lime text */}
+              {/* Total */}
               <div className="flex justify-between items-center mb-6">
                 <span className="font-bold text-lg">Total</span>
                 <span className="font-bold text-lg glow-text">${total.toFixed(2)}</span>
               </div>
 
-              {/* Place Order button — full width coral pill */}
+              {/* Pay with Card button */}
               <button
-                onClick={placeOrder} // Place order handler
-                disabled={placing || !address || !phone} // Disable if loading or missing required fields
-                className="glass-button w-full py-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={handleCheckout}
+                disabled={placing || !address || !phone}
+                className="glass-button w-full py-3 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {placing ? 'Placing Order...' : `Place Order — $${total.toFixed(2)}`} {/* Dynamic label */}
+                {placing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Redirecting to Stripe...
+                  </>
+                ) : (
+                  <>
+                    <CreditCardIcon className="w-5 h-5" />
+                    Pay with Card — ${total.toFixed(2)}
+                  </>
+                )}
               </button>
 
-              {/* Security note */}
-              <p className="text-xs text-[var(--color-text-dim)] text-center mt-4">
-                &#x1F512; Secure checkout. Your data is encrypted.
-              </p>
+              {/* Security badges */}
+              <div className="flex items-center justify-center gap-4 mt-4 text-xs text-[var(--color-text-dim)]">
+                <span className="flex items-center gap-1">
+                  <LockClosedIcon className="w-3 h-3" />
+                  SSL Encrypted
+                </span>
+                <span>Powered by Stripe</span>
+              </div>
             </div>
           </ScrollReveal>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="skeleton h-8 w-48 mb-8" />
+        <div className="skeleton h-6 w-64 mb-10" />
+        <div className="grid lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-3"><div className="skeleton h-80 rounded-xl" /></div>
+          <div className="lg:col-span-2"><div className="skeleton h-80 rounded-xl" /></div>
+        </div>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   )
 }
