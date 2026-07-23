@@ -25,12 +25,12 @@ model Product {
   slug              String   @unique
   description       String
   brand             String
-  price             Decimal  @db.Numeric(10, 2)
+  price             Decimal  @db.Decimal(10, 2)
   imageUrl          String?  @map("image_url")
   categoryId        String   @map("category_id") @db.Uuid
   category          Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   vehicleType       String   @default("both") @map("vehicle_type")
-  compatibleVehicles String  @default("[]") @map("compatible_vehicles") @db.Json
+  compatibleVehicles Json      @default("[]") @map("compatible_vehicles")
   specifications    Json?
   stock             Int      @default(0)
   createdAt         DateTime @default(now()) @map("created_at")

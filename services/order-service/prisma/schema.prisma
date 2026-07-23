@@ -13,7 +13,7 @@ model Order {
   id                String    @id @default(uuid()) @db.Uuid
   userId            String    @map("user_id") @db.Uuid
   items             Json
-  total             Decimal   @db.Numeric(10, 2)
+  total             Decimal   @db.Decimal(10, 2)
   status            String    @default("pending")
   address           String
   phone             String

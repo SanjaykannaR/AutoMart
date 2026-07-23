@@ -14,6 +14,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    env_file: .env.docker
     command: redis-server --requirepass ${REDIS_PASSWORD:-automart-redis-secret}
     # SEC-2: No host port mapping — only accessible from within Docker network
     healthcheck:
@@ -30,12 +31,12 @@ services:
     build:
       context: .
       dockerfile: services/auth-service/Dockerfile
+    env_file: .env.docker
     # SEC-2: No host port — only accessible via gateway
     environment:
       - JWT_SECRET=${JWT_SECRET:-automart-docker-secret}
       - AUTH_SERVICE_PORT=3001
       - REDIS_URL=redis://:${REDIS_PASSWORD:-automart-redis-secret}@redis:6379
-      - DATABASE_URL=${DATABASE_URL}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     depends_on:
@@ -54,10 +55,10 @@ services:
     build:
       context: .
       dockerfile: services/product-service/Dockerfile
+    env_file: .env.docker
     # SEC-2: No host port — only accessible via gateway
     environment:
       - PRODUCT_SERVICE_PORT=3002
-      - DATABASE_URL=${DATABASE_URL}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
       interval: 10s
@@ -71,6 +72,7 @@ services:
     build:
       context: .
       dockerfile: services/search-service/Dockerfile
+    env_file: .env.docker
     # SEC-2: No host port — only accessible via gateway
     environment:
       - SEARCH_SERVICE_PORT=3003
@@ -90,11 +92,11 @@ services:
     build:
       context: .
       dockerfile: services/order-service/Dockerfile
+    env_file: .env.docker
     # SEC-2: No host port — only accessible via gateway
     environment:
       - ORDER_SERVICE_PORT=3004
       - REDIS_URL=redis://:${REDIS_PASSWORD:-automart-redis-secret}@redis:6379
-      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
         condition: service_healthy
@@ -111,11 +113,11 @@ services:
     build:
       context: .
       dockerfile: services/inventory-service/Dockerfile
+    env_file: .env.docker
     # SEC-2: No host port — only accessible via gateway
     environment:
       - INVENTORY_SERVICE_PORT=3005
       - REDIS_URL=redis://:${REDIS_PASSWORD:-automart-redis-secret}@redis:6379
-      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
         condition: service_healthy
@@ -132,6 +134,7 @@ services:
     build:
       context: .
       dockerfile: services/notification-service/Dockerfile
+    env_file: .env.docker
     # SEC-2: No host port — only accessible via gateway
     environment:
       - NOTIFICATION_SERVICE_PORT=3006
@@ -153,6 +156,7 @@ services:
     build:
       context: .
       dockerfile: services/mcp-server/Dockerfile
+    env_file: .env.docker
     # SEC-2: No host port — only accessible via gateway
     environment:
       - MCP_SERVER_PORT=3007
@@ -169,6 +173,7 @@ services:
     build:
       context: .
       dockerfile: services/api-gateway/Dockerfile
+    env_file: .env.docker
     ports:
       - "3000:3000"
     environment:
@@ -204,6 +209,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+    env_file: .env.docker
     ports:
       - "3080:3000"
     environment:
