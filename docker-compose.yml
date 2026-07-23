@@ -1,5 +1,5 @@
 # ════════════════════════════════════════════════════════════════════════════════
-# AutoMart — Docker Compose (SQLite + Redis)
+# AutoMart — Docker Compose (PostgreSQL + Redis)
 # ════════════════════════════════════════════════════════════════════════════════
 # Usage:
 #   docker compose up --build          # build + run everything
@@ -35,10 +35,9 @@ services:
       - JWT_SECRET=${JWT_SECRET:-automart-docker-secret}
       - AUTH_SERVICE_PORT=3001
       - REDIS_URL=redis://:${REDIS_PASSWORD:-automart-redis-secret}@redis:6379
+      - DATABASE_URL=${DATABASE_URL}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-    volumes:
-      - auth_db:/data
     depends_on:
       redis:
         condition: service_healthy
@@ -58,8 +57,7 @@ services:
     # SEC-2: No host port — only accessible via gateway
     environment:
       - PRODUCT_SERVICE_PORT=3002
-    volumes:
-      - product_db:/data
+      - DATABASE_URL=${DATABASE_URL}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
       interval: 10s
@@ -96,8 +94,7 @@ services:
     environment:
       - ORDER_SERVICE_PORT=3004
       - REDIS_URL=redis://:${REDIS_PASSWORD:-automart-redis-secret}@redis:6379
-    volumes:
-      - order_db:/data
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
         condition: service_healthy
@@ -118,8 +115,7 @@ services:
     environment:
       - INVENTORY_SERVICE_PORT=3005
       - REDIS_URL=redis://:${REDIS_PASSWORD:-automart-redis-secret}@redis:6379
-    volumes:
-      - inventory_db:/data
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
         condition: service_healthy
@@ -222,9 +218,3 @@ services:
 networks:
   automart-net:
     driver: bridge
-
-volumes:
-  auth_db:
-  product_db:
-  order_db:
-  inventory_db:

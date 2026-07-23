@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ════════════════════════════════════════════════════════════════════════════════
 # AutoMart — Docker Compose Dev Override
 # ════════════════════════════════════════════════════════════════════════════════
@@ -21,7 +19,6 @@ services:
   auth-service:
     volumes:
       - ./services/auth-service/src:/app/services/auth-service/src
-      - auth_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              node prisma/seed.js || true &&
@@ -30,7 +27,6 @@ services:
   product-service:
     volumes:
       - ./services/product-service/src:/app/services/product-service/src
-      - product_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              node prisma/seed.js || true &&
@@ -44,7 +40,6 @@ services:
   order-service:
     volumes:
       - ./services/order-service/src:/app/services/order-service/src
-      - order_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              npx tsx watch services/order-service/src/index.ts"
@@ -52,7 +47,6 @@ services:
   inventory-service:
     volumes:
       - ./services/inventory-service/src:/app/services/inventory-service/src
-      - inventory_db:/data
     command: >
       sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma &&
              npx tsx watch services/inventory-service/src/index.ts"

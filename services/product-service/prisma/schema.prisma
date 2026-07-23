@@ -5,32 +5,36 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:/data/automart_products.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Category {
-  id       String    @id @default(cuid())
+  id       String    @id @default(uuid()) @db.Uuid
   name     String    @unique
   slug     String    @unique
   icon     String?
   products Product[]
+
+  @@map("categories")
 }
 
 model Product {
-  id                String   @id @default(cuid())
+  id                String   @id @default(uuid()) @db.Uuid
   name              String
   slug              String   @unique
   description       String
   brand             String
-  price             Float
-  imageUrl          String?
-  categoryId        String
-  category          Category @relation(fields: [categoryId], references: [id])
-  vehicleType       String   @default("both") // car | bike | both
-  compatibleVehicles String  @default("[]")
-  specifications    String?
+  price             Decimal  @db.Numeric(10, 2)
+  imageUrl          String?  @map("image_url")
+  categoryId        String   @map("category_id") @db.Uuid
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vehicleType       String   @default("both") @map("vehicle_type")
+  compatibleVehicles String  @default("[]") @map("compatible_vehicles") @db.Json
+  specifications    Json?
   stock             Int      @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("products")
 }

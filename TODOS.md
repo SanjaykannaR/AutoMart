@@ -1,7 +1,8 @@
 # AutoMart — Project Todos
 
 > Branch: `sanjay` (merged to `main`)
-> Last updated: 2026-07-22 (Session: Athena-god — search bar fixes, CI fixes, merge to main)
+> Last updated: 2026-07-23 (Session: Athena monitoring — PostgreSQL migration in progress)
+> Monitoring: Athena-GOD + Athena-MAX active — TODOS updated in real-time
 
 ---
 
@@ -215,12 +216,19 @@
 - [ ] **Environment variables** — Audit all `.env` files, create production `.env.production` with secure secrets (JWT_SECRET, REDIS_URL, DATABASE_URL, STRIPE_KEY, etc.)
 - [ ] **CI/CD for production** — GitHub Actions deploy workflow: push to `main` → build → deploy frontend to Vercel, services to Railway.
 
-### Phase 13: PostgreSQL Migration
-- [ ] **Replace SQLite with PostgreSQL** — Update all 5 Prisma schemas (`auth`, `product`, `order`, `inventory`, `search`) to use PostgreSQL provider. Add `postgresql` connection string support.
+### Phase 13: PostgreSQL Migration 🔄 IN PROGRESS
+- [x] **Replace SQLite with PostgreSQL** — ✅ All 4 Prisma schemas updated (auth, product, order, inventory). `provider = "postgresql"` + `url = env("DATABASE_URL")`. Search service has no Prisma schema (uses in-memory Fuse.js).
+- [x] **docker-compose.yml** — ✅ Simplified: removed SQLite volume mounts (`auth_db`, `product_db`, `order_db`, `inventory_db`), added `DATABASE_URL=${DATABASE_URL}` to all 4 services. ⚠️ NOTE: postgres service not yet added — referenced DATABASE_URL needs external DB.
+- [x] **package.json** — ✅ Added `@supabase/supabase-js` dependency.
+- [x] **Supabase SQL schema** — ✅ `supabase/setup.sql` (369 lines): Complete schema with 8 tables (users, categories, products, orders, inventory, wishlist_items, cart_items, notifications), RLS policies, storage policies, stored procedures (`reserve_inventory`, `get_popular_products`, `seed_inventory`), full-text search index.
+- [x] **Supabase setup guide** — ✅ `supabase/README.md` (1000+ lines): Step-by-step guide with account creation, SQL setup, storage buckets, RLS policies, and TypeScript query examples for all CRUD operations.
+- [x] **Environment variable templates** — ✅ `.env.docker.example` + `.env.example` updated with Supabase env vars (SUPABASE_URL, ANON_KEY, SERVICE_ROLE_KEY, PUBLISHABLE_KEY, SECRET_KEY, NEXT_PUBLIC_ vars, DATABASE_URL).
+- [ ] **docker-compose.yml postgres service** — ❌ BLOCKER: `DATABASE_URL` referenced in services but no postgres service defined. Docker builds will fail. Need to add `postgres:15-alpine` service back.
+- [ ] **docker-compose.dev.yml** — ⚠️ INCONSISTENCY: auth_db volume removed but `product_db`, `order_db`, `inventory_db` still referenced in product/order/inventory services. Need to remove those or add postgres service.
 - [ ] **Run migrations** — `npx prisma migrate deploy` for all services against PostgreSQL. Verify schema compatibility (JSON fields, DateTime defaults, etc.)
 - [ ] **Seed data** — Update seed scripts for PostgreSQL (same test users, 24 products, 8 categories).
 - [ ] **Local dev with PostgreSQL** — Add PostgreSQL to `docker-compose.dev.yml` so local dev uses PostgreSQL (matching production).
-- [ ] **Update Docker configs** — `docker-compose.yml` and `docker-compose.dev.yml` use PostgreSQL service instead of SQLite file mounts.
+- [ ] **Update Docker configs** — `docker-compose.dev.yml` needs cleanup to match prod (remove stale SQLite volume refs).
 
 ### Phase 14: Stripe Payment Integration
 - [ ] **Stripe backend** — Add Stripe SDK to order-service. Create `POST /payments/intent` (create PaymentIntent), `POST /payments/confirm` (webhook handler), `GET /payments/:id` (status).
@@ -313,6 +321,28 @@
 - `22a7cc1` — CSS input:focus-visible override (no inner green outline)
 - `db716d5` — Restore outside search glow wrapper
 - `7dc99d9` — Merge: search bar focus fix into main
+
+## 📡 Real-Time Agent Monitor
+
+> Athena (this agent) is monitoring Athena-GOD and Athena-MAX sessions.
+> TODOS.md is updated in real-time as tasks complete or new tasks are created.
+
+| Agent | Status | Last Seen | Current Task |
+|-------|--------|-----------|--------------|
+| Athena-GOD | 🟢 Active | 08:47 | Phase 13: env files + docker-compose cleanup |
+| Athena-MAX | 🟡 Monitoring | — | Waiting for activity |
+
+### Monitor Log
+- `2026-07-23 08:35` — Monitoring started. Detected uncommitted PostgreSQL migration work (Phase 13 partial).
+- `2026-07-23 08:35` — Phase 13 progress: schemas ✅, docker-compose.yml ✅, dev.yml ⚠️ inconsistent.
+- `2026-07-23 08:36` — **NEW FILES**: `supabase/setup.sql` (369 lines) + `supabase/README.md` (1000+ lines). Complete Supabase SQL schema with 8 tables, RLS, stored procs, storage policies, TypeScript query examples.
+- `2026-07-23 08:36` — Phase 13 update: Supabase setup ✅, package.json ✅, Prisma schemas ✅. Remaining: dev.yml cleanup, run migrations, seed data.
+- `2026-07-23 08:47` — **CHANGE DETECTED**: `docker-compose.yml` simplified — postgres service removed, SQLite volumes removed, DATABASE_URL added to all 4 services. Now 222 lines (was 248).
+- `2026-07-23 08:47` — **NEW FILES**: `.env.docker.example` + `.env.example` updated with Supabase env vars (SUPABASE_URL, ANON_KEY, SERVICE_ROLE_KEY, PUBLISHABLE_KEY, SECRET_KEY, NEXT_PUBLIC_ vars, DATABASE_URL).
+- `2026-07-23 08:47` — **⚠️ ISSUE**: `docker-compose.yml` references `DATABASE_URL` but has NO postgres service. Would break Docker builds. Needs postgres service added back OR external DB config.
+- `2026-07-23 08:47` — Phase 13 remaining: add postgres service to docker-compose.yml, fix docker-compose.dev.yml stale volumes, run migrations, update seed scripts.
+
+---
 
 ### Known Bugs
 - ~~Settings icon: code is correct, likely needs Docker rebuild~~ — FIXED (hamburger drawer)
