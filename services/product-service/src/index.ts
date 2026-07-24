@@ -30,9 +30,15 @@ const productSchema = z.object({
   imageUrl: z.string().optional(),
 })
 
-/** Deserializes the JSON-stringified compatibleVehicles field from the DB. */
+/** Deserializes JSON fields from the DB — handles both string (SQLite) and object (PostgreSQL) formats. */
 function parseProduct(p: any) {
-  return { ...p, compatibleVehicles: JSON.parse(p.compatibleVehicles || '[]') }
+  const cv = p.compatibleVehicles
+  const specs = p.specifications
+  return {
+    ...p,
+    compatibleVehicles: typeof cv === 'string' ? JSON.parse(cv || '[]') : (cv ?? []),
+    specifications: typeof specs === 'string' ? JSON.parse(specs || '{}') : (specs ?? null),
+  }
 }
 
 // ─── GET /products ──────────────────────────────────────────────────────────────
