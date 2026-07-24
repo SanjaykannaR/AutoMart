@@ -95,6 +95,11 @@ jobs:
       - name: Install Playwright browsers
         working-directory: e2e
         run: npx playwright install chromium --with-deps
+      - name: Create .env.docker from example
+        run: |
+          cp .env.docker.example .env.docker
+          # Inject secrets from GitHub Actions secrets
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env.docker
       - name: Start full stack
         run: docker compose up -d --build --wait
         timeout-minutes: 10
