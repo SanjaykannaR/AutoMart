@@ -8,6 +8,7 @@ import express from 'express'
 import { PrismaClient } from '../src/generated/order'
 import { z } from 'zod'
 import Redis from 'ioredis'
+import paymentsRouter from './payments'
 
 const app = express()
 const prisma = new PrismaClient()
@@ -117,7 +118,7 @@ app.get('/orders', async (req, res) => {
       where: { userId },
       orderBy: { createdAt: 'desc' },
     })
-    res.json(orders.map(o => ({ ...o, items: JSON.parse(o.items) })))
+    res.json(orders.map(o => ({ ...o, items: o.items })))
   } catch (err) {
     console.error('[Order] List error:', err)
     return errorResponse(res, 500, 'ORDER_LIST_FAILED',
@@ -135,7 +136,7 @@ app.get('/orders/:id', async (req, res) => {
         `No order found with ID "${req.params.id}".`,
         'Verify the order ID is correct. It may have been deleted or never existed.')
     }
-    res.json({ ...order, items: JSON.parse(order.items) })
+    res.json({ ...order, items: order.items })
   } catch (err) {
     console.error('[Order] Get by ID error:', err)
     return errorResponse(res, 500, 'ORDER_FETCH_FAILED',
@@ -210,6 +211,9 @@ app.patch('/orders/:id/status', async (req, res) => {
       'Check order-service logs for details.')
   }
 })
+
+// ─── Stripe Payments ────────────────────────────────────────────────────────
+app.use('/payments', paymentsRouter)
 
 // ─── Health ─────────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'order-service' }))

@@ -5,31 +5,72 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:/data/automart_auth.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
+// ─── User Model ──────────────────────────────────────────────────────────────
+// Stores all user accounts including admins. Role determines access level:
+//   - individual: regular customer (default)
+//   - mechanic: auto mechanic / repair shop worker
+//   - shop: auto parts shop owner
+//   - admin: system administrator (full access to admin panel)
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid()) @db.Uuid
   name          String
   email         String    @unique
   password      String
-  role          String    @default("individual") // mechanic | individual | shop
+  role          String    @default("individual") // 'individual' | 'mechanic' | 'shop' | 'admin'
   phone         String?
-  phoneVerified Boolean   @default(false)
+  phoneVerified Boolean   @default(false) @map("phone_verified")
   address       String?
-  avatar        String?   @default("👤")
-  authProvider  String?   // google | apple | email
+  avatar        String?   @default("user-avatar")
+  authProvider  String?   @default("email") @map("auth_provider")
   sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("users")
 }
 
+// ─── Session Model ───────────────────────────────────────────────────────────
+// JWT session tracking — each login creates a session record.
+// Used for session invalidation and active session monitoring.
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
   token     String   @unique
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ─── Banner Model ────────────────────────────────────────────────────────────
+// Admin-managed ads banners displayed on the homepage hero carousel.
+// Each banner has an image, text overlay, CTA button, and display order.
+// Public endpoint (GET /banners/public) returns only active banners.
+//
+// Banner requirements:
+//   - Dimensions: 1920x600 pixels (recommended)
+//   - Max file size: 2MB
+//   - Supported formats: PNG, JPG, JPEG, WebP
+//   - Aspect ratio: 3.2:1 (landscape)
+model Banner {
+  id        String   @id @default(uuid()) @db.Uuid
+  headline  String                              // Main headline text (e.g., "Mega Brake Sale")
+  subtitle  String                              // Subtitle text (e.g., "Up to 40% off on brakes")
+  badge     String                              // Small tag above headline (e.g., "Limited Time")
+  cta       String                              // Button text (e.g., "Shop Brakes")
+  link      String                              // Button destination URL (e.g., "/search?category=brakes")
+  gradient  String                              // Tailwind gradient class for overlay
+  image     String                              // Banner image URL (Unsplash or uploaded)
+  accent    String                              // Accent color hex (e.g., "#EF4444")
+  isActive  Boolean  @default(true)             // Show/hide toggle — inactive banners are hidden from public
+  order     Int      @default(0)                // Sort position — lower numbers show first
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("banners")
 }

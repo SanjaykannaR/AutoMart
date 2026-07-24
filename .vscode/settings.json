@@ -1,0 +1,13 @@
+{
+  // ── SQL Language Configuration ──────────────────────────────────────────────
+  // Configure SQL files to use PostgreSQL dialect so the linter stops
+  // flagging valid Postgres syntax (auth.uid(), CREATE POLICY, JSONB, etc.)
+  "[sql]": {
+    "editor.formatOnSave": false,
+    "editor.suggestSelection": "first"
+  },
+  // Tell the SQL language server to use PostgreSQL
+  "sql-language-server.dialect": "postgresql",
+  // If using sql-formatter, set dialect
+  "sql-formatter.dialect": "postgresql"
+}

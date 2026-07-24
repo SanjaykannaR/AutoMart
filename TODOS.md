@@ -1,7 +1,8 @@
 # AutoMart — Project Todos
 
-> Branch: `sanjay` (merged to `main`)
-> Last updated: 2026-07-22 (Session: Athena-god + Max — wishlist/cart sync completed)
+> Branch: `sanjay`
+> Last updated: 2026-07-23 22:30 (Session closed — all done for today)
+> Monitoring: Athena-GOD idle until next session
 
 ---
 
@@ -90,175 +91,174 @@
 - [x] TF-IDF — term frequency scoring
 - [x] Cosine Similarity — vector comparison
 
-### Phase 11: Full UI/UX Redesign (COMPLETED)
-- [x] Dark automotive industrial theme — jet black, charcoal, neon lime accent, coral CTAs
-- [x] Glassmorphism design system — translucent cards, backdrop-blur, glass borders
+### Phase 11: Full UI/UX Redesign
+- [x] Dark automotive industrial theme
+- [x] Glassmorphism design system
 - [x] Outfit + Inter font pairing
-- [x] Light theme removed — dark-only
-- [x] Max-width 2560px across all pages
-- [x] Square product images (1:1 aspect ratio)
-- [x] Hero 3D coverflow carousel — auto-slide 5s, hover detection by mouse X position
-- [x] Featured products horizontal carousel
-- [x] All category/section icons → glass circle Heroicons
-- [x] ProductCard — glass card with heart overlay + cart button
-- [x] Navbar — centered layout, icon+text nav links, glass circle buttons
-- [x] SearchBar — glass pill with voice (🎤) + camera (📷) buttons
-- [x] Wishlist page (/wishlist) — heart toggle, move to cart, remove
-- [x] Account/Settings page (/account) — profile, addresses, password, logout
-- [x] Order tracking (/track/[orderId]) — 4-step progress timeline
-- [x] Categories page (/categories) — 8 category cards with images
-- [x] Login/Register — split-screen with role selector
-- [x] Cart page — 2-column with thumbnails + summary sidebar
-- [x] Checkout page — step indicator, delivery form, order summary
-- [x] Orders page — progress bar, status badges
-- [x] Order detail — vertical timeline, delivery info sidebar
-- [x] ESLint config for monorepo (0 errors, 38 warnings)
-- [x] All Unsplash auto parts images verified working
-- [x] 4 new pages added (wishlist, account, track, categories)
-- [x] Voice search — Web Speech API, auto-search after recognition
-- [x] Voice search animation — pulsing ring + sound wave bars + coral glow
-- [x] Image search — file picker, stores in sessionStorage, search page shows image banner
-- [x] Login/Register dispatch 'user-updated' custom event for Settings icon
-- [x] Search bar X clear button — appears when >1 character typed, clears input
+- [x] Hero 3D coverflow carousel
+- [x] All 15+ pages redesigned
+- [x] Voice/camera search
+- [x] 43/43 E2E tests passing
+
+### Phase 12: Production Deployment — SKIPPED (deferred)
+- Deferred to after all features complete
+
+### Phase 13: PostgreSQL Migration ✅ COMPLETE (committed `bd3e0ea`)
+- [x] All 4 Prisma schemas → PostgreSQL (Supabase)
+- [x] docker-compose.yml simplified (no SQLite volumes)
+- [x] `supabase/setup.sql` — 8 tables + RLS + stored procedures
+- [x] `supabase/README.md` — full setup guide
+- [x] Prisma generate for all 4 services
+
+### Phase 14: Stripe Payment Integration ✅ COMPLETE (committed `cfbcfa1`)
+- [x] Stripe SDK + payments router (`order-service/src/payments.ts`)
+- [x] API Gateway `/api/payments` route
+- [x] Checkout page → Stripe Checkout redirect
+- [x] Checkout success page → payment verification
+- [x] Docker env vars for Stripe
+
+### Phase 15: Admin Dashboard ✅ COMPLETE (committed `f0869c6` + fixes)
+
+#### Backend (auth-service) — 24 API routes
+- [x] `POST /admin/bootstrap` — One-time first admin creation
+- [x] `POST /admin/login` — Admin-specific login (validates role=admin)
+- [x] `POST /admin/create-admin` — Create additional admins (admin-only)
+- [x] `GET /admin/me` — Current admin profile
+- [x] `PATCH /admin/change-password` — Requires current password
+- [x] `PATCH /admin/change-username` — Update display name
+- [x] `POST /admin/forgot-password` — 6-digit code via Redis
+- [x] `POST /admin/reset-password` — Verify code + set new password
+- [x] `GET /admin/users` — Paginated list (search + role filter)
+- [x] `GET /admin/users/:id` — User detail
+- [x] `PATCH /admin/users/:id` — Update user role
+- [x] `DELETE /admin/users/:id` — Delete user (self-delete protection)
+- [x] `GET /banners/public` — Active banners (no auth)
+- [x] `GET /admin/banners` — List all banners
+- [x] `POST /admin/banners` — Create banner
+- [x] `PATCH /admin/banners/:id` — Update banner
+- [x] `DELETE /admin/banners/:id` — Delete banner
+- [x] `PATCH /admin/banners/reorder` — Reorder (transaction-based)
+
+#### Frontend — 11 files
+- [x] `lib/admin-auth.ts` — Auth context (login/logout/token/role guard)
+- [x] `admin/layout.tsx` — Collapsible sidebar + header + auth gate + public page exceptions
+- [x] `admin/page.tsx` — Dashboard (stat cards, recent users, quick actions)
+- [x] `admin/login/page.tsx` — Admin login with role validation
+- [x] `admin/forgot-password/page.tsx` — Email → 6-digit code
+- [x] `admin/reset-password/page.tsx` — Code + new password
+- [x] `admin/banners/page.tsx` — Full CRUD + reorder + modal forms
+- [x] `admin/products/page.tsx` — List + filters + stock badges + create modal
+- [x] `admin/orders/page.tsx` — List + expandable detail + status update
+- [x] `admin/inventory/page.tsx` — Stock levels + summary cards
+- [x] `admin/users/page.tsx` — Paginated list + role change + delete + self-protection
+- [x] `admin/settings/page.tsx` — Change username + password
+
+#### Bugs Fixed
+- [x] Auth entrypoint hanging on `prisma db push` (Supabase PgBouncer issue) → simplified to skip
+- [x] `users_role_check` constraint missing `admin` → ALTER TABLE added
+- [x] Seed user `admin@automart.com` had role `shop` → updated to `admin`
+- [x] Admin layout infinite redirect loop (login page redirected to itself) → added public page exceptions
+- [x] `NEXT_PUBLIC_SUPABASE_URL` typo (`pljput` → `pljsut`) → fixed in `.env.docker`
+
+#### Migrations Created
+- [x] `supabase/migration-banners.sql` — banners table
+- [x] `supabase/migration-banner-storage.sql` — banner-images storage bucket + RLS
 
 ---
 
-## 🔴 TODO — Remaining Work (2026-07-22)
+## 🔴 TODO — Tomorrow (2026-07-24)
 
-### 🔥 CRITICAL — Must Fix
-- [x] **Settings icon not visible in navbar** — Fixed: added mobile hamburger drawer with all nav links (including Settings). Desktop nav already worked. Code: `Navbar.tsx` + `Bars3Icon` import + `mobileMenuOpen` state + slide-in panel.
-- [x] **Voice search needs better listening animation** — Fixed: 3-layer pulsing rings (voice-ring keyframe), stronger glow `shadow-[0_0_20px]`, 6-bar sound wave animation, "Listening..." text indicator below mic button.
-- [x] **Rebuild Docker container** — Rebuilt all 10 containers (web + 8 services + Redis). All healthy. Web on `http://localhost:3080`.
+### 🔥 P0 — Must Do First (blockers)
 
-### HIGH Priority — Core Functionality
-- [x] **Verify E2E tests pass with Docker stack** — Fixed: ALL 31/31 E2E tests now passing (was 17/31). RegisterPage labels lack `for` attr → used `getByPlaceholder`. SearchPage/CheckoutPage duplicate matches → `.first()`/`.last()` disambiguation. browse/search/place-order strict-mode fixes.
-- [x] **Test MCP server endpoints with curl/Postman** — Fixed: `/api/mcp` proxy added to api-gateway. `test-mcp.sh` validates 5 tools (24/24 pass).
-- [x] **Search page: image search mode** — Fixed: `performImageSearch()` calls `/api/search/image` with base64, loading/error states added.
-- [x] **Mobile hamburger menu** — Fixed: slide-in drawer from left with all nav links, search, profile/sign-in, wishlist+cart counts. Visible on `md:hidden`. + Escape key + body scroll lock + solid opaque background + moved outside nav for z-index stacking.
+- [ ] **Run banner table migration** — Execute ONLY `migration-banners.sql` in Supabase SQL Editor. Storage bucket already exists (skip `migration-banner-storage.sql`). Without this, banners page shows error.
+- [ ] **Admin login test** — Visit `http://localhost:3080/admin/login`, login with `admin@automart.com` / `Admin@12345`, verify dashboard loads. (API verified working ✅)
+- [ ] **Change admin credentials** — After login, go to Settings → change username and password from defaults.
 
-### July 22 Session — Completed by Athena-god + Max
+### 🟡 P1 — Core Features (high value)
 
-#### UI/UX Enhancements
-- [x] **Hero carousel overhaul** — Replaced split-screen with full-width banner carousel + Gemini-style search glow
-- [x] **Search bar glow** — Clean drop shadow glow replacing rotating gradient border
-- [x] **Notification bell** — Dropdown panel with per-notification delete button (X on hover)
-- [x] **Navbar icon hover themes** — Bell=green, heart=wine, cart=gold (distinct colors)
-- [x] **Broken Unsplash images** — Replaced 3 broken URLs (404) with working alternatives
-- [x] **Voice search animation upgrade** — 6-bar sound wave + pulsing rings + "Listening..." indicator
-- [x] **Footer logo** — Added to mobile drawer
-- [x] **Hero arrows hidden on mobile** — Prevents search bar overlap
+- [ ] **Admin banner upload** — Add Supabase Storage upload to banner form (file picker → upload → get public URL → save to banner). Needs `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` in web env.
+- [ ] **Admin product CRUD** — Verify create product works end-to-end. Add edit/delete functionality (currently only list + create).
+- [ ] **Admin order status updates** — Test that PATCH `/orders/:id/status` works through the admin panel. Verify status badges update.
+- [ ] **Admin inventory stock alerts** — Test per-product inventory lookup. Verify low-stock and out-of-stock badges.
+- [ ] **Admin user management** — Test role change and user deletion. Verify self-protection (can't delete yourself).
+- [ ] **Admin settings** — Test username change + password change. Verify token updates after username change.
+- [ ] **Frontend build check** — `npx next build` should pass with zero errors.
 
-#### Auth & Security
-- [x] **Auth service enhancements** — Improved login page + layout components
-- [x] **Conditional footer for auth pages** — Login/Register pages don't show full footer
-- [x] **Gateway POST proxy fix** — Fixed API gateway POST routing
-- [x] **Security hardening** — 6 security fixes + E2E test report (commit `e514c7c`)
-- [x] **LoginPage DOM detach race** — Fixed GoogleOAuth hydration race causing "element detached from DOM" errors
+### 🟢 P2 — Polish & Integration
 
-#### Mobile & Responsive
-- [x] **Mobile drawer z-index fix** — Moved outside `<nav>` element for proper stacking + solid opaque background
-- [x] **Mobile drawer cleanup** — Removed wishlist+cart from drawer (already in navbar)
-- [x] **Search bar X clear button** — Appears when >1 character typed, clears input
+- [ ] **Hero carousel → API** — Replace hardcoded slides in `Hero.tsx` with `GET /banners/public` fetch. Dynamic banners from admin panel.
+- [ ] **Admin E2E tests** — Add Playwright tests for admin login, banner CRUD, user management.
+- [ ] **Stripe webhook verification** — Add `express.raw()` middleware for Stripe webhook signature verification.
+- [ ] **Notification broadcast** — Add admin notification broadcast endpoint (send notification to all users).
+- [ ] **Admin dashboard stats** — Add real stats: total orders, revenue, products in stock. May need aggregation endpoint.
 
-#### E2E & Testing
-- [x] **All 31 E2E tests passing** — RegisterPage, SearchPage, CheckoutPage selector fixes
-- [x] **MCP proxy + 24/24 tool validation** — All 5 MCP tools verified over HTTP
+### 🔵 P3 — Future Phases
 
-#### DSA & Performance
-- [x] **LRU Cache — recently viewed products** — `apps/web/src/lib/lru-cache.ts` (Map-based O(1), localStorage persistence, 10-item capacity). Integrated into `products/[id]/page.tsx`.
-- [x] **Design system CSS tokens** — `globals.css` full overhaul: color palette, glassmorphism cards/inputs/buttons, skeleton shimmer animation, hero animations (float, glow-pulse, ken-burns), search bar glow, notification panel, custom scrollbar
-- [x] **Search bar placeholder rotation** — `Navbar.tsx` cycles through suggestions dynamically
-- [x] **Dead CSS cleanup** — Removed 5 legacy aliases (glass-bg, glass-border, glass-hover, surface-light, text-primary, text-secondary)
-
-#### Testing
-- [x] **12 new E2E tests** — wishlist.spec.ts (4), account.spec.ts (4), categories.spec.ts (4). Total: 43/43 passing.
-- [x] **Track order skeleton** — Loading skeleton added to track/[orderId]/page.tsx
-
-#### MCP Integration (Claude Desktop / Cursor)
-- [x] **Stdio server** — `services/mcp-server/src/stdio-server.ts` (170 lines). Wraps HTTP MCP into stdio transport for Claude Desktop/Cursor. JSON-RPC handler for initialize, tools/list, tools/call, ping.
-- [x] **Claude Desktop config** — `claude-desktop-config.json` ready to copy to Claude Desktop settings
-- [x] **Cursor config** — `.cursor/mcp.json` ready for Cursor IDE
-
-#### Dark Mode Cleanup
-- [x] **Verified clean** — No ThemeToggle component, no light theme CSS, no dark-mode toggle code. Project is dark-only since initial redesign.
-
-#### Accessibility & Performance
-- [x] **Focus-visible styles** — `:focus-visible` outline in neon lime for keyboard navigation
-- [x] **Skip-to-content link** — `.skip-link` class + `<a href="#main-content">` in layout
-- [x] **Text contrast fix** — `--color-text-muted` bumped from `#555555` to `#6B6B6B` (2.8:1 → 4.2:1)
-- [x] **Image lazy loading** — `loading=lazy` on below-the-fold images (ProductCard, Cart, Categories)
-
-### MEDIUM Priority — Production Ready
-- [x] **Loading skeletons on all pages** — Fixed: `globals.css` includes `.skeleton` shimmer animation (CSS-only, 200% gradient sweep). Track order page skeleton added in commit `1521637`. Ready for component integration.
-- [x] **LRU Cache — recently viewed products** — Fixed: `apps/web/src/lib/lru-cache.ts` implemented. Map-based O(1) get/put, capacity 20, localStorage persistence via `save()`/`load()`. Product-specific helpers: `loadRecentlyViewed()`, `addToRecentlyViewed()`. Integrated into `products/[id]/page.tsx`.
-- [x] **Connect MCP server to Claude Desktop / Cursor** — Fixed: `stdio-server.ts` wraps HTTP MCP into stdio transport. Config files ready: `claude-desktop-config.json` + `.cursor/mcp.json`. Run `npx tsx services/mcp-server/src/stdio-server.ts` with Docker stack.
-- [x] **Search bar placeholder rotation** — Fixed: `Navbar.tsx` cycles through suggestions ("brake pads", "oil filter", "spark plugs", etc.). Commit `1521637`.
-- [x] **Wishlist persistence** — Backend: Redis-backed GET/PUT endpoints in auth-service (`/users/me/wishlist`). Frontend: `syncWishlist()` merges backend+localStorage on mount, `saveWishlist()` persists on mutation. Graceful fallback when not logged in. New files: `lib/api.ts`, `lib/sync.ts`. Updated: `wishlist/page.tsx`.
-- [x] **Cart persistence for logged-in users** — Backend: Redis-backed GET/PUT endpoints in auth-service (`/users/me/cart`). Frontend: `syncCart()` merges backend+localStorage on mount, `saveCart()` persists on mutation. Same `lib/api.ts` + `lib/sync.ts` utilities. Updated: `cart/page.tsx`.
-
-### LOW Priority — Nice to Have
-- [ ] **PWA support (manifest, service worker)** — SKIPPED: not needed now
-- [ ] **Priority Queue — order processing queue** — SKIPPED: not needed now
-- [x] **Dark mode toggle removal cleanup** — Already done: project is dark-only since initial redesign (commit `5dadbf9`). No ThemeToggle component, no light theme CSS exists. Nothing to clean up.
-- [x] **Accessibility audit** — Fixed: `:focus-visible` outline (neon lime) for keyboard navigation, skip-to-content link, `--color-text-muted` bumped from `#555555` to `#6B6B6B` (4.2:1 contrast ratio). Commit `75073d1`.
-- [x] **Performance audit** — Fixed: `loading=lazy` added to below-the-fold images (ProductCard, Cart, Categories). Commit `b5baba5`.
-- [x] **E2E tests for new pages** — Fixed: 12 tests added (wishlist: 4, account: 4, categories: 4). All 43/43 E2E tests passing. Commit `98e6cd3`.
+- [ ] **Phase 12: Production Deployment** — Vercel (frontend) + Railway (backend). Deferred until all features stable.
+- [ ] **Phase 16: Email Templates** — nodemailer + react-email. Order confirmation, shipping update, password reset, welcome emails.
+- [ ] **Phase 17: Analytics** — Event tracking service + admin analytics dashboard with charts.
 
 ---
 
 ## 📝 Notes
 
 ### Design System Summary
-- **Colors**: jet black `#0A0A0A`, charcoal `#1A1A1A`, neon lime `#39FF14` (accent), coral `#FF523B` (CTAs), sky blue `#38B6FF` (secondary)
+- **Colors**: jet black `#0A0A0A`, charcoal `#1A1A1A`, neon lime `#39FF14` (accent), coral `#FF523B` (CTAs), sky blue `#38B6FF`
 - **Fonts**: Outfit (headings) + Inter (body)
 - **Cards**: glassmorphism — `bg-white/[0.04]` + `backdrop-blur-md` + `border-white/[0.08]`
 - **Buttons**: glass circles — `bg-white/[0.06]` + `backdrop-blur-md`
 - **Max width**: `max-w-[2560px]` everywhere
 - **Product images**: always 1:1 aspect ratio
 
-### Git Commits (UI/UX session — July 21)
-- `5dadbf9` — Full UI/UX redesign (10 phases, all pages)
-- `c506410` — Fix Unsplash images (picsum → verified auto parts URLs)
-- `2abf0fc` — Hero carousel rewrite (floating → 3D coverflow)
-- `fb83c5b` — 4 new pages (wishlist, account, track, categories)
-- `9df796c` — Navbar rework (centered, icons+text, glass circles)
-- `4c15428` — Glassmorphism UI overhaul (all components)
-- `43cd309` — Home page glass icons (categories, how it works, stats)
-- `1460d23` — Fix invalid heroicons (UserGroupIcon→UsersIcon, HeadphonesIcon→PhoneIcon)
-- `70d48de` — Settings icon + active underline positioning fix
-- `e7ac561` — Settings token fallback + wider underline
-- `516db17` — Voice/camera search + Settings bulletproof detection
-- `3da6855` — Search bar X clear button
+### Supabase
+- **Project ID**: `mmvrkljevwgkonpljsut`
+- **Project URL**: `https://mmvrkljevwgkonpljsut.supabase.co`
+- **Dashboard**: `https://supabase.com/dashboard/project/mmvrkljevwgkonpljsut`
+- **Storage bucket**: `banner-images` (public, 2MB, PNG/JPG/WebP)
+- **Test banner image**: `https://mmvrkljevwgkonpljsut.supabase.co/storage/v1/object/public/banner-images/form.png`
 
-### Git Commits (July 22 — Athena-god + Max session)
-- `3030619` — Hero split-screen → full-width banner carousel + search glow
-- `403f1af` — Search bar: rotating gradient → clean drop shadow glow
-- `312bc52` — Remove invalid JSX comments + dead search-glow-border div
-- `2e6602d` — Notification bell with dropdown panel
-- `53f038d` — Per-notification delete button (X on hover)
-- `1cc16c1` — Themed hover colors for navbar icons
-- `2566ecf` — Distinct hover colors (bell=green, heart=wine, cart=gold)
-- `628a3cc` — Replace 3 broken Unsplash images (404)
-- `7f53ffe` — UI improvements, search enhancements, service updates
-- `87fabc7` — Conditional footer for auth pages + gateway POST proxy fix
-- `b8f4eb2` — Auth service enhancement + login page + layout components
-- `e514c7c` — Security: E2E test report + 6 security hardening fixes
-- `32e44ad` — Mobile hamburger menu + voice animation upgrade + footer logo
-- `3b1b7ae` — Hide hero prev/next arrows on mobile
-- `b86f9df` — Move hamburger to right icon group + solid drawer bg
-- `5005e81` — Image search + MCP proxy + fix all 31 E2E tests
-- `f640b15` — Move mobile drawer outside nav (z-index fix) + solid opaque bg
-- `fcebfc5` — Fix LoginPage DOM detach race (GoogleOAuth hydration)
-- `3487911` — Remove wishlist+cart from mobile drawer (already in navbar)
-- `6095ebc` — Remove 5 dead CSS legacy aliases (cleanup)
-- `98e6cd3` — Add 12 E2E tests (wishlist, account, categories) — 43/43 passing
-- `1521637` — LRU cache + search placeholder rotation + track order skeleton
-- `e925fdb` — Wishlist/cart Redis persistence + MCP stdio server + Claude Desktop/Cursor configs
-- `pending` — Wishlist/cart frontend sync with backend (lib/api.ts, lib/sync.ts, page updates)
+### Admin Credentials (TEMPORARY — change after first login)
+- **URL**: `http://localhost:3080/admin/login`
+- **Email**: `admin@automart.com`
+- **Password**: `Admin@12345`
+- **Role**: `admin`
 
-### Known Bugs
-- ~~Settings icon: code is correct, likely needs Docker rebuild~~ — FIXED (hamburger drawer)
-- ~~Voice animation: too subtle, needs visual upgrade~~ — FIXED (6-bar wave + pulsing rings)
-- ~~7 E2E tests failing (selectors outdated after redesign)~~ — FIXED (all 31 passing)
-- ~~GoogleOAuth login: "element detached from DOM"~~ — FIXED (hydration race fix)
-- ~~Mobile drawer: z-index stacking issues~~ — FIXED (moved outside nav)
+### Git Commits (July 23 — Admin System Session)
+- `bd3e0ea` — Phase 13 PostgreSQL migration (22 files)
+- `3c8c67b` — Phase 13 type fixes
+- `f0869c6` — Phase 15 Admin system (16 files, 3959 insertions)
+- `cfbcfa1` — Phase 14 Stripe integration (20 files)
+
+### Known Issues
+- ⚠️ **Banner table missing in Supabase** — Run `migration-banners.sql` only (storage bucket already exists).
+- ⚠️ **Admin credentials are defaults** — Must change after first login.
+
+### Known Bugs — FIXED
+- ~~Settings icon not visible~~ — FIXED (hamburger drawer)
+- ~~Voice animation too subtle~~ — FIXED (6-bar wave + pulsing rings)
+- ~~7 E2E tests failing~~ — FIXED (all 43/43 passing)
+- ~~GoogleOAuth DOM detach~~ — FIXED (isolated provider)
+- ~~Mobile drawer z-index~~ — FIXED (moved outside nav)
+- ~~Auth entrypoint hanging~~ — FIXED (skip prisma db push)
+- ~~Admin role constraint~~ — FIXED (ALTER TABLE added admin)
+- ~~Admin layout redirect loop~~ — FIXED (public page exceptions)
+- ~~Supabase URL typo~~ — FIXED (pljput → pljsut)
+
+---
+
+## 📡 Real-Time Agent Monitor
+
+| Agent | Status | Last Seen | Current Task |
+|-------|--------|-----------|--------------|
+| Athena-GOD | 🟡 Idle | 22:30 | Session closed — resuming tomorrow |
+| Athena-MAX | 🟡 Idle | — | Docker / payment service work |
+
+### Monitor Log
+- `2026-07-23 08:35` — Monitoring started.
+- `2026-07-23 16:55` — Phase 13 committed (`bd3e0ea`, `3c8c67b`).
+- `2026-07-23 17:36` — Phase 15 committed (`f0869c6`).
+- `2026-07-23 21:08` — Phase 14 committed (`cfbcfa1`).
+- `2026-07-23 22:00` — Admin bootstrap fixed (role constraint, infinite redirect, entrypoint). TODOS updated for tomorrow.
+- `2026-07-23 22:30` — End-of-day check: all 10 Docker containers healthy ✅, admin login API verified ✅, banner storage bucket exists ✅. Session closed.
+- **Total commits today**: 4 (`bd3e0ea`, `3c8c67b`, `f0869c6`, `cfbcfa1`)
+- **Phases completed**: 13 ✅, 14 ✅, 15 ✅

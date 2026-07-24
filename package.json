@@ -40,6 +40,8 @@
     "typescript-eslint": "^8.65.0"
   },
   "dependencies": {
-    "ioredis": "^5.11.1"
+    "@supabase/supabase-js": "^2.110.8",
+    "ioredis": "^5.11.1",
+    "stripe": "^22.3.2"
   }
 }
