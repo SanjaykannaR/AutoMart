@@ -17,7 +17,7 @@ export class CheckoutPage {
     this.addressInput = page.getByPlaceholder('Street, building, landmark')
     this.phoneInput = page.getByPlaceholder('+1 234 567 890')
     this.noteInput = page.getByPlaceholder('Ring the doorbell')
-    this.placeOrderButton = page.getByRole('button', { name: /place order/i })
+    this.placeOrderButton = page.getByRole('button', { name: /pay with card/i })
     this.orderSummary = page.getByText('Order Summary')
   }
 

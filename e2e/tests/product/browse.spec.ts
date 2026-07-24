@@ -53,7 +53,7 @@ test.describe('Product Browsing', () => {
     await page.getByRole('button', { name: /add to cart/i }).click()
 
     // Verify cart has item
-    await expect(page.getByText('Ceramic Brake Pads')).toBeVisible()
+    await expect(page.getByText('Ceramic Brake Pads').first()).toBeVisible()
     await expect(page.getByText('Proceed to Checkout')).toBeVisible()
   })
 
