@@ -57,15 +57,16 @@ jobs:
         id: path
         run: |
           if [ "${{ matrix.service }}" = "web" ]; then
-            echo "dir=apps/web" >> $GITHUB_OUTPUT
+            echo "file=apps/web/Dockerfile" >> $GITHUB_OUTPUT
           else
-            echo "dir=services/${{ matrix.service }}" >> $GITHUB_OUTPUT
+            echo "file=services/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ${{ steps.path.outputs.dir }}
+          context: .
+          file: ${{ steps.path.outputs.file }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
