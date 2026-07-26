@@ -80,15 +80,23 @@ app.get('/products', async (req, res) => {
 // MUST be defined before /products/:id to avoid matching "stats" as an ID.
 app.get('/products/stats', async (req, res) => {
   try {
-    const [totalProducts, inStock, outOfStock, categoryCounts] = await Promise.all([
+    const [totalProducts, inStock, outOfStock, categoryCounts, categories] = await Promise.all([
       prisma.product.count(),
       prisma.product.count({ where: { stock: { gt: 0 } } }),
       prisma.product.count({ where: { stock: 0 } }),
       prisma.product.groupBy({ by: ['categoryId'], _count: { id: true } }),
+      prisma.category.findMany({ select: { id: true, name: true } }),
     ])
 
+    // Map category IDs to names
+    const catMap: Record<string, string> = {}
+    categories.forEach((c: any) => { catMap[c.id] = c.name })
+
     const byCategory: Record<string, number> = {}
-    categoryCounts.forEach((c: any) => { byCategory[c.categoryId || 'uncategorized'] = c._count.id })
+    categoryCounts.forEach((c: any) => {
+      const name = catMap[c.categoryId || ''] || 'Uncategorized'
+      byCategory[name] = (byCategory[name] || 0) + c._count.id
+    })
 
     res.json({
       totalProducts,

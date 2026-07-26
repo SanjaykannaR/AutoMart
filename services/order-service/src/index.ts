@@ -203,6 +203,83 @@ app.get('/orders/stats', async (req, res) => {
   }
 })
 
+// ─── GET /orders/analytics ─────────────────────────────────────────────────
+// Admin analytics: revenue trends, order trends (grouped by day), status breakdown,
+// top products by revenue, average order value.
+app.get('/orders/analytics', async (req, res) => {
+  try {
+    const role = getUserRole(req)
+    if (role !== 'admin') {
+      return errorResponse(res, 403, 'ANALYTICS_FORBIDDEN',
+        'Only admins can view analytics.',
+        'Log in as admin to access analytics.')
+    }
+
+    const days = Math.min(90, Math.max(7, parseInt(req.query.days as string) || 30))
+    const since = new Date()
+    since.setDate(since.getDate() - days)
+
+    // Fetch all orders since the time window
+    const orders = await prisma.order.findMany({
+      where: { createdAt: { gte: since } },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    // ─── Revenue & Orders by Day ───
+    const revenueByDay: Record<string, { revenue: number; orders: number }> = {}
+    // Initialize all days in range with zeros
+    for (let d = new Date(since); d <= new Date(); d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().slice(0, 10)
+      revenueByDay[key] = { revenue: 0, orders: 0 }
+    }
+    orders.forEach((o: any) => {
+      const day = o.createdAt.toISOString().slice(0, 10)
+      if (!revenueByDay[day]) revenueByDay[day] = { revenue: 0, orders: 0 }
+      revenueByDay[day].revenue += Number(o.total)
+      revenueByDay[day].orders += 1
+    })
+
+    // ─── Status Breakdown ───
+    const byStatus: Record<string, number> = {}
+    orders.forEach((o: any) => { byStatus[o.status] = (byStatus[o.status] || 0) + 1 })
+
+    // ─── Top Products by Revenue ───
+    const productRevenue: Record<string, { name: string; revenue: number; qty: number }> = {}
+    orders.forEach((o: any) => {
+      // PostgreSQL stores items as JSON string, must parse
+      const items = typeof o.items === 'string' ? JSON.parse(o.items) : (Array.isArray(o.items) ? o.items : [])
+      items.forEach((item: any) => {
+        const id = item.id || item.name || 'unknown'
+        if (!productRevenue[id]) productRevenue[id] = { name: item.name || id, revenue: 0, qty: 0 }
+        productRevenue[id].revenue += (item.price || 0) * (item.qty || 1)
+        productRevenue[id].qty += item.qty || 1
+      })
+    })
+    const topProducts = Object.values(productRevenue)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
+
+    // ─── Summary Stats ───
+    const totalRevenue = orders.reduce((sum: number, o: any) => sum + Number(o.total), 0)
+    const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0
+
+    res.json({
+      revenueByDay: Object.entries(revenueByDay).map(([date, data]) => ({ date, ...data })),
+      byStatus,
+      topProducts,
+      totalOrders: orders.length,
+      totalRevenue,
+      avgOrderValue,
+      days,
+    })
+  } catch (err) {
+    console.error('[Order] Analytics error:', err)
+    return errorResponse(res, 500, 'ANALYTICS_FAILED',
+      'Failed to compute analytics.',
+      'Check order-service logs and verify the database is running.')
+  }
+})
+
 // ─── GET /orders/:id ───────────────────────────────────────────────────────────
 app.get('/orders/:id', async (req, res) => {
   try {

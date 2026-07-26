@@ -28,14 +28,7 @@ import { useToast } from '@/components/Toast'
 import { ScrollReveal } from '@/components/ScrollReveal'
 import { MapPinIcon, PhoneIcon, CreditCardIcon, LockClosedIcon } from '@heroicons/react/24/outline'
 import { Suspense } from 'react'
-
-interface CartItem {
-  id: string
-  name: string
-  price: number
-  qty: number
-  image?: string
-}
+import { syncCart, saveCart, type CartItem } from '@/lib/sync'
 
 function CheckoutContent() {
   const router = useRouter()
@@ -55,11 +48,19 @@ function CheckoutContent() {
     }
   }, [searchParams, showToast])
 
-  // Load cart from localStorage
+  // Load cart from backend (Redis) + localStorage fallback
   useEffect(() => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    if (cart.length === 0) router.push('/cart')
-    setItems(cart)
+    syncCart().then((merged) => {
+      if (merged.length === 0) router.push('/cart')
+      setItems(merged)
+    }).catch(() => {
+      // Fallback: try localStorage directly
+      try {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]')
+        if (cart.length === 0) router.push('/cart')
+        setItems(cart)
+      } catch { router.push('/cart') }
+    })
   }, [router])
 
   const total = items.reduce((sum: number, item: any) => sum + Number(item.price) * item.qty, 0)
@@ -97,7 +98,7 @@ function CheckoutContent() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          items: items.map(i => ({ name: i.name, price: i.price, qty: i.qty, image: i.image })),
+          items: items.map(i => ({ name: i.name, price: i.price, qty: i.qty, image: i.imageUrl })),
           orderId: order.id,
           total,
           address,
@@ -112,8 +113,8 @@ function CheckoutContent() {
 
       const { url } = await paymentRes.json()
 
-      // Step 3: Clear cart and redirect to Stripe
-      localStorage.removeItem('cart')
+      // Step 3: Clear cart (localStorage + Redis) and redirect to Stripe
+      saveCart([]) // Clears both localStorage and backend Redis
       window.dispatchEvent(new Event('cart-updated'))
 
       // Redirect to Stripe Checkout

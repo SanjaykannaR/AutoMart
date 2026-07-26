@@ -75,7 +75,7 @@ export default function CartPage() {
       item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item, // Min qty = 1
     )
     setItems(updated) // Update state
-    localStorage.setItem('cart', JSON.stringify(updated)) // Sync to localStorage
+    saveCart(updated) // Sync to localStorage + backend Redis
     window.dispatchEvent(new Event('cart-updated')) // Notify Navbar
   }
 
@@ -83,7 +83,7 @@ export default function CartPage() {
   const removeItem = (id: string) => {
     const updated = items.filter((item) => item.id !== id) // Filter out item
     setItems(updated) // Update state
-    localStorage.setItem('cart', JSON.stringify(updated)) // Sync to localStorage
+    saveCart(updated) // Sync to localStorage + backend Redis
     window.dispatchEvent(new Event('cart-updated')) // Notify Navbar
     showToast('Item removed from cart', 'info') // Show toast
   }

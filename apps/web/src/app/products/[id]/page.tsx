@@ -34,6 +34,7 @@ import { TruckIcon, ShieldCheckIcon } from '@heroicons/react/24/outline' // Trus
 import { addToRecentlyViewed, loadRecentlyViewed, type RecentlyViewedProduct } from '@/lib/lru-cache' // LRU cache for recently viewed
 import Link from 'next/link' // Next.js link for recently viewed product cards
 import { ProductCard } from '@/components/ProductCard' // Product card for recently viewed
+import { saveCart, type CartItem } from '@/lib/sync' // Backend cart sync
 
 /**
  * Fallback product data — used when the API is unreachable.
@@ -145,14 +146,14 @@ export default function ProductDetailPage() {
    */
   const handleAddToCart = () => {
     setAdding(true) // Show loading state
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]') // Read existing cart
-    const existing = cart.findIndex((item: any) => item.id === product.id) // Check if already in cart
+    const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]') // Read existing cart
+    const existing = cart.findIndex((item) => String(item.id) === String(product.id)) // Check if already in cart
     if (existing >= 0) {
       cart[existing].qty += qty // Increase quantity if already in cart
     } else {
-      cart.push({ ...product, price: Number(product.price), qty }) // Add new item with quantity (coerce price from Prisma Decimal string)
+      cart.push({ id: String(product.id), name: product.name, price: Number(product.price), imageUrl: product.imageUrl, category: product.category, qty }) // Add new item with quantity
     }
-    localStorage.setItem('cart', JSON.stringify(cart)) // Save to localStorage
+    saveCart(cart) // Sync to localStorage + backend Redis
     window.dispatchEvent(new Event('cart-updated')) // Notify Navbar about cart update
     // Dispatch notification for the navbar bell
     window.dispatchEvent(new CustomEvent('new-notification', {

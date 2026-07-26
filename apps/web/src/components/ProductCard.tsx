@@ -23,6 +23,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+import { saveCart, type CartItem } from '@/lib/sync'
 
 interface Product {
   id: string
@@ -67,14 +68,14 @@ export function ProductCard({ product }: { product: Product }) {
     e.preventDefault()
     e.stopPropagation()
     try {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-      const existing = cart.find((c: any) => c.id === Number(product.id))
+      const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]')
+      const existing = cart.find((c) => String(c.id) === String(product.id))
       if (existing) {
         existing.qty = (existing.qty || 1) + 1
       } else {
-        cart.push({ id: Number(product.id), name: product.name, price: Number(product.price), image: product.imageUrl, category: product.category, qty: 1 })
+        cart.push({ id: String(product.id), name: product.name, price: Number(product.price), imageUrl: product.imageUrl, category: product.category, qty: 1 })
       }
-      localStorage.setItem('cart', JSON.stringify(cart))
+      saveCart(cart) // Sync to localStorage + backend Redis
       window.dispatchEvent(new Event('cart-updated'))
       setAddedToCart(true)
       setTimeout(() => setAddedToCart(false), 1500)
