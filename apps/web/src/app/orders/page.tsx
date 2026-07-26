@@ -140,7 +140,7 @@ export default function OrdersPage() {
                         </p>
                       </div>
                       <p className="text-lg font-bold glow-text" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                        ${order.total.toFixed(2)}
+                        ${Number(order.total).toFixed(2)}
                       </p>
                     </div>
 

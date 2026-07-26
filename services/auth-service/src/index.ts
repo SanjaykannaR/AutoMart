@@ -175,7 +175,7 @@ app.post('/register', async (req, res) => {
       },
     })
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({
       token,
       user: {
@@ -221,7 +221,7 @@ app.post('/login', async (req, res) => {
         'Check your credentials or register a new account.')
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     res.json({
       token,
       user: {
@@ -352,7 +352,7 @@ app.post('/oauth', async (req, res) => {
       console.log(`[OAuth] Existing ${provider} user logged in: ${user.id}`)
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     res.json({
       token,
       user: {
@@ -645,7 +645,7 @@ app.post('/otp/verify', async (req, res) => {
         'Contact support.')
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
 
     res.json({
       token,
@@ -965,7 +965,7 @@ app.post('/admin/login', async (req, res) => {
     }
 
     // Issue JWT with admin role
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
 
     console.log(`[Admin] Login: ${user.email} (${user.id})`)
 

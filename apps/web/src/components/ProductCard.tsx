@@ -55,7 +55,7 @@ export function ProductCard({ product }: { product: Product }) {
         localStorage.setItem('wishlist', JSON.stringify(wishlist.filter((item: any) => item.id !== Number(product.id))))
         setIsWishlisted(false)
       } else {
-        wishlist.push({ id: Number(product.id), name: product.name, price: product.price, image: product.imageUrl, category: product.category })
+        wishlist.push({ id: Number(product.id), name: product.name, price: Number(product.price), image: product.imageUrl, category: product.category })
         localStorage.setItem('wishlist', JSON.stringify(wishlist))
         setIsWishlisted(true)
       }
@@ -72,7 +72,7 @@ export function ProductCard({ product }: { product: Product }) {
       if (existing) {
         existing.qty = (existing.qty || 1) + 1
       } else {
-        cart.push({ id: Number(product.id), name: product.name, price: product.price, image: product.imageUrl, category: product.category, qty: 1 })
+        cart.push({ id: Number(product.id), name: product.name, price: Number(product.price), image: product.imageUrl, category: product.category, qty: 1 })
       }
       localStorage.setItem('cart', JSON.stringify(cart))
       window.dispatchEvent(new Event('cart-updated'))
@@ -126,7 +126,7 @@ export function ProductCard({ product }: { product: Product }) {
           {/* Price + Cart button row */}
           <div className="mt-auto flex items-center justify-between">
             <p className="text-lg font-bold glow-text">
-              ${product.price.toFixed(2)}
+              ${Number(product.price).toFixed(2)}
             </p>
 
             {/* ─── CART BUTTON — Circular glass ─── */}

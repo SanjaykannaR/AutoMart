@@ -195,7 +195,7 @@ export default function WishlistPage() {
 
                 {/* Price — lime accent color */}
                 <p className="text-[var(--color-accent)] font-bold text-lg mb-4">
-                  ${item.price.toFixed(2)}
+                  ${Number(item.price).toFixed(2)}
                 </p>
 
                 {/* Action buttons — Move to Cart + Remove */}

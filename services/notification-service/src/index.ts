@@ -7,12 +7,52 @@
 import express from 'express'
 import Redis from 'ioredis'
 import nodemailer from 'nodemailer'
+import {
+  orderConfirmationEmail,
+  orderStatusEmail,
+  welcomeEmail,
+  passwordResetEmail,
+} from './templates'
 
 const app = express()
 const PORT = process.env.NOTIFICATION_SERVICE_PORT || 3006
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
 
 app.use(express.json())
+
+// ─── In-memory notification store ────────────────────────────────────────────
+// Notifications are kept in memory for listing. For production, use a database.
+interface StoredNotification {
+  id: string
+  title: string
+  message: string
+  type: 'info' | 'warning' | 'promo' | 'system'
+  audience: 'all' | string // 'all' for broadcast, or userId
+  createdAt: string
+}
+const notifications: StoredNotification[] = []
+
+/** Helper: extract userId from JWT in Authorization header (no verification — gateway does that) */
+function getUserId(req: express.Request): string | null {
+  const header = req.headers.authorization
+  if (!header) return null
+  try {
+    const token = header.split(' ')[1]
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    return payload.id
+  } catch { return null }
+}
+
+/** Helper: extract user role from JWT */
+function getUserRole(req: express.Request): string | null {
+  const header = req.headers.authorization
+  if (!header) return null
+  try {
+    const token = header.split(' ')[1]
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    return payload.role || null
+  } catch { return null }
+}
 
 function errorResponse(res: express.Response, status: number, code: string, message: string, hint?: string) {
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
@@ -72,27 +112,53 @@ const statusMessages: Record<string, { subject: string; message: string }> = {
 
 /**
  * Processes order events from Redis and dispatches notifications.
- * For 'order:created' events, no notification is sent (only status changes).
- * For status changes, sends both email and SMS to the user.
+ * - 'order:created' → sends order confirmation email
+ * - 'order:status_changed' → sends status update email + SMS
  */
 async function handleOrderEvent(message: string) {
   try {
     const data = JSON.parse(message)
-    const { orderId, status, userId, items, total } = data
+    const { orderId, status, userId, items, total, address, userName, userEmail } = data
 
     if (!orderId) {
       console.warn('[Notification] Received event without orderId — skipping.')
       return
     }
 
+    const displayName = userName || 'Customer'
+
+    // Order created → send confirmation email
+    if (!status && items) {
+      const html = orderConfirmationEmail({
+        orderId,
+        userName: displayName,
+        items,
+        total: total || 0,
+        address: address || 'Not specified',
+      })
+      await sendEmail(
+        userEmail || 'user@example.com',
+        `AutoMart — Order Confirmed #${orderId.slice(0, 8)}`,
+        html,
+      )
+      console.log(`[Notification] Sent order confirmation for #${orderId.slice(0, 8)}`)
+      return
+    }
+
+    // Status change → send status update email
     if (status && statusMessages[status]) {
       const info = statusMessages[status]
-      const itemList = Array.isArray(items) ? items.map((i: any) => i.name).join(', ') : ''
+      const html = orderStatusEmail({
+        orderId,
+        status,
+        userName: displayName,
+        total,
+      })
 
       await sendEmail(
-        'user@example.com',
-        `AutoMart - ${info.subject} (#${orderId.slice(0, 8)})`,
-        `<p>${info.message}</p><p>Order: ${itemList}</p><p>Total: $${total}</p>`,
+        userEmail || 'user@example.com',
+        `AutoMart — ${info.subject} (#${orderId.slice(0, 8)})`,
+        html,
       )
 
       await sendSMS(
@@ -109,13 +175,35 @@ async function handleOrderEvent(message: string) {
   }
 }
 
+/**
+ * Processes user events from Redis (registration, password reset).
+ */
+async function handleUserEvent(message: string) {
+  try {
+    const data = JSON.parse(message)
+    const { type, userName, userEmail, code } = data
+
+    if (type === 'registered') {
+      const html = welcomeEmail({ userName: userName || 'User', email: userEmail || '' })
+      await sendEmail(userEmail, 'Welcome to AutoMart!', html)
+      console.log(`[Notification] Sent welcome email to ${userEmail}`)
+    } else if (type === 'password_reset') {
+      const html = passwordResetEmail({ userName: userName || 'User', code: code || '' })
+      await sendEmail(userEmail, 'AutoMart — Password Reset Code', html)
+      console.log(`[Notification] Sent password reset email to ${userEmail}`)
+    }
+  } catch (err) {
+    console.error('[Notification] Failed to process user event:', err)
+  }
+}
+
 // ─── Redis subscription ────────────────────────────────────────────────────────
-redis.subscribe('order:created', 'order:status_changed', (err) => {
+redis.subscribe('order:created', 'order:status_changed', 'user:registered', 'user:password_reset', (err) => {
   if (err) {
     console.error('[Notification] Redis subscribe error:', err.message)
     console.error('[Notification] Notifications will not work without Redis. Set REDIS_URL to a running Redis instance.')
   } else {
-    console.log('[Notification] Listening for order events on Redis')
+    console.log('[Notification] Listening for order + user events on Redis')
   }
 })
 
@@ -123,8 +211,62 @@ redis.on('error', (err) => {
   console.error('[Notification] Redis connection error:', err.message)
 })
 
-redis.on('message', async (_channel, message) => {
-  await handleOrderEvent(message)
+redis.on('message', async (channel, message) => {
+  if (channel.startsWith('user:')) {
+    await handleUserEvent(message)
+  } else {
+    await handleOrderEvent(message)
+  }
+})
+
+// ─── POST /notifications/broadcast ────────────────────────────────────────────
+// Admin-only: sends a notification to all users. Stores it for listing.
+app.post('/notifications/broadcast', (req, res) => {
+  const role = getUserRole(req)
+  if (role !== 'admin') {
+    return errorResponse(res, 403, 'NOTIFICATION_FORBIDDEN',
+      'Only admins can broadcast notifications.',
+      'Log in as admin to send broadcast notifications.')
+  }
+
+  const { title, message, type } = req.body
+  if (!title || !message) {
+    return errorResponse(res, 400, 'NOTIFICATION_MISSING_FIELDS',
+      'Both "title" and "message" are required.',
+      'Provide title and message in the request body.')
+  }
+
+  const validTypes = ['info', 'warning', 'promo', 'system']
+  const notifType = validTypes.includes(type) ? type : 'info'
+
+  const notification: StoredNotification = {
+    id: crypto.randomUUID(),
+    title,
+    message,
+    type: notifType,
+    audience: 'all',
+    createdAt: new Date().toISOString(),
+  }
+  notifications.unshift(notification) // newest first
+
+  // Keep only the last 100 notifications in memory
+  if (notifications.length > 100) notifications.length = 100
+
+  // Publish to Redis so notification-service itself logs it
+  redis.publish('notification:broadcast', JSON.stringify(notification))
+    .catch((err: any) => console.warn('[Notification] Could not publish broadcast to Redis (non-fatal):', err.message))
+
+  console.log(`[Notification] Broadcast sent: "${title}" (type: ${notifType})`)
+  res.status(201).json(notification)
+})
+
+// ─── GET /notifications ──────────────────────────────────────────────────────
+// Returns notifications visible to the current user: broadcasts + their own.
+app.get('/notifications', (req, res) => {
+  const userId = getUserId(req)
+  // Return all broadcast notifications (audience === 'all') + user-specific ones
+  const visible = notifications.filter(n => n.audience === 'all' || n.audience === userId)
+  res.json(visible)
 })
 
 // ─── Health ─────────────────────────────────────────────────────────────────────

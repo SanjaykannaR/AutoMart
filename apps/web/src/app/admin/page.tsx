@@ -38,6 +38,10 @@ export default function AdminDashboardPage() {
   const [productCount, setProductCount] = useState(0)
   const [userCount, setUserCount] = useState(0)
   const [bannerCount, setBannerCount] = useState(0)
+  const [orderCount, setOrderCount] = useState(0)
+  const [totalRevenue, setTotalRevenue] = useState(0)
+  const [inStock, setInStock] = useState(0)
+  const [outOfStock, setOutOfStock] = useState(0)
   const [recentUsers, setRecentUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -49,13 +53,26 @@ export default function AdminDashboardPage() {
     const headers = { Authorization: `Bearer ${token}` }
 
     Promise.allSettled([
-      // Fetch products count
-      fetch(`${API}/api/products`, { headers })
+      // Product stats (total, in-stock, out-of-stock)
+      fetch(`${API}/api/products/stats`, { headers })
         .then(r => r.json())
-        .then(data => { setProductCount(Array.isArray(data) ? data.length : 0) })
+        .then(data => {
+          setProductCount(data.totalProducts || 0)
+          setInStock(data.inStock || 0)
+          setOutOfStock(data.outOfStock || 0)
+        })
         .catch(() => {}),
 
-      // Fetch users (first page with limit 5 for recent)
+      // Order stats (total orders, revenue)
+      fetch(`${API}/api/orders/stats`, { headers })
+        .then(r => r.json())
+        .then(data => {
+          setOrderCount(data.totalOrders || 0)
+          setTotalRevenue(data.totalRevenue || 0)
+        })
+        .catch(() => {}),
+
+      // Users (first page with limit 5 for recent)
       fetch(`${API}/api/auth/admin/users?limit=5`, { headers })
         .then(r => r.json())
         .then(data => {
@@ -64,7 +81,7 @@ export default function AdminDashboardPage() {
         })
         .catch(() => {}),
 
-      // Fetch banners count
+      // Banners count
       fetch(`${API}/api/auth/admin/banners`, { headers })
         .then(r => r.json())
         .then(data => { setBannerCount(Array.isArray(data) ? data.length : 0) })
@@ -86,13 +103,35 @@ export default function AdminDashboardPage() {
       ),
     },
     {
-      label: 'Users',
-      value: userCount,
-      href: '/admin/users',
+      label: 'Orders',
+      value: orderCount,
+      href: '/admin/orders',
       color: 'var(--color-blue)',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Revenue',
+      value: `₹${totalRevenue.toLocaleString('en-IN')}`,
+      href: '/admin/orders',
+      color: 'var(--color-success)',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Inventory',
+      value: `${inStock} / ${inStock + outOfStock}`,
+      href: '/admin/inventory',
+      color: outOfStock > 0 ? 'var(--color-warning)' : 'var(--color-accent)',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
         </svg>
       ),
     },
@@ -108,13 +147,13 @@ export default function AdminDashboardPage() {
       ),
     },
     {
-      label: 'Inventory',
-      value: '—',
-      href: '/admin/inventory',
-      color: 'var(--color-warning)',
+      label: 'Users',
+      value: userCount,
+      href: '/admin/users',
+      color: 'var(--color-text-dim)',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
         </svg>
       ),
     },
@@ -125,8 +164,8 @@ export default function AdminDashboardPage() {
     return (
       <div className="space-y-6">
         {/* Stat cards skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 animate-pulse">
               <div className="w-10 h-10 rounded-lg bg-[var(--color-surface-alt)] mb-3" />
               <div className="w-16 h-8 bg-[var(--color-surface-alt)] rounded mb-1" />
@@ -161,7 +200,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* ─── Stat Cards Grid ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {stats.map(stat => (
           <Link
             key={stat.label}

@@ -24,7 +24,7 @@ async function fillBannerForm(page: import('@playwright/test').Page, data: {
   await page.getByPlaceholder('NEW ARRIVAL').fill(data.badge ?? 'Test')
   await page.getByPlaceholder('Shop Now').fill(data.cta ?? 'Click Me')
   await page.getByPlaceholder('/products/...').fill(data.link ?? '/search')
-  await page.getByPlaceholder('https://...').fill(data.image ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920&h=600&fit=crop')
+  await page.getByPlaceholder('Paste image URL').fill(data.image ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920&h=600&fit=crop')
 }
 
 /** Click the save button inside the modal (not the header "Create Banner" button) */

@@ -350,7 +350,7 @@ export default function TrackOrderPage() {
                       <p className="text-xs text-[var(--color-text-dim)]">Qty: {item.qty}</p>
                     </div>
                     <p className="text-xs font-medium text-[var(--color-accent)]">
-                      ${(item.price * item.qty).toFixed(2)}
+                      ${(Number(item.price) * item.qty).toFixed(2)}
                     </p>
                   </div>
                 ))}
@@ -359,7 +359,7 @@ export default function TrackOrderPage() {
               <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex justify-between">
                 <span className="text-sm font-medium">Total</span>
                 <span className="text-sm font-bold text-[var(--color-accent)]">
-                  ${order.total.toFixed(2)}
+                  ${Number(order.total).toFixed(2)}
                 </span>
               </div>
             </div>

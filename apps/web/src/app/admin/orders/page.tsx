@@ -190,7 +190,7 @@ export default function AdminOrdersPage() {
                   <span className="text-xs text-[var(--color-text-dim)] w-16 shrink-0">{items.length} item{items.length !== 1 ? 's' : ''}</span>
 
                   {/* Total */}
-                  <span className="text-sm font-semibold text-[var(--color-accent)] w-20 shrink-0">${Number(order.total).toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-[var(--color-accent)] w-20 shrink-0">₹{Number(order.total).toLocaleString('en-IN')}</span>
 
                   {/* Status badge */}
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize shrink-0 ${STATUS_COLORS[order.status] || STATUS_COLORS.pending}`}>
@@ -213,7 +213,7 @@ export default function AdminOrdersPage() {
                         {items.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between text-sm">
                             <span className="text-[var(--color-text)]">{item.name} × {item.qty}</span>
-                            <span className="text-[var(--color-accent)]">${(item.price * item.qty).toFixed(2)}</span>
+                            <span className="text-[var(--color-accent)]">₹{(item.price * item.qty).toLocaleString('en-IN')}</span>
                           </div>
                         ))}
                       </div>

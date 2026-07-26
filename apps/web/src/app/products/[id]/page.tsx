@@ -92,8 +92,13 @@ export default function ProductDetailPage() {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`) // Fetch by ID
       .then((r) => r.json()) // Parse JSON response
       .then((data) => {
+        // Guard: if API returned an error object (rate limit, not found), fall back to mock
+        if (!data || data.code || !data.id) {
+          setProduct(mockProduct)
+          return
+        }
         // Normalize: PostgreSQL JSONB returns specifications as object, frontend expects [{key, value}]
-        if (data && !data.code && data.specifications && !Array.isArray(data.specifications) && typeof data.specifications === 'object') {
+        if (data && data.specifications && !Array.isArray(data.specifications) && typeof data.specifications === 'object') {
           data.specifications = Object.entries(data.specifications).map(([key, value]) => ({ key, value: String(value) }))
         }
         setProduct(data) // Store product data
@@ -145,7 +150,7 @@ export default function ProductDetailPage() {
     if (existing >= 0) {
       cart[existing].qty += qty // Increase quantity if already in cart
     } else {
-      cart.push({ ...product, qty }) // Add new item with quantity
+      cart.push({ ...product, price: Number(product.price), qty }) // Add new item with quantity (coerce price from Prisma Decimal string)
     }
     localStorage.setItem('cart', JSON.stringify(cart)) // Save to localStorage
     window.dispatchEvent(new Event('cart-updated')) // Notify Navbar about cart update

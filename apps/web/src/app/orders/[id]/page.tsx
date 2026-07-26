@@ -159,7 +159,7 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold glow-text" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                    ${order.total.toFixed(2)}
+                    ${Number(order.total).toFixed(2)}
                   </p>
                   <p className="text-xs text-[var(--color-text-dim)]">{order.items.length} items</p>
                 </div>
@@ -248,7 +248,7 @@ export default function OrderDetailPage() {
                     <span className="text-[var(--color-text-dim)] truncate mr-4">
                       {item.name} <span className="opacity-50">×{item.qty}</span>
                     </span>
-                    <span className="font-medium shrink-0">${(item.price * item.qty).toFixed(2)}</span>
+                    <span className="font-medium shrink-0">${(Number(item.price) * item.qty).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -287,7 +287,7 @@ export default function OrderDetailPage() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-[var(--color-text-dim)]">Total</span>
                 <span className="text-xl font-bold glow-text" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                  ${order.total.toFixed(2)}
+                  ${Number(order.total).toFixed(2)}
                 </span>
               </div>
             </div>

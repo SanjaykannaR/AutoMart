@@ -75,6 +75,35 @@ app.get('/products', async (req, res) => {
   }
 })
 
+// ─── GET /products/stats ────────────────────────────────────────────────────
+// Admin dashboard: product inventory statistics.
+// MUST be defined before /products/:id to avoid matching "stats" as an ID.
+app.get('/products/stats', async (req, res) => {
+  try {
+    const [totalProducts, inStock, outOfStock, categoryCounts] = await Promise.all([
+      prisma.product.count(),
+      prisma.product.count({ where: { stock: { gt: 0 } } }),
+      prisma.product.count({ where: { stock: 0 } }),
+      prisma.product.groupBy({ by: ['categoryId'], _count: { id: true } }),
+    ])
+
+    const byCategory: Record<string, number> = {}
+    categoryCounts.forEach((c: any) => { byCategory[c.categoryId || 'uncategorized'] = c._count.id })
+
+    res.json({
+      totalProducts,
+      inStock,
+      outOfStock,
+      byCategory,
+    })
+  } catch (err) {
+    console.error('[Product] Stats error:', err)
+    return errorResponse(res, 500, 'PRODUCT_STATS_FAILED',
+      'Failed to compute product statistics.',
+      'Check product-service logs and verify the database is running.')
+  }
+})
+
 // ─── GET /products/:id ─────────────────────────────────────────────────────────
 app.get('/products/:id', async (req, res) => {
   try {

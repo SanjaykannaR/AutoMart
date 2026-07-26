@@ -169,21 +169,52 @@ export function Navbar() {
    * NOTIFICATION HELPERS
    * ─────────────────────────────────────────────────────────────── */
 
-  /** Load notifications from localStorage, seed samples on first visit */
-  const loadNotifications = useCallback(() => {
+  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+
+  /** Load notifications from API (when logged in) + localStorage fallback */
+  const loadNotifications = useCallback(async () => {
     try {
       const stored = localStorage.getItem('notifications')
-      if (stored) {
-        setNotifications(JSON.parse(stored))
+      const localNotifs: Notification[] = stored ? JSON.parse(stored) : []
+
+      // Try fetching server notifications if logged in
+      const token = localStorage.getItem('token')
+      if (token && token !== 'null') {
+        try {
+          const res = await fetch(`${API}/api/notifications`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (res.ok) {
+            const serverNotifs: Array<{ id: string; title: string; message: string; type: string; createdAt: string }> = await res.json()
+            // Convert server notifications to our format and prepend
+            const converted: Notification[] = serverNotifs.map((s) => ({
+              id: s.id,
+              type: (['order', 'promo', 'system', 'stock'].includes(s.type) ? s.type : 'system') as Notification['type'],
+              title: s.title,
+              message: s.message,
+              time: s.createdAt,
+              read: false,
+            }))
+            // Merge: server first, then localStorage-only ones not already present
+            const serverIds = new Set(converted.map(n => n.id))
+            const merged = [...converted, ...localNotifs.filter(n => !serverIds.has(n.id))]
+            setNotifications(merged)
+            return
+          }
+        } catch { /* API unreachable — fall through to localStorage */ }
+      }
+
+      // Not logged in or API down — use localStorage
+      if (localNotifs.length > 0) {
+        setNotifications(localNotifs)
       } else {
-        // First visit — seed sample notifications
         localStorage.setItem('notifications', JSON.stringify(sampleNotifications))
         setNotifications(sampleNotifications)
       }
     } catch {
       setNotifications([])
     }
-  }, [])
+  }, [API])
 
   /** Save notifications array to localStorage */
   const saveNotifications = (notifs: Notification[]) => {

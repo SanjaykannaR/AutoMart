@@ -62,7 +62,7 @@ function CheckoutContent() {
     setItems(cart)
   }, [router])
 
-  const total = items.reduce((sum: number, item: any) => sum + item.price * item.qty, 0)
+  const total = items.reduce((sum: number, item: any) => sum + Number(item.price) * item.qty, 0)
 
   /**
    * Handle checkout — creates order + Stripe session, then redirects.
@@ -238,7 +238,7 @@ function CheckoutContent() {
                     <span className="text-[var(--color-text-dim)] truncate mr-4">
                       {item.name} <span className="opacity-50">&times;{item.qty}</span>
                     </span>
-                    <span className="font-medium shrink-0">${(item.price * item.qty).toFixed(2)}</span>
+                    <span className="font-medium shrink-0">${(Number(item.price) * item.qty).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
