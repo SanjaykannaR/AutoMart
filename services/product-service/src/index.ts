@@ -152,6 +152,58 @@ app.post('/products', async (req, res) => {
   }
 })
 
+// ─── PATCH /products/:id ──────────────────────────────────────────────────────
+// Update an existing product. Accepts partial data — only provided fields are updated.
+app.patch('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const existing = await prisma.product.findUnique({ where: { id } })
+    if (!existing) {
+      return errorResponse(res, 404, 'PRODUCT_NOT_FOUND', `Product with ID "${id}" not found.`)
+    }
+
+    const data = req.body
+    const updateData: any = {}
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.brand !== undefined) updateData.brand = data.brand
+    if (data.price !== undefined) updateData.price = Number(data.price)
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId
+    if (data.vehicleType !== undefined) updateData.vehicleType = data.vehicleType
+    if (data.stock !== undefined) updateData.stock = Number(data.stock)
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl
+    if (data.compatibleVehicles !== undefined) updateData.compatibleVehicles = JSON.stringify(data.compatibleVehicles)
+
+    // Recalculate slug if name changed
+    if (data.name && data.name !== existing.name) {
+      updateData.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    }
+
+    const product = await prisma.product.update({ where: { id }, data: updateData })
+    res.json(parseProduct(product))
+  } catch (err) {
+    console.error('[Product] Update error:', err)
+    return errorResponse(res, 500, 'PRODUCT_UPDATE_FAILED', 'Failed to update product.')
+  }
+})
+
+// ─── DELETE /products/:id ─────────────────────────────────────────────────────
+// Delete a product by ID.
+app.delete('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const existing = await prisma.product.findUnique({ where: { id } })
+    if (!existing) {
+      return errorResponse(res, 404, 'PRODUCT_NOT_FOUND', `Product with ID "${id}" not found.`)
+    }
+    await prisma.product.delete({ where: { id } })
+    res.json({ success: true, message: `Product "${existing.name}" deleted.` })
+  } catch (err) {
+    console.error('[Product] Delete error:', err)
+    return errorResponse(res, 500, 'PRODUCT_DELETE_FAILED', 'Failed to delete product.')
+  }
+})
+
 // ─── GET /categories ───────────────────────────────────────────────────────────
 // Returns all categories with a product count for each. The count is
 // used by the frontend to show how many parts exist in each category.

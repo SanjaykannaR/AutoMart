@@ -11,10 +11,17 @@
  */
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAdminAuth } from '@/lib/admin-auth'
+import { createClient } from '@supabase/supabase-js'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+
+/** Supabase client for Storage uploads (client-side, uses anon key) */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
+const BANNER_BUCKET = 'banner-images'
 
 /** Shape of a banner object from the API */
 interface Banner {
@@ -58,6 +65,9 @@ export default function AdminBannersPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<Banner | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ─── Fetch banners from API ───
   const fetchBanners = useCallback(async () => {
@@ -195,6 +205,49 @@ export default function AdminBannersPage() {
       await fetchBanners()
     } catch (err: any) {
       setError(err.message)
+    }
+  }
+
+  // ─── Upload banner image to Supabase Storage ───
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!supabase) {
+      setUploadError('Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('File too large. Max 2MB.')
+      return
+    }
+    const allowed = ['image/png', 'image/jpeg', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      setUploadError('Only PNG, JPG, and WebP images are allowed.')
+      return
+    }
+
+    setUploading(true)
+    setUploadError('')
+    try {
+      const ext = file.name.split('.').pop() || 'webp'
+      const filename = `banner-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const { error } = await supabase.storage.from(BANNER_BUCKET).upload(filename, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+      if (error) throw error
+
+      const { data: urlData } = supabase.storage.from(BANNER_BUCKET).getPublicUrl(filename)
+      if (urlData?.publicUrl) {
+        setForm({ ...form, image: urlData.publicUrl })
+      } else {
+        throw new Error('Could not get public URL. Is the bucket public?')
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -418,21 +471,59 @@ export default function AdminBannersPage() {
                 />
               </div>
 
-              {/* Image URL */}
+              {/* Image — file upload + URL fallback */}
               <div>
-                <label className="text-sm text-[var(--color-text-dim)] block mb-1.5">Image URL *</label>
-                <input
-                  type="url"
-                  value={form.image}
-                  onChange={e => setForm({ ...form, image: e.target.value })}
-                  className="glass-input"
-                  placeholder="https://..."
-                  required
-                />
+                <label className="text-sm text-[var(--color-text-dim)] block mb-1.5">Banner Image *</label>
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="banner-image-upload"
+                  />
+                  <label
+                    htmlFor="banner-image-upload"
+                    className={`glass-button px-4 py-2 text-sm cursor-pointer flex items-center gap-2 ${
+                      uploading ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
+                    {uploading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Upload
+                      </>
+                    )}
+                  </label>
+                  <span className="text-xs text-[var(--color-text-dim)] self-center">or</span>
+                  <input
+                    type="url"
+                    value={form.image}
+                    onChange={e => setForm({ ...form, image: e.target.value })}
+                    className="glass-input flex-1"
+                    placeholder="Paste image URL"
+                  />
+                </div>
+                {uploadError && (
+                  <p className="text-xs text-[var(--color-danger)] mt-1">{uploadError}</p>
+                )}
                 {/* Image preview */}
                 {form.image && (
                   <div className="mt-2 w-full h-24 rounded-lg overflow-hidden border border-[var(--color-border)]">
-                    <img src={form.image} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={form.image} alt="Preview" className="w-full h-full object-cover" onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none'
+                    }} />
                   </div>
                 )}
               </div>

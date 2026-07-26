@@ -49,6 +49,8 @@ export default function AdminProductsPage() {
   const [filterCategory, setFilterCategory] = useState('')
   const [filterVehicle, setFilterVehicle] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
 
   // ─── Create form state ───
@@ -57,6 +59,79 @@ export default function AdminProductsPage() {
     categoryId: '', vehicleType: 'both' as string,
     stock: 0, imageUrl: '',
   })
+
+  // ─── Open edit modal ───
+  const openEdit = (product: Product) => {
+    setEditingProduct(product)
+    setForm({
+      name: product.name,
+      description: product.description,
+      brand: product.brand,
+      price: Number(product.price),
+      categoryId: product.categoryId,
+      vehicleType: product.vehicleType,
+      stock: product.stock,
+      imageUrl: product.imageUrl || '',
+    })
+    setShowCreate(true)
+  }
+
+  // ─── Open create modal ───
+  const openCreate = () => {
+    setEditingProduct(null)
+    setForm({ name: '', description: '', brand: '', price: 0, categoryId: '', vehicleType: 'both', stock: 0, imageUrl: '' })
+    setShowCreate(true)
+  }
+
+  // ─── Save product (create or update) ───
+  const handleSave = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      const url = editingProduct
+        ? `${API}/api/products/${editingProduct.id}`
+        : `${API}/api/products`
+      const method = editingProduct ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || `Failed to ${editingProduct ? 'update' : 'create'} product`)
+      }
+      setShowCreate(false)
+      setEditingProduct(null)
+      setForm({ name: '', description: '', brand: '', price: 0, categoryId: '', vehicleType: 'both', stock: 0, imageUrl: '' })
+      await fetchData()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ─── Delete product ───
+  const handleDelete = async (product: Product) => {
+    try {
+      const res = await fetch(`${API}/api/products/${product.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to delete product')
+      }
+      setDeleteConfirm(null)
+      await fetchData()
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
 
   // ─── Fetch products and categories ───
   const fetchData = useCallback(async () => {
@@ -83,33 +158,6 @@ export default function AdminProductsPage() {
   }, [token])
 
   useEffect(() => { fetchData() }, [fetchData])
-
-  // ─── Create product ───
-  const handleCreate = async () => {
-    setSaving(true)
-    setError('')
-    try {
-      const res = await fetch(`${API}/api/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(form),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.message || 'Failed to create product')
-      }
-      setShowCreate(false)
-      setForm({ name: '', description: '', brand: '', price: 0, categoryId: '', vehicleType: 'both', stock: 0, imageUrl: '' })
-      await fetchData()
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setSaving(false)
-    }
-  }
 
   // ─── Filter products client-side ───
   const filtered = products.filter(p => {
@@ -198,12 +246,13 @@ export default function AdminProductsPage() {
       {/* ─── Products Table ─── */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden">
         {/* Table header */}
-        <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-3 border-b border-[var(--color-border)] text-xs text-[var(--color-text-dim)] font-medium uppercase tracking-wider">
+        <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-[var(--color-border)] text-xs text-[var(--color-text-dim)] font-medium uppercase tracking-wider">
           <span>Product</span>
           <span>Price</span>
           <span>Category</span>
           <span>Stock</span>
           <span>Vehicle</span>
+          <span>Actions</span>
         </div>
 
         {filtered.length === 0 ? (
@@ -212,7 +261,7 @@ export default function AdminProductsPage() {
           </div>
         ) : (
           filtered.map(product => (
-            <div key={product.id} className="grid grid-cols-1 md:grid-cols-[3fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-alt)] transition-colors">
+            <div key={product.id} className="grid grid-cols-1 md:grid-cols-[3fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-4 border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-surface-alt)] transition-colors">
               {/* Product name + brand + thumbnail */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-[var(--color-surface-alt)] overflow-hidden shrink-0 border border-[var(--color-border)]">
@@ -230,7 +279,7 @@ export default function AdminProductsPage() {
 
               {/* Price */}
               <div className="flex items-center">
-                <span className="text-sm font-semibold text-[var(--color-accent)]">${Number(product.price).toFixed(2)}</span>
+                <span className="text-sm font-semibold text-[var(--color-accent)]">₹{Number(product.price).toLocaleString('en-IN')}</span>
               </div>
 
               {/* Category */}
@@ -246,6 +295,28 @@ export default function AdminProductsPage() {
               {/* Vehicle type */}
               <div className="flex items-center">
                 <span className="text-xs text-[var(--color-text-dim)] capitalize">{product.vehicleType}</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => openEdit(product)}
+                  className="p-2 text-[var(--color-text-dim)] hover:text-[var(--color-blue)] hover:bg-[var(--color-blue)]/10 rounded-lg transition-colors"
+                  title="Edit product"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(product)}
+                  className="p-2 text-[var(--color-text-dim)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 rounded-lg transition-colors"
+                  title="Delete product"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             </div>
           ))
@@ -263,7 +334,7 @@ export default function AdminProductsPage() {
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
               <h2 className="text-lg font-bold text-[var(--color-text)]" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                Add Product
+                {editingProduct ? 'Edit Product' : 'Add Product'}
               </h2>
               <button onClick={() => setShowCreate(false)} className="text-[var(--color-text-dim)] hover:text-[var(--color-text)]">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,13 +399,41 @@ export default function AdminProductsPage() {
             </div>
 
             <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-colors">Cancel</button>
+              <button onClick={() => { setShowCreate(false); setEditingProduct(null) }} className="px-4 py-2 text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-colors">Cancel</button>
               <button
-                onClick={handleCreate}
+                onClick={handleSave}
                 disabled={saving || !form.name || !form.description || !form.brand || !form.price || !form.categoryId}
                 className="glass-button px-6 py-2 text-sm disabled:opacity-50"
               >
-                {saving ? 'Creating...' : 'Create Product'}
+                {saving ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Delete Confirmation Modal ─── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-[var(--color-text)] mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              Delete Product
+            </h3>
+            <p className="text-sm text-[var(--color-text-dim)] mb-6">
+              Are you sure you want to delete &ldquo;{deleteConfirm.name}&rdquo;? This action cannot be undone.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                className="px-4 py-2 text-sm rounded-lg bg-[var(--color-danger)] text-white hover:bg-[var(--color-danger)]/80 transition-colors"
+              >
+                Delete
               </button>
             </div>
           </div>
