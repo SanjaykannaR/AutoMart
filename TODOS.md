@@ -1,8 +1,8 @@
 # AutoMart — Project Todos
 
 > Branch: `sanjay`
-> Last updated: 2026-07-26 14:00 (P0+P1+P2 all done, P3 starting)
-> Monitoring: Athena-GOD active
+> Last updated: 2026-07-26 (E2E 73/73, commit 1d31f91, merged to main)
+> Monitoring: Athena-MAX active
 
 ---
 
@@ -198,11 +198,13 @@
 
 ### 🔵 P3 — Email, Analytics & Polish
 
-- [ ] **Email Templates** — nodemailer + react-email. Order confirmation, shipping update, password reset, welcome emails.
+- [x] **Email Templates** — HTML email templates (order confirmation, status update, welcome, password reset) in `templates.ts`. Inline CSS, AutoMart branding. ✅
+- [x] **Notification Service Enhanced** — Wired templates into event handlers. Added `user:registered` + `user:password_reset` Redis channels. Order events now carry `userName`/`userEmail`. ✅
+- [x] **JWT User Info** — Auth-service JWTs now include `name`/`email` fields (backward-compatible). ✅
+- [x] **Notification Bell API Integration** — Navbar notification bell now fetches from `GET /api/notifications` when logged in, merges with localStorage. ✅
 - [ ] **Analytics Dashboard** — Admin analytics page with revenue charts, order trends, top products, user growth.
-- [ ] **Admin E2E tests** — Playwright tests for admin login, banner CRUD, product CRUD, user management, order status updates.
-- [ ] **User Notifications UI** — Frontend notification bell/dropdown to display notifications from `GET /notifications`.
-- [ ] **Cart Persistence** — Move cart from localStorage to server-side (auth-service or dedicated cart endpoint) for cross-device sync.
+- [x] **Admin E2E tests** — 73/73 Playwright tests all passing (admin, auth, browse, search, cart, order, UI). ✅ (commit 1d31f91)
+- [ ] **Cart Persistence** — Move cart from localStorage to server-side for cross-device sync.
 - [ ] **Product Image Upload** — Admin product form: upload product images to Supabase Storage instead of external URLs.
 - [ ] **Order Confirmation Page** — Post-checkout success page with order summary, estimated delivery, and tracking link.
 - [ ] **Mobile Responsive Polish** — Final pass on all pages for mobile/tablet breakpoints, touch targets, and swipe gestures.
@@ -240,6 +242,7 @@
 - `3c8c67b` — Phase 13 type fixes
 - `f0869c6` — Phase 15 Admin system (16 files, 3959 insertions)
 - `cfbcfa1` — Phase 14 Stripe integration (20 files)
+- `1d31f91` — E2E 73/73 passing: cart category fix, price coercion, rate limits, defensive guards (23 files, 685 insertions)
 
 ### Known Issues
 - ~~⚠️ **Banner table missing in Supabase**~~ — FIXED: Migration ran via Node.js pg client.
@@ -263,6 +266,12 @@
 - ~~Stripe webhook signature verification broken~~ — FIXED (express.raw() + rawBody preservation)
 - ~~Stripe currency USD instead of INR~~ — FIXED (checkout session + notifications)
 - ~~Admin dashboard showing static "—" for stats~~ — FIXED (real API endpoints: /orders/stats, /products/stats)
+- ~~Cart page React error #31 (object rendering)~~ — FIXED (getCategoryName helper for PostgreSQL JSONB category) ✅ 2026-07-26
+- ~~Product detail crash on API error~~ — FIXED (error-object guard before .toLocaleString()) ✅ 2026-07-26
+- ~~Search page .map crash on API error~~ — FIXED (Array.isArray guard on API response) ✅ 2026-07-26
+- ~~API rate limit too low for E2E~~ — FIXED (global 200→1000, auth 10→50) ✅ 2026-07-26
+- ~~Banner test placeholder mismatch~~ — FIXED (image URL placeholder = "Paste image URL") ✅ 2026-07-26
+- ~~Admin seed role/password wrong~~ — FIXED (role 'shop'→'admin', password→Admin@12345, upsert with update) ✅ 2026-07-26
 
 ---
 
@@ -270,8 +279,8 @@
 
 | Agent | Status | Last Seen | Current Task |
 |-------|--------|-----------|--------------|
-| Athena-GOD | 🟡 Idle | 22:30 | Session closed — resuming tomorrow |
-| Athena-MAX | 🟡 Idle | — | Docker / payment service work |
+| Athena-MAX | 🟢 Active | 2026-07-26 | E2E fixes 73/73, merged to main |
+| Athena-GOD | 🟡 Idle | 2026-07-23 | Session closed |
 
 ### Monitor Log
 - `2026-07-23 08:35` — Monitoring started.
@@ -280,5 +289,31 @@
 - `2026-07-23 21:08` — Phase 14 committed (`cfbcfa1`).
 - `2026-07-23 22:00` — Admin bootstrap fixed (role constraint, infinite redirect, entrypoint). TODOS updated for tomorrow.
 - `2026-07-23 22:30` — End-of-day check: all 10 Docker containers healthy ✅, admin login API verified ✅, banner storage bucket exists ✅. Session closed.
-- **Total commits today**: 4 (`bd3e0ea`, `3c8c67b`, `f0869c6`, `cfbcfa1`)
-- **Phases completed**: 13 ✅, 14 ✅, 15 ✅
+- `2026-07-26` — E2E 73/73 ALL PASSING. Fixed 6 bugs (cart JSONB, rate limits, defensive guards, seed, banner placeholder). Merged to main.
+- **Total commits today**: 1 (`1d31f91`)
+
+---
+
+## 📋 REMAINING PENDING TASKS
+
+### 🔵 P3 — Analytics & Polish
+
+| # | Task | Priority | Notes |
+|---|------|----------|-------|
+| 1 | **Analytics Dashboard** | Medium | Admin page with revenue charts, order trends, top products, user growth |
+| 2 | **Cart Persistence** | Medium | Move cart from localStorage to server-side (Redis) for cross-device sync |
+| 3 | **Product Image Upload** | Medium | Admin product form: upload images to Supabase Storage instead of external URLs |
+| 4 | **Order Confirmation Page** | Low | Post-checkout success page with order summary, estimated delivery, tracking link |
+| 5 | **Mobile Responsive Polish** | Low | Final pass on all pages for mobile/tablet breakpoints, touch targets, swipe gestures |
+| 6 | **Performance Audit** | Low | Lighthouse pass: fix CLS, LCP, bundle splitting, image optimization |
+| 7 | **Production Deployment** | Low | Vercel (frontend) + Railway (backend). Deferred until all features stable |
+
+### 💡 Future Ideas
+
+| # | Task | Priority | Notes |
+|---|------|----------|-------|
+| 8 | **PWA Support** | Low | Service worker, offline browsing, install prompt |
+| 9 | **Priority Queue** | Low | Redis-based order processing queue for high-traffic scenarios |
+| 10 | **Wishlist Sync** | Low | Server-side wishlist persistence (Redis, like cart) |
+| 11 | **Email Marketing** | Low | Newsletter signup, promotional email campaigns |
+| 12 | **Multi-language** | Low | Hindi + Tamil + French support (Hero carousel already has i18n structure) |
