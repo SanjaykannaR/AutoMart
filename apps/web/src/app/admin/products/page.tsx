@@ -9,10 +9,19 @@
  */
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAdminAuth } from '@/lib/admin-auth'
+import { createClient } from '@supabase/supabase-js'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+
+/** Supabase client for Storage uploads (client-side, uses anon key) */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
+const PRODUCT_BUCKET = 'product-images'
+const MAX_FILE_SIZE = 2 * 1024 * 1024
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
 /** Shape of a product from the API */
 interface Product {
@@ -52,6 +61,9 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ─── Create form state ───
   const [form, setForm] = useState({
@@ -130,6 +142,44 @@ export default function AdminProductsPage() {
       await fetchData()
     } catch (err: any) {
       setError(err.message)
+    }
+  }
+
+  // ─── Upload product image to Supabase Storage ───
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!supabase) {
+      setUploadError('Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+      return
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError('File too large (max 2 MB).')
+      return
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setUploadError('Only PNG, JPEG, and WebP images allowed.')
+      return
+    }
+    setUploading(true)
+    setUploadError('')
+    try {
+      const ext = file.name.split('.').pop() || 'webp'
+      const filename = `product-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from(PRODUCT_BUCKET).upload(filename, file, {
+        contentType: file.type,
+        upsert: false,
+      })
+      if (uploadErr) throw uploadErr
+      const { data: urlData } = supabase.storage.from(PRODUCT_BUCKET).getPublicUrl(filename)
+      if (urlData?.publicUrl) {
+        setForm({ ...form, imageUrl: urlData.publicUrl })
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Upload failed.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -387,8 +437,19 @@ export default function AdminProductsPage() {
                   <input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: parseInt(e.target.value) || 0 })} className="glass-input" min={0} />
                 </div>
                 <div>
-                  <label className="text-sm text-[var(--color-text-dim)] block mb-1.5">Image URL</label>
-                  <input type="url" value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} className="glass-input" placeholder="https://..." />
+                  <label className="text-sm text-[var(--color-text-dim)] block mb-1.5">Image</label>
+                  <div className="flex gap-2">
+                    <input type="url" value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} className="glass-input flex-1" placeholder="https://..." />
+                    <label className={`glass-button px-3 py-2 text-sm cursor-pointer shrink-0 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {uploading ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      )}
+                      <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleFileUpload} />
+                    </label>
+                  </div>
+                  {uploadError && <p className="text-xs text-[var(--color-danger)] mt-1">{uploadError}</p>}
                 </div>
               </div>
               {form.imageUrl && (

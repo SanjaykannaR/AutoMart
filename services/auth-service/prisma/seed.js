@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding auth database...')
 
-  const adminPassword = await bcrypt.hash('Admin@12345', 12)
+  const adminPassword = await bcrypt.hash('AutoMart@2026!', 12)
   const defaultPassword = await bcrypt.hash('Password123!', 12)
 
   const users = [
