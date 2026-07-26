@@ -36,6 +36,7 @@ function parseProduct(p: any) {
   const specs = p.specifications
   return {
     ...p,
+    price: Number(p.price), // Prisma Decimal returns strings — ensure number
     compatibleVehicles: typeof cv === 'string' ? JSON.parse(cv || '[]') : (cv ?? []),
     specifications: typeof specs === 'string' ? JSON.parse(specs || '{}') : (specs ?? null),
   }

@@ -64,7 +64,7 @@ export default function OrdersPage() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
-      .then(setOrders)
+      .then((data) => setOrders(Array.isArray(data) ? data : [])) // Handle error responses (non-array) gracefully
       .catch(() => setOrders([]))
       .finally(() => setLoading(false))
   }, [])

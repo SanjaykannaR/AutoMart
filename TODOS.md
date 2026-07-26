@@ -166,13 +166,17 @@
 
 ---
 
-## 🔴 TODO — Tomorrow (2026-07-24)
+## ✅ P0 — Completed (2026-07-26)
 
-### 🔥 P0 — Must Do First (blockers)
+### 🔥 P0 — Must Do First (blockers) ✅ ALL DONE
 
-- [ ] **Run banner table migration** — Execute ONLY `migration-banners.sql` in Supabase SQL Editor. Storage bucket already exists (skip `migration-banner-storage.sql`). Without this, banners page shows error.
-- [ ] **Admin login test** — Visit `http://localhost:3080/admin/login`, login with `admin@automart.com` / `Admin@12345`, verify dashboard loads. (API verified working ✅)
-- [ ] **Change admin credentials** — After login, go to Settings → change username and password from defaults.
+- [x] **Run banner table migration** — Ran via Node.js pg client directly against Supabase PostgreSQL. ✅
+- [x] **Admin login test** — API verified: login returns valid JWT, `/me` works, dashboard loads (HTTP 200). ✅
+- [x] **Change admin credentials** — Username → "Sanjay Admin", Password → `AutoMart@2026!`. Verified with fresh login. ✅
+- [x] **Fix `/banners/public` API route** — Added `/banners` → auth-service router entry in API gateway. ✅
+- [x] **Clean up test banners** — Deleted 7 E2E test banners, activated "Mega Brake Sale". 6 real banners remain. ✅
+
+## 🟡 TODO — Next Up (2026-07-26)
 
 ### 🟡 P1 — Core Features (high value)
 
@@ -217,10 +221,11 @@
 - **Storage bucket**: `banner-images` (public, 2MB, PNG/JPG/WebP)
 - **Test banner image**: `https://mmvrkljevwgkonpljsut.supabase.co/storage/v1/object/public/banner-images/form.png`
 
-### Admin Credentials (TEMPORARY — change after first login)
+### Admin Credentials
 - **URL**: `http://localhost:3080/admin/login`
 - **Email**: `admin@automart.com`
-- **Password**: `Admin@12345`
+- **Password**: `AutoMart@2026!`
+- **Name**: `Sanjay Admin`
 - **Role**: `admin`
 
 ### Git Commits (July 23 — Admin System Session)
@@ -230,8 +235,9 @@
 - `cfbcfa1` — Phase 14 Stripe integration (20 files)
 
 ### Known Issues
-- ⚠️ **Banner table missing in Supabase** — Run `migration-banners.sql` only (storage bucket already exists).
-- ⚠️ **Admin credentials are defaults** — Must change after first login.
+- ~~⚠️ **Banner table missing in Supabase**~~ — FIXED: Migration ran via Node.js pg client.
+- ~~⚠️ **Admin credentials are defaults**~~ — FIXED: Changed to Sanjay Admin / AutoMart@2026!.
+- ~~⚠️ **`/banners/public` route broken**~~ — FIXED: Added `/banners` → auth-service in API gateway router.
 
 ### Known Bugs — FIXED
 - ~~Settings icon not visible~~ — FIXED (hamburger drawer)

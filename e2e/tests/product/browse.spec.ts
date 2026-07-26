@@ -22,22 +22,22 @@ test.describe('Product Browsing', () => {
     await expect(page.getByPlaceholder(/search/i).first()).toBeVisible()
   })
 
-  test('product detail page loads with mock data', async ({ page }) => {
-    await page.goto('/products/1')
-    // Page falls back to mockProduct when API doesn't have the ID
+  test('product detail page loads with real data', async ({ page }) => {
+    // Use a real product UUID from the seeded database
+    await page.goto('/products/6ba3a1ce-09c9-4439-b56f-8cd13835f235')
     await expect(page.getByRole('button', { name: /add to cart/i })).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('heading', { name: 'Ceramic Brake Pads' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Ceramic Brake Pads (Front)' })).toBeVisible()
   })
 
   test('product detail shows price and specs', async ({ page }) => {
-    await page.goto('/products/1')
-    await expect(page.getByText('$45.99').first()).toBeVisible({ timeout: 5000 })
+    await page.goto('/products/6ba3a1ce-09c9-4439-b56f-8cd13835f235')
+    await expect(page.getByText('₹1,499').first()).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Specifications')).toBeVisible()
     await expect(page.getByText('Compatible Vehicles')).toBeVisible()
   })
 
   test('can add product to cart and navigate to cart', async ({ page }) => {
-    await page.goto('/products/1')
+    await page.goto('/products/6ba3a1ce-09c9-4439-b56f-8cd13835f235')
     await page.getByRole('button', { name: /add to cart/i }).click()
     await expect(page).toHaveURL(/\/cart/)
     await expect(page.getByText('Shopping Cart')).toBeVisible()
@@ -49,7 +49,7 @@ test.describe('Product Browsing', () => {
     await page.evaluate(() => localStorage.removeItem('cart'))
 
     // Add item
-    await page.goto('/products/1')
+    await page.goto('/products/6ba3a1ce-09c9-4439-b56f-8cd13835f235')
     await page.getByRole('button', { name: /add to cart/i }).click()
 
     // Verify cart has item

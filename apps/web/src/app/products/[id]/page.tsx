@@ -44,7 +44,7 @@ const mockProduct = {
   name: 'Ceramic Brake Pads', // Product name
   category: 'Brake System', // Category for badge
   brand: 'Bosch', // Brand name
-  price: 45.99, // Price in dollars
+  price: 1499, // Price in INR
   description: 'High-performance ceramic brake pads for sedans and SUVs. Low dust, quiet braking, and extended lifespan. Engineered for daily driving and light performance use.', // Product description
   specifications: [ // Technical specifications array
     { key: 'Material', value: 'Ceramic Compound' }, // Material type
@@ -62,6 +62,12 @@ const mockProduct = {
   ],
   imageUrl: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80', // Product image URL
   stock: 42, // Available stock count
+}
+
+/** Extract category name — handles both string and {name} object from API */
+function getCategoryName(cat: string | { name: string } | undefined): string {
+  if (!cat) return ''
+  return typeof cat === 'object' ? cat.name : cat
 }
 
 /**
@@ -85,7 +91,13 @@ export default function ProductDetailPage() {
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`) // Fetch by ID
       .then((r) => r.json()) // Parse JSON response
-      .then(setProduct) // Store product data
+      .then((data) => {
+        // Normalize: PostgreSQL JSONB returns specifications as object, frontend expects [{key, value}]
+        if (data && !data.code && data.specifications && !Array.isArray(data.specifications) && typeof data.specifications === 'object') {
+          data.specifications = Object.entries(data.specifications).map(([key, value]) => ({ key, value: String(value) }))
+        }
+        setProduct(data) // Store product data
+      })
       .catch(() => setProduct(mockProduct)) // Fallback to mock on error
   }, [id]) // Re-fetch when ID changes
 
@@ -97,7 +109,7 @@ export default function ProductDetailPage() {
         name: product.name,
         price: product.price,
         imageUrl: product.imageUrl,
-        category: product.category,
+        category: getCategoryName(product.category),
         brand: product.brand,
       })
       setRecentlyViewed(loadRecentlyViewed().filter((p) => p.id !== product.id).slice(0, 6))
@@ -186,7 +198,7 @@ export default function ProductDetailPage() {
 
           {/* Category badge + Name — text animation with delay */}
           <ScrollReveal variant="text" delay={0.1}>
-            <span className="badge mb-3 inline-block">{product.category}</span>
+            <span className="badge mb-3 inline-block">{getCategoryName(product.category)}</span>
             <h1
               className="text-3xl sm:text-4xl font-extrabold leading-tight"
               style={{ fontFamily: 'Outfit, sans-serif' }}
@@ -199,7 +211,7 @@ export default function ProductDetailPage() {
           {/* Price — large lime gradient text */}
           <ScrollReveal variant="text" delay={0.15}>
             <p className="text-3xl sm:text-4xl font-extrabold glow-text" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              ${product.price.toFixed(2)}
+              ₹{product.price.toLocaleString('en-IN')}
             </p>
           </ScrollReveal>
 
@@ -310,7 +322,7 @@ export default function ProductDetailPage() {
                 disabled={adding} // Disable during loading
                 className="glass-button w-full py-3.5 text-base"
               >
-                {adding ? 'Adding...' : `Add to Cart — $${(product.price * qty).toFixed(2)}`} {/* Dynamic label */}
+                {adding ? 'Adding...' : `Add to Cart — ₹${(product.price * qty).toLocaleString('en-IN')}`} {/* Dynamic label */}
               </button>
 
               {/* Trust badges below CTA */}
@@ -356,7 +368,7 @@ export default function ProductDetailPage() {
                       <p className="text-xs text-[var(--color-text-muted)] truncate">{item.brand}</p>
                       <p className="text-sm font-medium truncate mt-0.5">{item.name}</p>
                       <p className="text-sm font-bold mt-1" style={{ color: 'var(--color-accent)' }}>
-                        ${item.price.toFixed(2)}
+                        ₹{item.price.toLocaleString('en-IN')}
                       </p>
                     </div>
                   </div>

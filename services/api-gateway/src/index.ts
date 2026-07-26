@@ -132,6 +132,7 @@ app.use('/api',
     // Dynamic target: http-proxy-middleware picks the upstream based on path prefix
     router: {
       '/auth':        `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`,
+      '/banners':     `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`,
       '/products':    `http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}`,
       '/search':      `http://search-service:${process.env.SEARCH_SERVICE_PORT || 3003}`,
       '/orders':      `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`,
