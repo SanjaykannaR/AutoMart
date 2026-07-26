@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test'
 
 const ADMIN_EMAIL = 'admin@automart.com'
-const ADMIN_PASSWORD = 'Admin@12345'
+const ADMIN_PASSWORD = 'AutoMart@2026!'
 
 test.describe('Admin Login', () => {
   test('admin login page loads with form fields', async ({ page }) => {

@@ -204,7 +204,7 @@
 - [x] **Notification Bell API Integration** — Navbar notification bell now fetches from `GET /api/notifications` when logged in, merges with localStorage. ✅
 - [ ] **Analytics Dashboard** — Admin analytics page with revenue charts, order trends, top products, user growth.
 - [x] **Admin E2E tests** — 73/73 Playwright tests all passing (admin, auth, browse, search, cart, order, UI). ✅ (commit 1d31f91)
-- [ ] **Cart Persistence** — Move cart from localStorage to server-side for cross-device sync.
+- [x] **Cart Persistence** — All cart mutations (add/update/remove) sync to Redis via `saveCart()` + localStorage fallback. Checkout loads from `syncCart()`. ✅
 - [ ] **Product Image Upload** — Admin product form: upload product images to Supabase Storage instead of external URLs.
 - [ ] **Order Confirmation Page** — Post-checkout success page with order summary, estimated delivery, and tracking link.
 - [ ] **Mobile Responsive Polish** — Final pass on all pages for mobile/tablet breakpoints, touch targets, and swipe gestures.

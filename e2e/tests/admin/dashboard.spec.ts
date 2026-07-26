@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test'
 
 const ADMIN_EMAIL = 'admin@automart.com'
-const ADMIN_PASSWORD = 'Admin@12345'
+const ADMIN_PASSWORD = 'AutoMart@2026!'
 
 /** Helper: login as admin and navigate to dashboard */
 async function loginAsAdmin(page: import('@playwright/test').Page) {
@@ -19,9 +19,13 @@ async function loginAsAdmin(page: import('@playwright/test').Page) {
 test.describe('Admin Dashboard', () => {
   test('dashboard loads with stat cards', async ({ page }) => {
     await loginAsAdmin(page)
-    // Should show stat cards
-    await expect(page.getByText('Users')).toBeVisible()
+    // Should show stat cards for all metrics
+    await expect(page.getByText('Products')).toBeVisible()
+    await expect(page.getByText('Orders')).toBeVisible()
+    await expect(page.getByText('Revenue')).toBeVisible()
+    await expect(page.getByText('Inventory')).toBeVisible()
     await expect(page.getByText('Banners')).toBeVisible()
+    await expect(page.getByText('Users')).toBeVisible()
   })
 
   test('dashboard shows recent users section', async ({ page }) => {

@@ -69,7 +69,7 @@ app.use(globalLimiter)
 // Much stricter limits on login, OTP, and password reset to prevent brute force.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50,                   // 50 attempts per 15 min per IP (raised for E2E testing)
+  max: 200,                  // 200 attempts per 15 min per IP (raised for E2E testing)
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, res) => {
