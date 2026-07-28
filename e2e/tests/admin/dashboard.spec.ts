@@ -19,13 +19,15 @@ async function loginAsAdmin(page: import('@playwright/test').Page) {
 test.describe('Admin Dashboard', () => {
   test('dashboard loads with stat cards', async ({ page }) => {
     await loginAsAdmin(page)
-    // Should show stat cards for all metrics
-    await expect(page.getByText('Products')).toBeVisible()
-    await expect(page.getByText('Orders')).toBeVisible()
-    await expect(page.getByText('Revenue')).toBeVisible()
-    await expect(page.getByText('Inventory')).toBeVisible()
-    await expect(page.getByText('Banners')).toBeVisible()
-    await expect(page.getByText('Users')).toBeVisible()
+    // Dashboard fetches data on mount; wait for stat cards to render after loading skeleton
+    const statsContainer = page.locator('.grid').filter({ has: page.getByText('Products') }).first()
+    await expect(statsContainer).toBeVisible({ timeout: 15000 })
+    // Verify all stat card labels are present
+    await expect(page.getByText('Orders').first()).toBeVisible()
+    await expect(page.getByText('Revenue').first()).toBeVisible()
+    await expect(page.getByText('Inventory').first()).toBeVisible()
+    await expect(page.getByText('Banners').first()).toBeVisible()
+    await expect(page.getByText('Users').first()).toBeVisible()
   })
 
   test('dashboard shows recent users section', async ({ page }) => {

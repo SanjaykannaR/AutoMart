@@ -24,6 +24,7 @@
 
 import { useState, useEffect } from 'react' // React hooks for state and effects
 import Link from 'next/link' // Next.js client-side navigation
+import Image from 'next/image' // Next.js optimized image component
 import { TrashIcon } from '@heroicons/react/24/outline' // Trash/delete icon
 import { useToast } from '@/components/Toast' // Toast notification context
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
@@ -132,12 +133,13 @@ export default function CartPage() {
                 <div className="card p-4 flex items-center gap-4">
                   {/* Product thumbnail — links to detail page */}
                   <Link href={`/products/${item.id}`} className="shrink-0">
-                    <div className="w-20 h-20 rounded-lg bg-[var(--color-bg)] overflow-hidden">
-                      <img
+                    <div className="w-20 h-20 rounded-lg bg-[var(--color-bg)] overflow-hidden relative">
+                      <Image
                         src={item.imageUrl || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=200&h=200&fit=crop&q=80'}
                         alt={item.name} // Alt text for accessibility
-                        loading="lazy"
-                        className="w-full h-full object-cover" // Cover container
+                        fill
+                        sizes="80px"
+                        className="object-cover" // Cover container
                       />
                     </div>
                   </Link>

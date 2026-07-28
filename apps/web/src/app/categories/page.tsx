@@ -18,6 +18,7 @@
  */
 'use client' // Next.js client component directive
 
+import Image from 'next/image' // Next.js optimized image component
 import Link from 'next/link' // Next.js client-side navigation
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline' // Search icon
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
@@ -129,11 +130,12 @@ export default function CategoriesPage() {
               className="group relative aspect-square rounded-2xl overflow-hidden card block"
             >
               {/* Background image — zooms on hover */}
-              <img
+              <Image
                 src={category.image}
                 alt={category.name} // Alt text for accessibility
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                fill
+                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="object-cover group-hover:scale-110 transition-transform duration-700"
                 draggable={false} // Prevent drag interference
               />
 

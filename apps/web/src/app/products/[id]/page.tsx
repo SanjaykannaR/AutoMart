@@ -32,6 +32,7 @@ import { useParams, useRouter } from 'next/navigation' // Next.js routing hooks
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
 import { TruckIcon, ShieldCheckIcon } from '@heroicons/react/24/outline' // Trust/shipping icons
 import { addToRecentlyViewed, loadRecentlyViewed, type RecentlyViewedProduct } from '@/lib/lru-cache' // LRU cache for recently viewed
+import Image from 'next/image' // Next.js optimized image component
 import Link from 'next/link' // Next.js link for recently viewed product cards
 import { ProductCard } from '@/components/ProductCard' // Product card for recently viewed
 import { saveCart, type CartItem } from '@/lib/sync' // Backend cart sync
@@ -177,9 +178,13 @@ export default function ProductDetailPage() {
             ═══════════════════════════════════════════════════════ */}
         <ScrollReveal variant="image">
           <div className="card p-3 rounded-2xl overflow-hidden relative">
-            <img
+            <Image
               src={product.imageUrl || 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80'}
               alt={product.name} // Alt text for accessibility
+              width={800}
+              height={800}
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="w-full aspect-square object-cover rounded-xl" // Full width, square aspect
             />
             {/* Stock badge — top-right corner */}
@@ -364,10 +369,12 @@ export default function ProductDetailPage() {
                 <Link href={`/products/${item.id}`}>
                   <div className="card p-0 overflow-hidden group cursor-pointer">
                     <div className="aspect-square overflow-hidden">
-                      <img
+                      <Image
                         src={item.imageUrl}
                         alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
                     <div className="p-3">
