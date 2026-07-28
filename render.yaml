@@ -1,0 +1,48 @@
+# ─── AutoMart — Render Deployment Blueprint ──────────────────────────────────
+# Deploy the entire backend as a single Render Web Service.
+# Uses Docker (Dockerfile.prod) to run all 8 microservices in one container.
+#
+# Free tier: 750 hours/month, 512MB RAM, spins down after 15min idle.
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ─── Backend (all 8 services + API gateway) ─────────────────────────────────
+  - type: web
+    name: automart-backend
+    runtime: docker
+    dockerfilePath: Dockerfile.prod
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # ── Database (use your existing Supabase) ──
+      - key: DATABASE_URL
+        sync: false
+      # ── Redis (use Upstash free tier — see DEPLOYMENT.md) ──
+      - key: REDIS_URL
+        sync: false
+      # ── Auth ──
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: "7d"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # ── Stripe ──
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # ── Frontend URL (update after deploying to Vercel) ──
+      - key: FRONTEND_URL
+        value: "https://automart.vercel.app"
+      - key: CORS_ORIGINS
+        value: "https://automart.vercel.app"
+      # ── Email (optional — mock mode if not set) ──
+      - key: RESEND_API_KEY
+        sync: false
+      # ── Node ──
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,104 @@
+# ─── AutoMart — Production Dockerfile (Single Container) ──────────────────────
+# Builds ALL backend services into one container. Used by Render free tier
+# where running 8 separate services would exceed memory/hours limits.
+#
+# Architecture: 8 Express services + API gateway, all running as background
+# processes. Only port 3000 (gateway) is exposed.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Install ALL dependencies (including dev for build tools) ────────
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+COPY services/auth-service/package.json ./services/auth-service/
+COPY services/product-service/package.json ./services/product-service/
+COPY services/search-service/package.json ./services/search-service/
+COPY services/order-service/package.json ./services/order-service/
+COPY services/inventory-service/package.json ./services/inventory-service/
+COPY services/notification-service/package.json ./services/notification-service/
+COPY services/mcp-server/package.json ./services/mcp-server/
+COPY services/api-gateway/package.json ./services/api-gateway/
+
+# Install ALL deps (prisma CLI + typescript needed for build)
+RUN npm ci
+
+# ── Stage 2: Generate Prisma clients + compile TypeScript ───────────────────
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json ./
+
+# Copy all service source code
+COPY services/ ./services/
+
+# Generate Prisma clients for each service that uses a database
+RUN npx prisma generate --schema=services/auth-service/prisma/schema.prisma
+RUN npx prisma generate --schema=services/product-service/prisma/schema.prisma
+RUN npx prisma generate --schema=services/order-service/prisma/schema.prisma
+RUN npx prisma generate --schema=services/inventory-service/prisma/schema.prisma
+
+# Build TypeScript for each service
+RUN cd services/auth-service && npx tsc
+RUN cd services/product-service && npx tsc
+RUN cd services/search-service && npx tsc
+RUN cd services/order-service && npx tsc
+RUN cd services/inventory-service && npx tsc
+RUN cd services/notification-service && npx tsc
+RUN cd services/mcp-server && npx tsc
+RUN cd services/api-gateway && npx tsc
+
+# ── Stage 3: Production image (runtime deps only) ───────────────────────────
+FROM node:20-alpine AS production
+WORKDIR /app
+
+# Install curl + bash for health checks and startup script
+RUN apk add --no-cache bash curl
+
+# Install only runtime dependencies (no prisma CLI, no typescript)
+COPY package.json package-lock.json ./
+COPY services/auth-service/package.json ./services/auth-service/
+COPY services/product-service/package.json ./services/product-service/
+COPY services/search-service/package.json ./services/search-service/
+COPY services/order-service/package.json ./services/order-service/
+COPY services/inventory-service/package.json ./services/inventory-service/
+COPY services/notification-service/package.json ./services/notification-service/
+COPY services/mcp-server/package.json ./services/mcp-server/
+COPY services/api-gateway/package.json ./services/api-gateway/
+RUN npm ci --omit=dev
+
+# Copy compiled dist directories (all services)
+COPY --from=build /app/services/auth-service/dist ./services/auth-service/dist
+COPY --from=build /app/services/product-service/dist ./services/product-service/dist
+COPY --from=build /app/services/search-service/dist ./services/search-service/dist
+COPY --from=build /app/services/order-service/dist ./services/order-service/dist
+COPY --from=build /app/services/inventory-service/dist ./services/inventory-service/dist
+COPY --from=build /app/services/notification-service/dist ./services/notification-service/dist
+COPY --from=build /app/services/mcp-server/dist ./services/mcp-server/dist
+COPY --from=build /app/services/api-gateway/dist ./services/api-gateway/dist
+
+# Copy Prisma generated clients + schema files (needed at runtime by @prisma/client)
+COPY --from=build /app/services/auth-service/src/generated ./services/auth-service/src/generated
+COPY --from=build /app/services/product-service/src/generated ./services/product-service/src/generated
+COPY --from=build /app/services/order-service/src/generated ./services/order-service/src/generated
+COPY --from=build /app/services/inventory-service/src/generated ./services/inventory-service/src/generated
+
+COPY services/auth-service/prisma ./services/auth-service/prisma
+COPY services/product-service/prisma ./services/product-service/prisma
+COPY services/order-service/prisma ./services/order-service/prisma
+COPY services/inventory-service/prisma ./services/inventory-service/prisma
+
+# Copy startup script
+COPY scripts/start-prod.sh ./scripts/start-prod.sh
+RUN chmod +x scripts/start-prod.sh
+
+# Expose only the API gateway port
+EXPOSE 3000
+
+# Health check (Render uses this to keep the service alive)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -sf http://localhost:3000/health || exit 1
+
+# Start all services via the process manager
+CMD ["bash", "scripts/start-prod.sh"]

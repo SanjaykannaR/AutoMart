@@ -17,6 +17,14 @@ function errorResponse(res: express.Response, status: number, code: string, mess
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
 }
 
+// ─── Service URL resolution ───────────────────────────────────────────────────
+// Prefer *_SERVICE_URL env vars (single-container / Render / Railway),
+// fall back to localhost (default for local dev with startup script).
+function svc(envUrl: string | undefined, port: number | string): string {
+  if (envUrl) return envUrl
+  return `http://localhost:${port}`
+}
+
 // Tool definitions follow JSON Schema format for parameter validation.
 // Each tool maps to a specific AutoMart capability backed by a microservice.
 const tools = [
@@ -85,7 +93,7 @@ async function searchParts(params: { query: string; category?: string; maxPrice?
   if (params.limit) searchParams.set('limit', String(params.limit))
 
   try {
-    const res = await fetch(`http://search-service:${process.env.SEARCH_SERVICE_PORT || 3003}/search?${searchParams}`)
+    const res = await fetch(`${svc(process.env.SEARCH_SERVICE_URL, process.env.SEARCH_SERVICE_PORT || 3003)}/search?${searchParams}`)
     if (!res.ok) {
       return { code: 'MCP_SEARCH_FAILED', error: `Search service returned HTTP ${res.status}`, hint: 'The search service may be down or misconfigured.' }
     }
@@ -107,7 +115,7 @@ async function checkStock(params: { productId: string }) {
     return { code: 'MCP_MISSING_PARAM', error: 'productId is required', hint: 'Provide a valid product ID to check stock.' }
   }
   try {
-    const res = await fetch(`http://inventory-service:${process.env.INVENTORY_SERVICE_PORT || 3005}/inventory/${params.productId}`)
+    const res = await fetch(`${svc(process.env.INVENTORY_SERVICE_URL, process.env.INVENTORY_SERVICE_PORT || 3005)}/inventory/${params.productId}`)
     if (res.status === 404) {
       return { code: 'MCP_PRODUCT_NOT_IN_INVENTORY', error: `No inventory record for product "${params.productId}"`, hint: 'This product has not been added to inventory yet.' }
     }
@@ -125,7 +133,7 @@ async function getOrderStatus(params: { orderId: string }) {
     return { code: 'MCP_MISSING_PARAM', error: 'orderId is required', hint: 'Provide a valid order ID to check its status.' }
   }
   try {
-    const res = await fetch(`http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}/orders/${params.orderId}`)
+    const res = await fetch(`${svc(process.env.ORDER_SERVICE_URL, process.env.ORDER_SERVICE_PORT || 3004)}/orders/${params.orderId}`)
     if (res.status === 404) {
       return { code: 'MCP_ORDER_NOT_FOUND', error: `No order found with ID "${params.orderId}"`, hint: 'Verify the order ID is correct. It may have been deleted or never existed.' }
     }
@@ -140,7 +148,7 @@ async function getOrderStatus(params: { orderId: string }) {
 
 async function getCategories() {
   try {
-    const res = await fetch(`http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}/categories`)
+    const res = await fetch(`${svc(process.env.PRODUCT_SERVICE_URL, process.env.PRODUCT_SERVICE_PORT || 3002)}/categories`)
     if (!res.ok) {
       return { code: 'MCP_CATEGORIES_FAILED', error: `Product service returned HTTP ${res.status}`, hint: 'The product service may be down.' }
     }
@@ -152,7 +160,7 @@ async function getCategories() {
 
 async function getPopularParts(params: { limit?: number }) {
   try {
-    const res = await fetch(`http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}/products`)
+    const res = await fetch(`${svc(process.env.PRODUCT_SERVICE_URL, process.env.PRODUCT_SERVICE_PORT || 3002)}/products`)
     if (!res.ok) {
       return { code: 'MCP_PRODUCTS_FAILED', error: `Product service returned HTTP ${res.status}`, hint: 'The product service may be down.' }
     }
