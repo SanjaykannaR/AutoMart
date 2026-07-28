@@ -182,7 +182,7 @@ function SearchContent() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search?${params}`) // Fetch from API
       const data = await res.json() // Parse response
-      setProducts(data) // Store products
+      setProducts(Array.isArray(data) ? data : []) // Store products (guard against error objects)
     } catch {
       setProducts([]) // On error, empty results
     } finally {
@@ -364,7 +364,7 @@ function SearchContent() {
           )}
           {(filters.minPrice || filters.maxPrice) && (
             <FilterChip
-              label={`$${filters.minPrice || '0'} — $${filters.maxPrice || '\u221E'}`}
+              label={`₹${filters.minPrice || '0'} — ₹${filters.maxPrice || '\u221E'}`}
               onRemove={() => { setFilters({ ...filters, minPrice: '', maxPrice: '' }) }}
             />
           )}

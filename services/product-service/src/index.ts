@@ -30,9 +30,16 @@ const productSchema = z.object({
   imageUrl: z.string().optional(),
 })
 
-/** Deserializes the JSON-stringified compatibleVehicles field from the DB. */
+/** Deserializes JSON fields from the DB — handles both string (SQLite) and object (PostgreSQL) formats. */
 function parseProduct(p: any) {
-  return { ...p, compatibleVehicles: JSON.parse(p.compatibleVehicles || '[]') }
+  const cv = p.compatibleVehicles
+  const specs = p.specifications
+  return {
+    ...p,
+    price: Number(p.price), // Prisma Decimal returns strings — ensure number
+    compatibleVehicles: typeof cv === 'string' ? JSON.parse(cv || '[]') : (cv ?? []),
+    specifications: typeof specs === 'string' ? JSON.parse(specs || '{}') : (specs ?? null),
+  }
 }
 
 // ─── GET /products ──────────────────────────────────────────────────────────────
@@ -64,6 +71,43 @@ app.get('/products', async (req, res) => {
     console.error('[Product] List error:', err)
     return errorResponse(res, 500, 'PRODUCT_LIST_FAILED',
       'Failed to retrieve products from the database.',
+      'Check product-service logs and verify the database is running.')
+  }
+})
+
+// ─── GET /products/stats ────────────────────────────────────────────────────
+// Admin dashboard: product inventory statistics.
+// MUST be defined before /products/:id to avoid matching "stats" as an ID.
+app.get('/products/stats', async (req, res) => {
+  try {
+    const [totalProducts, inStock, outOfStock, categoryCounts, categories] = await Promise.all([
+      prisma.product.count(),
+      prisma.product.count({ where: { stock: { gt: 0 } } }),
+      prisma.product.count({ where: { stock: 0 } }),
+      prisma.product.groupBy({ by: ['categoryId'], _count: { id: true } }),
+      prisma.category.findMany({ select: { id: true, name: true } }),
+    ])
+
+    // Map category IDs to names
+    const catMap: Record<string, string> = {}
+    categories.forEach((c: any) => { catMap[c.id] = c.name })
+
+    const byCategory: Record<string, number> = {}
+    categoryCounts.forEach((c: any) => {
+      const name = catMap[c.categoryId || ''] || 'Uncategorized'
+      byCategory[name] = (byCategory[name] || 0) + c._count.id
+    })
+
+    res.json({
+      totalProducts,
+      inStock,
+      outOfStock,
+      byCategory,
+    })
+  } catch (err) {
+    console.error('[Product] Stats error:', err)
+    return errorResponse(res, 500, 'PRODUCT_STATS_FAILED',
+      'Failed to compute product statistics.',
       'Check product-service logs and verify the database is running.')
   }
 })
@@ -142,6 +186,58 @@ app.post('/products', async (req, res) => {
     return errorResponse(res, 500, 'PRODUCT_CREATE_FAILED',
       'Failed to create product. The database may be unavailable or a constraint was violated.',
       'Check product-service logs and verify the categoryId exists.')
+  }
+})
+
+// ─── PATCH /products/:id ──────────────────────────────────────────────────────
+// Update an existing product. Accepts partial data — only provided fields are updated.
+app.patch('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const existing = await prisma.product.findUnique({ where: { id } })
+    if (!existing) {
+      return errorResponse(res, 404, 'PRODUCT_NOT_FOUND', `Product with ID "${id}" not found.`)
+    }
+
+    const data = req.body
+    const updateData: any = {}
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.brand !== undefined) updateData.brand = data.brand
+    if (data.price !== undefined) updateData.price = Number(data.price)
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId
+    if (data.vehicleType !== undefined) updateData.vehicleType = data.vehicleType
+    if (data.stock !== undefined) updateData.stock = Number(data.stock)
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl
+    if (data.compatibleVehicles !== undefined) updateData.compatibleVehicles = JSON.stringify(data.compatibleVehicles)
+
+    // Recalculate slug if name changed
+    if (data.name && data.name !== existing.name) {
+      updateData.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    }
+
+    const product = await prisma.product.update({ where: { id }, data: updateData })
+    res.json(parseProduct(product))
+  } catch (err) {
+    console.error('[Product] Update error:', err)
+    return errorResponse(res, 500, 'PRODUCT_UPDATE_FAILED', 'Failed to update product.')
+  }
+})
+
+// ─── DELETE /products/:id ─────────────────────────────────────────────────────
+// Delete a product by ID.
+app.delete('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const existing = await prisma.product.findUnique({ where: { id } })
+    if (!existing) {
+      return errorResponse(res, 404, 'PRODUCT_NOT_FOUND', `Product with ID "${id}" not found.`)
+    }
+    await prisma.product.delete({ where: { id } })
+    res.json({ success: true, message: `Product "${existing.name}" deleted.` })
+  } catch (err) {
+    console.error('[Product] Delete error:', err)
+    return errorResponse(res, 500, 'PRODUCT_DELETE_FAILED', 'Failed to delete product.')
   }
 })
 

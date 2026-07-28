@@ -34,6 +34,7 @@
 
 import { useState, useEffect } from 'react' // React hooks for state and effects
 import Link from 'next/link' // Next.js client-side navigation
+import Image from 'next/image' // Next.js optimized image component
 import { TrashIcon, ShoppingCartIcon } from '@heroicons/react/24/outline' // Delete and cart icons
 import { HeartIcon } from '@heroicons/react/24/solid' // Filled heart icon (for empty state)
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
@@ -173,10 +174,12 @@ export default function WishlistPage() {
               {/* Product image — links to detail page */}
               <Link href={`/products/${item.id}`} className="block">
                 <div className="aspect-square bg-[var(--color-surface)] relative overflow-hidden">
-                  <img
-                    src={item.image}
+                  <Image
+                    src={item.image || item.imageUrl || '/placeholder.png'}
                     alt={item.name} // Alt text for accessibility
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   {/* Category badge — top-left corner */}
                   <span className="absolute top-3 left-3 badge">
@@ -195,7 +198,7 @@ export default function WishlistPage() {
 
                 {/* Price — lime accent color */}
                 <p className="text-[var(--color-accent)] font-bold text-lg mb-4">
-                  ${item.price.toFixed(2)}
+                  ₹{Number(item.price).toLocaleString('en-IN')}
                 </p>
 
                 {/* Action buttons — Move to Cart + Remove */}

@@ -21,8 +21,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+import { saveCart, type CartItem } from '@/lib/sync'
 
 interface Product {
   id: string
@@ -55,7 +57,7 @@ export function ProductCard({ product }: { product: Product }) {
         localStorage.setItem('wishlist', JSON.stringify(wishlist.filter((item: any) => item.id !== Number(product.id))))
         setIsWishlisted(false)
       } else {
-        wishlist.push({ id: Number(product.id), name: product.name, price: product.price, image: product.imageUrl, category: product.category })
+        wishlist.push({ id: Number(product.id), name: product.name, price: Number(product.price), image: product.imageUrl, category: product.category })
         localStorage.setItem('wishlist', JSON.stringify(wishlist))
         setIsWishlisted(true)
       }
@@ -67,14 +69,14 @@ export function ProductCard({ product }: { product: Product }) {
     e.preventDefault()
     e.stopPropagation()
     try {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-      const existing = cart.find((c: any) => c.id === Number(product.id))
+      const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]')
+      const existing = cart.find((c) => String(c.id) === String(product.id))
       if (existing) {
         existing.qty = (existing.qty || 1) + 1
       } else {
-        cart.push({ id: Number(product.id), name: product.name, price: product.price, image: product.imageUrl, category: product.category, qty: 1 })
+        cart.push({ id: String(product.id), name: product.name, price: Number(product.price), imageUrl: product.imageUrl, category: product.category, qty: 1 })
       }
-      localStorage.setItem('cart', JSON.stringify(cart))
+      saveCart(cart) // Sync to localStorage + backend Redis
       window.dispatchEvent(new Event('cart-updated'))
       setAddedToCart(true)
       setTimeout(() => setAddedToCart(false), 1500)
@@ -86,11 +88,13 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="card overflow-hidden group cursor-pointer h-full flex flex-col">
         {/* ─── SQUARE IMAGE ─── */}
         <div className="aspect-square bg-white/[0.02] relative overflow-hidden">
-          <img
+          <Image
             src={product.imageUrl || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=400&fit=crop&q=80'}
             alt={product.name}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
           />
 
           {/* Category badge — glass style */}
@@ -126,7 +130,7 @@ export function ProductCard({ product }: { product: Product }) {
           {/* Price + Cart button row */}
           <div className="mt-auto flex items-center justify-between">
             <p className="text-lg font-bold glow-text">
-              ${product.price.toFixed(2)}
+              ${Number(product.price).toFixed(2)}
             </p>
 
             {/* ─── CART BUTTON — Circular glass ─── */}

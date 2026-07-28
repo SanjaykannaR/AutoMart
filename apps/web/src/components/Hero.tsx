@@ -36,81 +36,36 @@
 import { useState, useEffect, useCallback, useRef } from 'react' // React hooks for state, effects, and refs
 import { motion, AnimatePresence } from 'framer-motion' // Animation library for smooth transitions
 import Link from 'next/link' // Next.js link for client-side navigation
+import Image from 'next/image' // Next.js optimized image component
 import { SearchBar } from '@/components/SearchBar' // Reusable search bar component
 
+/** Shape of a banner slide from the API or hardcoded fallback */
+interface BannerSlide {
+  id: string | number
+  headline: string
+  subtitle: string
+  badge: string
+  cta: string
+  link: string
+  gradient: string
+  image: string
+  accent: string
+}
+
 /**
- * Banner slide data — each slide is a full-width ad
- * representing an automobile deal or special sale.
- * These are like Amazon's homepage promotional banners.
+ * Hardcoded fallback slides — used when API is unreachable.
+ * Identical content to what's in the Supabase banners table.
  */
-const bannerSlides = [
-  {
-    id: 1, // Unique identifier for React key
-    headline: 'Mega Brake Sale', // Main headline text displayed on the banner
-    subtitle: 'Up to 40% off on all brake pads, rotors & calipers', // Subtitle below headline
-    badge: 'Limited Time', // Small badge/tag shown above headline
-    cta: 'Shop Brakes', // Call-to-action button text
-    link: '/search?category=Brake+System', // CTA button destination
-    gradient: 'from-red-600/80 via-red-900/60 to-transparent', // Tailwind gradient for overlay
-    image: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1920&h=600&fit=crop&q=80', // Wheel close-up — perfect for brake sale banner
-    accent: '#EF4444', // Accent color for this slide (matches brake theme)
-  },
-  {
-    id: 2, // Second slide
-    headline: 'Engine Oil Festival', // Festival-themed sale for engine oils
-    subtitle: 'Buy 2 Get 1 Free on all synthetic engine oils', // Free product offer
-    badge: 'Best Seller', // Popularity badge
-    cta: 'Shop Oils', // CTA text
-    link: '/search?category=Engine+Parts', // Link to engine parts category
-    gradient: 'from-amber-600/80 via-amber-900/60 to-transparent', // Amber gradient overlay
-    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=1920&h=600&fit=crop&q=80', // Engine parts image
-    accent: '#F59E0B', // Amber accent color
-  },
-  {
-    id: 3, // Third slide
-    headline: 'New Arrivals 2026', // Latest product arrivals
-    subtitle: 'Performance parts for the new model year — check them out', // Teaser for new stock
-    badge: 'Just In', // Freshness badge
-    cta: 'Explore Now', // CTA text
-    link: '/search', // Link to search/browse all
-    gradient: 'from-blue-600/80 via-blue-900/60 to-transparent', // Blue gradient overlay
-    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&h=600&fit=crop&q=80', // Car headlight image
-    accent: '#38B6FF', // Sky blue accent
-  },
-  {
-    id: 4, // Fourth slide
-    headline: 'Monsoon Service Kit', // Seasonal (monsoon/rain) themed
-    subtitle: 'Waterproof parts, wiper blades & more — stay road-ready', // Seasonal products
-    badge: 'Seasonal', // Seasonal tag
-    cta: 'Get Kit', // CTA text
-    link: '/search', // Link to browse
-    gradient: 'from-cyan-600/80 via-cyan-900/60 to-transparent', // Cyan gradient overlay
-    image: 'https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=1920&h=600&fit=crop&q=80', // Car maintenance image
-    accent: '#06B6D4', // Cyan accent
-  },
-  {
-    id: 5, // Fifth slide
-    headline: 'Free Delivery Weekend', // Delivery promotion
-    subtitle: 'No minimum order — free delivery on all parts this weekend', // No-threshold free delivery
-    badge: 'This Weekend', // Time-limited badge
-    cta: 'Order Now', // CTA text
-    link: '/search', // Link to search
-    gradient: 'from-green-600/80 via-green-900/60 to-transparent', // Green gradient overlay
-    image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=1920&h=600&fit=crop&q=80', // Delivery image
-    accent: '#22C55E', // Green accent
-  },
-  {
-    id: 6, // Sixth slide
-    headline: 'Premium Exhaust Systems', // Premium product showcase
-    subtitle: 'Limited stock — stainless steel performance exhausts', // Scarcity + quality
-    badge: 'Premium', // Premium tag
-    cta: 'Shop Now', // CTA text
-    link: '/search?category=Exhaust', // Link to exhaust category
-    gradient: 'from-orange-600/80 via-orange-900/60 to-transparent', // Orange gradient overlay
-    image: 'https://images.unsplash.com/photo-1759419281480-bacc913c9606?w=1920&h=600&fit=crop&q=80', // Exhaust image
-    accent: '#FF523B', // Coral/orange accent
-  },
+const FALLBACK_SLIDES: BannerSlide[] = [
+  { id: 1, headline: 'Mega Brake Sale', subtitle: 'Up to 40% off on all brake pads, rotors & calipers', badge: 'Limited Time', cta: 'Shop Brakes', link: '/search?category=Brake+System', gradient: 'from-red-600/80 via-red-900/60 to-transparent', image: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1920&h=600&fit=crop&q=80', accent: '#EF4444' },
+  { id: 2, headline: 'Engine Oil Festival', subtitle: 'Buy 2 Get 1 Free on all synthetic engine oils', badge: 'Best Seller', cta: 'Shop Oils', link: '/search?category=Engine+Parts', gradient: 'from-amber-600/80 via-amber-900/60 to-transparent', image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=1920&h=600&fit=crop&q=80', accent: '#F59E0B' },
+  { id: 3, headline: 'New Arrivals 2026', subtitle: 'Performance parts for the new model year', badge: 'Just In', cta: 'Explore Now', link: '/search', gradient: 'from-blue-600/80 via-blue-900/60 to-transparent', image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&h=600&fit=crop&q=80', accent: '#38B6FF' },
+  { id: 4, headline: 'Monsoon Service Kit', subtitle: 'Waterproof parts, wiper blades & more', badge: 'Seasonal', cta: 'Get Kit', link: '/search', gradient: 'from-cyan-600/80 via-cyan-900/60 to-transparent', image: 'https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=1920&h=600&fit=crop&q=80', accent: '#06B6D4' },
+  { id: 5, headline: 'Free Delivery Weekend', subtitle: 'No minimum order — free delivery on all parts', badge: 'This Weekend', cta: 'Order Now', link: '/search', gradient: 'from-green-600/80 via-green-900/60 to-transparent', image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=1920&h=600&fit=crop&q=80', accent: '#22C55E' },
+  { id: 6, headline: 'Premium Exhaust Systems', subtitle: 'Limited stock — stainless steel performance exhausts', badge: 'Premium', cta: 'Shop Now', link: '/search?category=Exhaust', gradient: 'from-orange-600/80 via-orange-900/60 to-transparent', image: 'https://images.unsplash.com/photo-1759419281480-bacc913c9606?w=1920&h=600&fit=crop&q=80', accent: '#FF523B' },
 ]
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
 /** Props interface — Hero accepts a search callback */
 interface HeroProps {
@@ -118,7 +73,7 @@ interface HeroProps {
 }
 
 /** Total number of banner slides for index wrapping */
-const TOTAL_SLIDES = bannerSlides.length
+const TOTAL_SLIDES = FALLBACK_SLIDES.length
 
 /**
  * Hero Component
@@ -136,6 +91,29 @@ export function Hero({ onSearch }: HeroProps) {
 
   /** Reference for slide transition direction (left/right) */
   const [direction, setDirection] = useState(0)
+
+  /** Banner slides — fetched from API, falls back to hardcoded */
+  const [slides, setSlides] = useState<BannerSlide[]>(FALLBACK_SLIDES)
+
+  /**
+   * FETCH BANNERS FROM API
+   * On mount, fetches active banners from /api/banners/public.
+   * Falls back to hardcoded slides if the API is unreachable.
+   */
+  useEffect(() => {
+    fetch(`${API}/api/banners/public`)
+      .then((res) => (res.ok ? res.json() : Promise.reject('non-200')))
+      .then((data: BannerSlide[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSlides(data) // Replace hardcoded with live banners
+          setActiveIndex(0) // Reset to first slide
+        }
+      })
+      .catch(() => {
+        // API unreachable — keep fallback slides (already set in useState)
+        console.log('[Hero] Using hardcoded fallback slides')
+      })
+  }, []) // Mount-only
 
   /**
    * Navigate to the next slide.
@@ -215,7 +193,7 @@ export function Hero({ onSearch }: HeroProps) {
    * Current slide data — derived from activeIndex.
    * Used to populate the banner content and colors.
    */
-  const currentSlide = bannerSlides[activeIndex]
+  const currentSlide = slides[activeIndex]
 
   return (
     /* ─── HERO SECTION — Full-width banner carousel ─── */
@@ -239,11 +217,14 @@ export function Hero({ onSearch }: HeroProps) {
             className="absolute inset-0" // Fill entire parent
           >
             {/* Banner background image — covers entire section */}
-            <img
+            <Image
               src={currentSlide.image} // Image URL from current slide data
               alt={currentSlide.headline} // Alt text for accessibility
-              className="w-full h-full object-cover" // Cover entire area, maintain aspect ratio
+              fill // Fill entire parent container
+              className="object-cover" // Cover entire area, maintain aspect ratio
               draggable={false} // Prevent drag interference
+              priority // Load immediately (hero is above the fold)
+              sizes="100vw" // Full viewport width
             />
 
             {/* Gradient overlay — darkens image and adds color theme */}
@@ -419,7 +400,7 @@ export function Hero({ onSearch }: HeroProps) {
       {/* Small dots below the banner showing current slide position */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
         {/* Map through each slide to create a dot */}
-        {bannerSlides.map((slide, index) => (
+        {slides.map((slide, index) => (
           <button
             key={slide.id} // Unique key for each dot
             onClick={() => goToSlide(index)} // Click to jump to that slide

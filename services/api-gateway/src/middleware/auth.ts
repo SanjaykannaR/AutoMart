@@ -7,7 +7,10 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret'
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) {
+  console.error('[AUTH] ⚠️  JWT_SECRET not set — using insecure fallback for dev only')
+}
 
 /** Extends Express Request to carry the decoded JWT payload. */
 export interface AuthRequest extends Request {
@@ -48,6 +51,13 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   }
 
   try {
+    if (!JWT_SECRET) {
+      return res.status(500).json({
+        code: 'AUTH_SERVER_MISCONFIGURED',
+        message: 'JWT_SECRET environment variable is not set. Server cannot verify tokens.',
+        hint: 'Set JWT_SECRET in your environment variables.',
+      })
+    }
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string }
     req.user = decoded
     next()

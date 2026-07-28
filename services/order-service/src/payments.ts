@@ -45,7 +45,7 @@ router.post('/create-checkout', async (req: Request, res: Response) => {
     // Build Stripe line items from cart items
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: any) => ({
       price_data: {
-        currency: 'usd',
+        currency: 'inr',
         product_data: {
           name: item.name,
           ...(item.image ? { images: [item.image] } : {}),
@@ -109,8 +109,9 @@ router.post('/webhook', async (req: Request, res: Response) => {
   }
 
   try {
+    const rawBody = (req as any).rawBody || req.body
     const event = stripe.webhooks.constructEvent(
-      req.body, // Raw body
+      rawBody, // Raw body for signature verification
       sig,
       webhookSecret
     )

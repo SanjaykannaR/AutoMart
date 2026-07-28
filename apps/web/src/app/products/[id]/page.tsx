@@ -32,8 +32,10 @@ import { useParams, useRouter } from 'next/navigation' // Next.js routing hooks
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
 import { TruckIcon, ShieldCheckIcon } from '@heroicons/react/24/outline' // Trust/shipping icons
 import { addToRecentlyViewed, loadRecentlyViewed, type RecentlyViewedProduct } from '@/lib/lru-cache' // LRU cache for recently viewed
+import Image from 'next/image' // Next.js optimized image component
 import Link from 'next/link' // Next.js link for recently viewed product cards
 import { ProductCard } from '@/components/ProductCard' // Product card for recently viewed
+import { saveCart, type CartItem } from '@/lib/sync' // Backend cart sync
 
 /**
  * Fallback product data — used when the API is unreachable.
@@ -44,7 +46,7 @@ const mockProduct = {
   name: 'Ceramic Brake Pads', // Product name
   category: 'Brake System', // Category for badge
   brand: 'Bosch', // Brand name
-  price: 45.99, // Price in dollars
+  price: 1499, // Price in INR
   description: 'High-performance ceramic brake pads for sedans and SUVs. Low dust, quiet braking, and extended lifespan. Engineered for daily driving and light performance use.', // Product description
   specifications: [ // Technical specifications array
     { key: 'Material', value: 'Ceramic Compound' }, // Material type
@@ -62,6 +64,12 @@ const mockProduct = {
   ],
   imageUrl: 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80', // Product image URL
   stock: 42, // Available stock count
+}
+
+/** Extract category name — handles both string and {name} object from API */
+function getCategoryName(cat: string | { name: string } | undefined): string {
+  if (!cat) return ''
+  return typeof cat === 'object' ? cat.name : cat
 }
 
 /**
@@ -85,7 +93,18 @@ export default function ProductDetailPage() {
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`) // Fetch by ID
       .then((r) => r.json()) // Parse JSON response
-      .then(setProduct) // Store product data
+      .then((data) => {
+        // Guard: if API returned an error object (rate limit, not found), fall back to mock
+        if (!data || data.code || !data.id) {
+          setProduct(mockProduct)
+          return
+        }
+        // Normalize: PostgreSQL JSONB returns specifications as object, frontend expects [{key, value}]
+        if (data && data.specifications && !Array.isArray(data.specifications) && typeof data.specifications === 'object') {
+          data.specifications = Object.entries(data.specifications).map(([key, value]) => ({ key, value: String(value) }))
+        }
+        setProduct(data) // Store product data
+      })
       .catch(() => setProduct(mockProduct)) // Fallback to mock on error
   }, [id]) // Re-fetch when ID changes
 
@@ -97,7 +116,7 @@ export default function ProductDetailPage() {
         name: product.name,
         price: product.price,
         imageUrl: product.imageUrl,
-        category: product.category,
+        category: getCategoryName(product.category),
         brand: product.brand,
       })
       setRecentlyViewed(loadRecentlyViewed().filter((p) => p.id !== product.id).slice(0, 6))
@@ -128,14 +147,14 @@ export default function ProductDetailPage() {
    */
   const handleAddToCart = () => {
     setAdding(true) // Show loading state
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]') // Read existing cart
-    const existing = cart.findIndex((item: any) => item.id === product.id) // Check if already in cart
+    const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]') // Read existing cart
+    const existing = cart.findIndex((item) => String(item.id) === String(product.id)) // Check if already in cart
     if (existing >= 0) {
       cart[existing].qty += qty // Increase quantity if already in cart
     } else {
-      cart.push({ ...product, qty }) // Add new item with quantity
+      cart.push({ id: String(product.id), name: product.name, price: Number(product.price), imageUrl: product.imageUrl, category: product.category, qty }) // Add new item with quantity
     }
-    localStorage.setItem('cart', JSON.stringify(cart)) // Save to localStorage
+    saveCart(cart) // Sync to localStorage + backend Redis
     window.dispatchEvent(new Event('cart-updated')) // Notify Navbar about cart update
     // Dispatch notification for the navbar bell
     window.dispatchEvent(new CustomEvent('new-notification', {
@@ -159,9 +178,13 @@ export default function ProductDetailPage() {
             ═══════════════════════════════════════════════════════ */}
         <ScrollReveal variant="image">
           <div className="card p-3 rounded-2xl overflow-hidden relative">
-            <img
+            <Image
               src={product.imageUrl || 'https://images.unsplash.com/photo-1696494561079-ddabcbb308e8?w=800&h=800&fit=crop&q=80'}
               alt={product.name} // Alt text for accessibility
+              width={800}
+              height={800}
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="w-full aspect-square object-cover rounded-xl" // Full width, square aspect
             />
             {/* Stock badge — top-right corner */}
@@ -186,7 +209,7 @@ export default function ProductDetailPage() {
 
           {/* Category badge + Name — text animation with delay */}
           <ScrollReveal variant="text" delay={0.1}>
-            <span className="badge mb-3 inline-block">{product.category}</span>
+            <span className="badge mb-3 inline-block">{getCategoryName(product.category)}</span>
             <h1
               className="text-3xl sm:text-4xl font-extrabold leading-tight"
               style={{ fontFamily: 'Outfit, sans-serif' }}
@@ -199,7 +222,7 @@ export default function ProductDetailPage() {
           {/* Price — large lime gradient text */}
           <ScrollReveal variant="text" delay={0.15}>
             <p className="text-3xl sm:text-4xl font-extrabold glow-text" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              ${product.price.toFixed(2)}
+              ₹{product.price.toLocaleString('en-IN')}
             </p>
           </ScrollReveal>
 
@@ -310,7 +333,7 @@ export default function ProductDetailPage() {
                 disabled={adding} // Disable during loading
                 className="glass-button w-full py-3.5 text-base"
               >
-                {adding ? 'Adding...' : `Add to Cart — $${(product.price * qty).toFixed(2)}`} {/* Dynamic label */}
+                {adding ? 'Adding...' : `Add to Cart — ₹${(product.price * qty).toLocaleString('en-IN')}`} {/* Dynamic label */}
               </button>
 
               {/* Trust badges below CTA */}
@@ -346,17 +369,19 @@ export default function ProductDetailPage() {
                 <Link href={`/products/${item.id}`}>
                   <div className="card p-0 overflow-hidden group cursor-pointer">
                     <div className="aspect-square overflow-hidden">
-                      <img
+                      <Image
                         src={item.imageUrl}
                         alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
                     <div className="p-3">
                       <p className="text-xs text-[var(--color-text-muted)] truncate">{item.brand}</p>
                       <p className="text-sm font-medium truncate mt-0.5">{item.name}</p>
                       <p className="text-sm font-bold mt-1" style={{ color: 'var(--color-accent)' }}>
-                        ${item.price.toFixed(2)}
+                        ₹{item.price.toLocaleString('en-IN')}
                       </p>
                     </div>
                   </div>

@@ -24,10 +24,16 @@
 
 import { useState, useEffect } from 'react' // React hooks for state and effects
 import Link from 'next/link' // Next.js client-side navigation
+import Image from 'next/image' // Next.js optimized image component
 import { TrashIcon } from '@heroicons/react/24/outline' // Trash/delete icon
 import { useToast } from '@/components/Toast' // Toast notification context
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
 import { syncCart, saveCart } from '@/lib/sync' // Backend sync utilities
+
+function getCategoryName(cat: string | { name: string } | undefined): string {
+  if (!cat) return ''
+  return typeof cat === 'object' ? cat.name : cat
+}
 
 /**
  * CartItem type — what each item in the cart looks like.
@@ -70,7 +76,7 @@ export default function CartPage() {
       item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item, // Min qty = 1
     )
     setItems(updated) // Update state
-    localStorage.setItem('cart', JSON.stringify(updated)) // Sync to localStorage
+    saveCart(updated) // Sync to localStorage + backend Redis
     window.dispatchEvent(new Event('cart-updated')) // Notify Navbar
   }
 
@@ -78,30 +84,31 @@ export default function CartPage() {
   const removeItem = (id: string) => {
     const updated = items.filter((item) => item.id !== id) // Filter out item
     setItems(updated) // Update state
-    localStorage.setItem('cart', JSON.stringify(updated)) // Sync to localStorage
+    saveCart(updated) // Sync to localStorage + backend Redis
     window.dispatchEvent(new Event('cart-updated')) // Notify Navbar
     showToast('Item removed from cart', 'info') // Show toast
   }
 
   /** Calculate cart total */
-  const total = items.reduce((sum, item) => sum + item.price * item.qty, 0)
-
-  /** Avoid hydration mismatch — localStorage is only available client-side */
-  if (!mounted) return null // Render nothing during SSR
+  const total = items.reduce((sum, item) => sum + Number(item.price) * item.qty, 0)
 
   return (
     <div className="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Page heading — text animation */}
-      <ScrollReveal variant="text">
-        <h1
-          className="text-2xl sm:text-3xl font-extrabold mb-8"
-          style={{ fontFamily: 'Outfit, sans-serif' }}
-        >
-          Shopping Cart
-        </h1>
-      </ScrollReveal>
+      {/* Page heading — always visible (no animation wrapper) */}
+      <h1
+        className="text-2xl sm:text-3xl font-extrabold mb-8"
+        style={{ fontFamily: 'Outfit, sans-serif' }}
+      >
+        Shopping Cart
+      </h1>
 
-      {items.length === 0 ? (
+      {!mounted ? (
+        /* Loading state while cart syncs from backend/localStorage */
+        <div className="text-center py-20">
+          <div className="w-8 h-8 mx-auto mb-4 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-[var(--color-text-dim)]">Loading cart...</p>
+        </div>
+      ) : items.length === 0 ? (
         /* ─── Empty State ─── — pop animation for the icon */
         <ScrollReveal variant="pop">
           <div className="text-center py-20">
@@ -126,12 +133,13 @@ export default function CartPage() {
                 <div className="card p-4 flex items-center gap-4">
                   {/* Product thumbnail — links to detail page */}
                   <Link href={`/products/${item.id}`} className="shrink-0">
-                    <div className="w-20 h-20 rounded-lg bg-[var(--color-bg)] overflow-hidden">
-                      <img
+                    <div className="w-20 h-20 rounded-lg bg-[var(--color-bg)] overflow-hidden relative">
+                      <Image
                         src={item.imageUrl || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=200&h=200&fit=crop&q=80'}
                         alt={item.name} // Alt text for accessibility
-                        loading="lazy"
-                        className="w-full h-full object-cover" // Cover container
+                        fill
+                        sizes="80px"
+                        className="object-cover" // Cover container
                       />
                     </div>
                   </Link>
@@ -144,11 +152,11 @@ export default function CartPage() {
                     >
                       {item.name} {/* Product name — truncated */}
                     </Link>
-                    {item.category && (
-                      <p className="text-xs text-[var(--color-text-dim)] mt-0.5">{item.category}</p>
+                    {getCategoryName(item.category) && (
+                      <p className="text-xs text-[var(--color-text-dim)] mt-0.5">{getCategoryName(item.category)}</p>
                     )}
                     <p className="text-sm glow-text font-semibold mt-1">
-                      ${item.price.toFixed(2)} {/* Unit price in lime */}
+                      ₹{Number(item.price).toLocaleString('en-IN')} {/* Unit price in lime */}
                     </p>
                   </div>
 
@@ -175,7 +183,7 @@ export default function CartPage() {
 
                   {/* Line total — price * qty */}
                   <p className="text-sm font-semibold w-20 text-right hidden sm:block">
-                    ${(item.price * item.qty).toFixed(2)}
+                    ₹{(Number(item.price) * item.qty).toLocaleString('en-IN')}
                   </p>
 
                   {/* Remove button — trash icon */}
@@ -214,7 +222,7 @@ export default function CartPage() {
                 <div className="space-y-3 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--color-text-dim)]">Subtotal</span>
-                    <span>${total.toFixed(2)}</span> {/* Subtotal amount */}
+                    <span>₹{total.toLocaleString('en-IN')}</span> {/* Subtotal amount */}
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--color-text-dim)]">Delivery</span>
@@ -228,7 +236,7 @@ export default function CartPage() {
                 {/* Total — large lime text */}
                 <div className="flex justify-between items-center mb-6">
                   <span className="font-bold text-lg">Total</span>
-                  <span className="font-bold text-lg glow-text">${total.toFixed(2)}</span>
+                  <span className="font-bold text-lg glow-text">₹{total.toLocaleString('en-IN')}</span>
                 </div>
 
                 {/* Checkout button — full width coral pill */}

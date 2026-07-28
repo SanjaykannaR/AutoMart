@@ -17,7 +17,15 @@ const PORT = process.env.ORDER_SERVICE_PORT || 3004
 // published here and consumed by inventory-service and notification-service.
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
 
-app.use(express.json())
+// Stripe webhooks need the raw body for signature verification.
+// Mount this BEFORE express.json() so the raw buffer is available at req.body.
+app.use('/payments/webhook', express.raw({ type: 'application/json' }))
+app.use(express.json({
+  verify: (req: any, _res: any, buf: Buffer) => {
+    // Preserve raw Buffer for Stripe webhook — express.json() would otherwise overwrite it
+    if (Buffer.isBuffer(req.body)) req.rawBody = buf
+  },
+}))
 
 function errorResponse(res: express.Response, status: number, code: string, message: string, hint?: string) {
   return res.status(status).json({ code, message, ...(hint ? { hint } : {}) })
@@ -53,6 +61,34 @@ function getUserId(req: express.Request): string {
   }
 }
 
+/** Extracts name and email from JWT for notification purposes */
+function getUserInfo(req: express.Request): { name: string; email: string } {
+  const header = req.headers.authorization
+  if (!header) return { name: 'Customer', email: '' }
+  try {
+    const token = header.split(' ')[1]
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    return { name: payload.name || 'Customer', email: payload.email || '' }
+  } catch {
+    return { name: 'Customer', email: '' }
+  }
+}
+
+/**
+ * Extracts the user role from the JWT. Returns null if not present or unparseable.
+ */
+function getUserRole(req: express.Request): string | null {
+  const header = req.headers.authorization
+  if (!header) return null
+  try {
+    const token = header.split(' ')[1]
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    return payload.role || null
+  } catch {
+    return null
+  }
+}
+
 // ─── POST /orders ──────────────────────────────────────────────────────────────
 // Creates a new order. Validates the total matches the sum of item prices
 // to prevent cart tampering. Sets estimated delivery to 30 minutes.
@@ -61,12 +97,13 @@ app.post('/orders', async (req, res) => {
   try {
     const data = orderSchema.parse(req.body)
     const userId = getUserId(req)
+    const userInfo = getUserInfo(req)
 
     // Server-side total validation — prevents client from sending a lower total
     const itemsTotal = data.items.reduce((sum, item) => sum + item.price * item.qty, 0)
     if (Math.abs(itemsTotal - data.total) > 0.01) {
       return errorResponse(res, 400, 'ORDER_TOTAL_MISMATCH',
-        `Order total ($${data.total}) does not match the sum of item prices ($${itemsTotal.toFixed(2)}).`,
+        `Order total (₹${data.total}) does not match the sum of item prices (₹${itemsTotal.toFixed(2)}).`,
         'Recalculate the total to equal the sum of (price × quantity) for all items.')
     }
 
@@ -93,6 +130,9 @@ app.post('/orders', async (req, res) => {
       userId,
       items: data.items,
       total: data.total,
+      address: data.address,
+      userName: userInfo.name,
+      userEmail: userInfo.email,
     })).catch((err) => console.warn('[Order] Could not publish to Redis (non-fatal):', err.message))
 
     res.status(201).json(order)
@@ -111,11 +151,13 @@ app.post('/orders', async (req, res) => {
 })
 
 // ─── GET /orders ────────────────────────────────────────────────────────────────
+// Returns orders. Admins see ALL orders; regular users see only their own.
 app.get('/orders', async (req, res) => {
   try {
-    const userId = getUserId(req)
+    const role = getUserRole(req)
+    const where = role === 'admin' ? {} : { userId: getUserId(req) }
     const orders = await prisma.order.findMany({
-      where: { userId },
+      where,
       orderBy: { createdAt: 'desc' },
     })
     res.json(orders.map(o => ({ ...o, items: o.items })))
@@ -123,6 +165,117 @@ app.get('/orders', async (req, res) => {
     console.error('[Order] List error:', err)
     return errorResponse(res, 500, 'ORDER_LIST_FAILED',
       'Failed to retrieve orders from the database.',
+      'Check order-service logs and verify the database is running.')
+  }
+})
+
+// ─── GET /orders/stats ──────────────────────────────────────────────────────
+// Admin dashboard: aggregated order statistics (total orders, revenue, status breakdown).
+// MUST be defined before /orders/:id to avoid matching "stats" as an order ID.
+app.get('/orders/stats', async (req, res) => {
+  try {
+    const role = getUserRole(req)
+    if (role !== 'admin') {
+      return errorResponse(res, 403, 'ORDER_STATS_FORBIDDEN',
+        'Only admins can view order statistics.',
+        'Log in as admin to access dashboard stats.')
+    }
+
+    const [totalOrders, totalRevenue, statusCounts] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.aggregate({ _sum: { total: true } }),
+      prisma.order.groupBy({ by: ['status'], _count: { status: true } }),
+    ])
+
+    const byStatus: Record<string, number> = {}
+    statusCounts.forEach((s: any) => { byStatus[s.status] = s._count.status })
+
+    res.json({
+      totalOrders,
+      totalRevenue: totalRevenue._sum.total || 0,
+      byStatus,
+    })
+  } catch (err) {
+    console.error('[Order] Stats error:', err)
+    return errorResponse(res, 500, 'ORDER_STATS_FAILED',
+      'Failed to compute order statistics.',
+      'Check order-service logs and verify the database is running.')
+  }
+})
+
+// ─── GET /orders/analytics ─────────────────────────────────────────────────
+// Admin analytics: revenue trends, order trends (grouped by day), status breakdown,
+// top products by revenue, average order value.
+app.get('/orders/analytics', async (req, res) => {
+  try {
+    const role = getUserRole(req)
+    if (role !== 'admin') {
+      return errorResponse(res, 403, 'ANALYTICS_FORBIDDEN',
+        'Only admins can view analytics.',
+        'Log in as admin to access analytics.')
+    }
+
+    const days = Math.min(90, Math.max(7, parseInt(req.query.days as string) || 30))
+    const since = new Date()
+    since.setDate(since.getDate() - days)
+
+    // Fetch all orders since the time window
+    const orders = await prisma.order.findMany({
+      where: { createdAt: { gte: since } },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    // ─── Revenue & Orders by Day ───
+    const revenueByDay: Record<string, { revenue: number; orders: number }> = {}
+    // Initialize all days in range with zeros
+    for (let d = new Date(since); d <= new Date(); d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().slice(0, 10)
+      revenueByDay[key] = { revenue: 0, orders: 0 }
+    }
+    orders.forEach((o: any) => {
+      const day = o.createdAt.toISOString().slice(0, 10)
+      if (!revenueByDay[day]) revenueByDay[day] = { revenue: 0, orders: 0 }
+      revenueByDay[day].revenue += Number(o.total)
+      revenueByDay[day].orders += 1
+    })
+
+    // ─── Status Breakdown ───
+    const byStatus: Record<string, number> = {}
+    orders.forEach((o: any) => { byStatus[o.status] = (byStatus[o.status] || 0) + 1 })
+
+    // ─── Top Products by Revenue ───
+    const productRevenue: Record<string, { name: string; revenue: number; qty: number }> = {}
+    orders.forEach((o: any) => {
+      // PostgreSQL stores items as JSON string, must parse
+      const items = typeof o.items === 'string' ? JSON.parse(o.items) : (Array.isArray(o.items) ? o.items : [])
+      items.forEach((item: any) => {
+        const id = item.id || item.name || 'unknown'
+        if (!productRevenue[id]) productRevenue[id] = { name: item.name || id, revenue: 0, qty: 0 }
+        productRevenue[id].revenue += (item.price || 0) * (item.qty || 1)
+        productRevenue[id].qty += item.qty || 1
+      })
+    })
+    const topProducts = Object.values(productRevenue)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
+
+    // ─── Summary Stats ───
+    const totalRevenue = orders.reduce((sum: number, o: any) => sum + Number(o.total), 0)
+    const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0
+
+    res.json({
+      revenueByDay: Object.entries(revenueByDay).map(([date, data]) => ({ date, ...data })),
+      byStatus,
+      topProducts,
+      totalOrders: orders.length,
+      totalRevenue,
+      avgOrderValue,
+      days,
+    })
+  } catch (err) {
+    console.error('[Order] Analytics error:', err)
+    return errorResponse(res, 500, 'ANALYTICS_FAILED',
+      'Failed to compute analytics.',
       'Check order-service logs and verify the database is running.')
   }
 })

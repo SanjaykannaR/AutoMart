@@ -7,7 +7,7 @@
  *   - Google OAuth provider (for Google Sign-In)
  *   - Decorative background glow (subtle radial gradients)
  */
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { LayoutShell } from '@/components/LayoutShell'
 import { ToastProvider } from '@/components/Toast'
@@ -16,6 +16,13 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 export const metadata: Metadata = {
   title: 'AutoMart - Spare Parts in 30 Mins',
   description: 'Order car and bike spare parts. Delivered in 30 minutes.',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#0A0A0A',
 }
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''

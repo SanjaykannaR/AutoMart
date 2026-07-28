@@ -63,6 +63,6 @@ test.describe('Order Flow', () => {
 
     await expect(page.getByText('Order Summary')).toBeVisible()
     await expect(page.getByText('Test Brake Pad')).toBeVisible()
-    await expect(page.getByText('$59.98').first()).toBeVisible() // 29.99 * 2
+    await expect(page.getByText('59.98').first()).toBeVisible() // 29.99 × 2 (currency-agnostic match)
   })
 })

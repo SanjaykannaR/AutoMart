@@ -64,7 +64,7 @@ export default function OrdersPage() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
-      .then(setOrders)
+      .then((data) => setOrders(Array.isArray(data) ? data : [])) // Handle error responses (non-array) gracefully
       .catch(() => setOrders([]))
       .finally(() => setLoading(false))
   }, [])
@@ -140,7 +140,7 @@ export default function OrdersPage() {
                         </p>
                       </div>
                       <p className="text-lg font-bold glow-text" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                        ${order.total.toFixed(2)}
+                        ₹{Number(order.total).toLocaleString('en-IN')}
                       </p>
                     </div>
 

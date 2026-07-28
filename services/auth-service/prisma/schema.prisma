@@ -67,7 +67,7 @@ model Banner {
   gradient  String                              // Tailwind gradient class for overlay
   image     String                              // Banner image URL (Unsplash or uploaded)
   accent    String                              // Accent color hex (e.g., "#EF4444")
-  isActive  Boolean  @default(true)             // Show/hide toggle — inactive banners are hidden from public
+  isActive  Boolean  @default(true) @map("is_active") // Show/hide toggle — inactive banners are hidden from public
   order     Int      @default(0)                // Sort position — lower numbers show first
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

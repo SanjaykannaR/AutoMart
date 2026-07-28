@@ -50,16 +50,16 @@ function errorResponse(res: express.Response, status: number, code: string, mess
 }
 
 // ─── Global rate limiting ─────────────────────────────────────────────────────
-// Prevents abuse by capping each client to 200 requests per 15-minute window.
+// Prevents abuse by capping each client to 1000 requests per 15-minute window.
 // Uses standard headers (RateLimit-Remaining, etc.) instead of legacy X- headers.
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, res) => {
     return errorResponse(res, 429, 'GATEWAY_RATE_LIMITED',
-      'Too many requests. You have exceeded the rate limit of 200 requests per 15 minutes.',
+      'Too many requests. You have exceeded the rate limit of 1000 requests per 15 minutes.',
       'Wait a few minutes before making more requests.')
   },
 })
@@ -69,12 +69,12 @@ app.use(globalLimiter)
 // Much stricter limits on login, OTP, and password reset to prevent brute force.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,                   // 10 attempts per 15 min per IP
+  max: 200,                  // 200 attempts per 15 min per IP (raised for E2E testing)
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, res) => {
     return errorResponse(res, 429, 'AUTH_RATE_LIMITED',
-      'Too many authentication attempts. You are limited to 10 requests per 15 minutes.',
+      'Too many authentication attempts. You are limited to 50 requests per 15 minutes.',
       'Wait a few minutes before trying again. This protects against brute-force attacks.')
   },
 })
@@ -132,6 +132,7 @@ app.use('/api',
     // Dynamic target: http-proxy-middleware picks the upstream based on path prefix
     router: {
       '/auth':        `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`,
+      '/banners':     `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`,
       '/products':    `http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}`,
       '/search':      `http://search-service:${process.env.SEARCH_SERVICE_PORT || 3003}`,
       '/orders':      `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`,

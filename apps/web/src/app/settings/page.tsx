@@ -340,7 +340,7 @@ export default function SettingsPage() {
     {
       id: 'delivery',
       title: 'Delivery Policy',
-      content: `Standard delivery: 30 minutes in supported areas, next-day for others. Free delivery on orders over $50. Express delivery (under 15 minutes) available for $4.99 surcharge. We deliver to residential, commercial, and workshop addresses. Someone must be available to receive the delivery. We currently serve select cities — check the app for availability in your area.`,
+      content: `Standard delivery: 30 minutes in supported areas, next-day for others. Free delivery on orders over ₹500. Express delivery (under 15 minutes) available for ₹499 surcharge. We deliver to residential, commercial, and workshop addresses. Someone must be available to receive the delivery. We currently serve select cities — check the app for availability in your area.`,
     },
   ]
 
@@ -364,11 +364,31 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {/* ─── MOBILE SECTION NAVIGATION (horizontal scroll) ─── */}
+      <div className="lg:hidden mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 overflow-x-auto">
+        <nav className="flex gap-2 min-w-max pb-2">
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
+                activeSection === section.id
+                  ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20'
+                  : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+              }`}
+            >
+              <section.icon className="w-4 h-4" />
+              {section.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       {/* ─── MAIN LAYOUT: Sidebar + Content ─── */}
       <div className="grid lg:grid-cols-[260px_1fr] gap-6"> {/* 2 columns on desktop, single on mobile */}
 
-        {/* ═══ LEFT SIDEBAR: Section Navigation ═══ */}
-        <div className="card p-4 h-fit"> {/* Glass card for sidebar */}
+        {/* ═══ LEFT SIDEBAR: Section Navigation (desktop only) ═══ */}
+        <div className="hidden lg:block card p-4 h-fit"> {/* Glass card for sidebar */}
           <nav className="space-y-1"> {/* Vertical nav list */}
             {sections.map((section) => ( // Loop through each section
               <button

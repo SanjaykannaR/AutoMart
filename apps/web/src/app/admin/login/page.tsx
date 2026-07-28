@@ -8,13 +8,17 @@
  *   - Link to admin forgot-password
  *   - Dark automotive theme, centered card layout
  *   - All form interactions have inline comments
+ * 
+ * IMPORTANT: This page does NOT wrap with AdminAuthProvider.
+ * The admin layout (/admin/layout.tsx) already provides the provider.
+ * Wrapping here creates nested providers → stale auth state on redirect.
  */
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AdminAuthProvider, useAdminAuth } from '@/lib/admin-auth'
+import { useAdminAuth } from '@/lib/admin-auth'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
@@ -171,13 +175,11 @@ function LoginForm() {
 }
 
 /**
- * Admin Login Page — wraps login form with AdminAuthProvider.
- * The provider manages token state and validates role=admin.
+ * Admin Login Page — renders LoginForm directly.
+ * AdminAuthProvider is already provided by the admin layout (/admin/layout.tsx).
+ * DO NOT wrap with another AdminAuthProvider here — it creates a nested provider
+ * that causes stale auth state on redirect (layout's provider won't see login updates).
  */
 export default function AdminLoginPage() {
-  return (
-    <AdminAuthProvider>
-      <LoginForm />
-    </AdminAuthProvider>
-  )
+  return <LoginForm />
 }

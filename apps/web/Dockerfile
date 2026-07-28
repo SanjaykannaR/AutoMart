@@ -10,6 +10,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY apps/web ./apps/web
+# CRITICAL: NEXT_PUBLIC_* vars must be set at build time (baked into JS).
+# .env.local may leak into the build context — override explicitly.
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN cd apps/web && npx next build
 
 FROM node:20-alpine

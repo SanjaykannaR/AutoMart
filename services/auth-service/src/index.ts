@@ -175,7 +175,7 @@ app.post('/register', async (req, res) => {
       },
     })
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({
       token,
       user: {
@@ -221,7 +221,7 @@ app.post('/login', async (req, res) => {
         'Check your credentials or register a new account.')
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     res.json({
       token,
       user: {
@@ -352,7 +352,7 @@ app.post('/oauth', async (req, res) => {
       console.log(`[OAuth] Existing ${provider} user logged in: ${user.id}`)
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     res.json({
       token,
       user: {
@@ -645,7 +645,7 @@ app.post('/otp/verify', async (req, res) => {
         'Contact support.')
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
 
     res.json({
       token,
@@ -965,7 +965,7 @@ app.post('/admin/login', async (req, res) => {
     }
 
     // Issue JWT with admin role
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
 
     console.log(`[Admin] Login: ${user.email} (${user.id})`)
 
@@ -1293,6 +1293,57 @@ app.post('/admin/reset-password', async (req, res) => {
     }
     console.error('[Admin] Reset password error:', err)
     return errorResponse(res, 500, 'ADMIN_RESET_PASSWORD_FAILED', 'Failed to reset password.')
+  }
+})
+
+// ─── GET /admin/analytics ──────────────────────────────────────────────────
+// Admin analytics: user registration trends, role distribution, total counts.
+app.get('/admin/analytics', async (req, res) => {
+  try {
+    const decoded = verifyToken(req)
+    if (!decoded || decoded.role !== 'admin') {
+      return errorResponse(res, 403, 'ADMIN_FORBIDDEN', 'Admin access required.')
+    }
+
+    const days = Math.min(90, Math.max(7, parseInt(req.query.days as string) || 30))
+    const since = new Date()
+    since.setDate(since.getDate() - days)
+
+    // All users since time window
+    const users = await prisma.user.findMany({
+      where: { createdAt: { gte: since } },
+      select: { id: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    // ─── Users by Day (registration trend) ───
+    const usersByDay: Record<string, number> = {}
+    for (let d = new Date(since); d <= new Date(); d.setDate(d.getDate() + 1)) {
+      usersByDay[d.toISOString().slice(0, 10)] = 0
+    }
+    users.forEach((u: any) => {
+      const day = u.createdAt.toISOString().slice(0, 10)
+      if (!usersByDay[day] && usersByDay[day] !== 0) usersByDay[day] = 0
+      usersByDay[day] = (usersByDay[day] || 0) + 1
+    })
+
+    // ─── Role Distribution (all users) ───
+    const allUsers = await prisma.user.findMany({
+      select: { id: true, role: true },
+    })
+    const byRole: Record<string, number> = {}
+    allUsers.forEach((u: any) => { byRole[u.role] = (byRole[u.role] || 0) + 1 })
+
+    res.json({
+      registrationsByDay: Object.entries(usersByDay).map(([date, count]) => ({ date, count })),
+      byRole,
+      totalUsers: allUsers.length,
+      newUsers: users.length,
+      days,
+    })
+  } catch (err) {
+    console.error('[Auth] Analytics error:', err)
+    return errorResponse(res, 500, 'ADMIN_ANALYTICS_FAILED', 'Failed to compute analytics.')
   }
 })
 
