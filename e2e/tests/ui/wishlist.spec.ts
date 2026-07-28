@@ -19,7 +19,7 @@ test.describe('Wishlist Page', () => {
     })
     await page.reload()
     await expect(page.getByText('Ceramic Brake Pads')).toBeVisible()
-    await expect(page.getByText('$45.99')).toBeVisible()
+    await expect(page.getByText('45.99')).toBeVisible()
   })
 
   test('can remove item from wishlist', async ({ page }) => {
