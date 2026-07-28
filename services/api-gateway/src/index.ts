@@ -112,10 +112,18 @@ app.use('/api/auth/otp/verify', authLimiter)
 // http-proxy-middleware's `router` option picks the target by prefix.
 // Auth is applied inline for protected routes.
 //
-// Docker Compose DNS resolves service names to container IPs.
+// Docker: resolves service names to container IPs via DNS.
+// Railway: uses *_SERVICE_URL env vars (e.g. AUTH_SERVICE_URL).
+// The svc() helper prefers the env var, falling back to Docker DNS.
 
 const protectedPaths = ['/orders', '/payments', '/inventory', '/notifications']
 const publicPaths = ['/payments/webhook'] // Stripe webhooks — no auth token
+
+/** Resolve a service URL: prefer explicit *_URL env var, fall back to Docker DNS */
+function svc(envUrl: string | undefined, dockerHost: string, port: number | string): string {
+  if (envUrl) return envUrl
+  return `http://${dockerHost}:${port}`
+}
 
 // Single proxy for all /api/* — Express strips "/api" so req.url = "/orders/123"
 app.use('/api',
@@ -131,15 +139,15 @@ app.use('/api',
     changeOrigin: true,
     // Dynamic target: http-proxy-middleware picks the upstream based on path prefix
     router: {
-      '/auth':        `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`,
-      '/banners':     `http://auth-service:${process.env.AUTH_SERVICE_PORT || 3001}`,
-      '/products':    `http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}`,
-      '/search':      `http://search-service:${process.env.SEARCH_SERVICE_PORT || 3003}`,
-      '/orders':      `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`,
-      '/payments':    `http://order-service:${process.env.ORDER_SERVICE_PORT || 3004}`,
-      '/inventory':   `http://inventory-service:${process.env.INVENTORY_SERVICE_PORT || 3005}`,
-      '/notifications': `http://notification-service:${process.env.NOTIFICATION_SERVICE_PORT || 3006}`,
-      '/mcp':         `http://mcp-server:${process.env.MCP_SERVER_PORT || 3007}`,
+      '/auth':        svc(process.env.AUTH_SERVICE_URL,        'auth-service',        process.env.AUTH_SERVICE_PORT || 3001),
+      '/banners':     svc(process.env.AUTH_SERVICE_URL,        'auth-service',        process.env.AUTH_SERVICE_PORT || 3001),
+      '/products':    svc(process.env.PRODUCT_SERVICE_URL,     'product-service',     process.env.PRODUCT_SERVICE_PORT || 3002),
+      '/search':      svc(process.env.SEARCH_SERVICE_URL,      'search-service',      process.env.SEARCH_SERVICE_PORT || 3003),
+      '/orders':      svc(process.env.ORDER_SERVICE_URL,       'order-service',       process.env.ORDER_SERVICE_PORT || 3004),
+      '/payments':    svc(process.env.ORDER_SERVICE_URL,       'order-service',       process.env.ORDER_SERVICE_PORT || 3004),
+      '/inventory':   svc(process.env.INVENTORY_SERVICE_URL,   'inventory-service',   process.env.INVENTORY_SERVICE_PORT || 3005),
+      '/notifications': svc(process.env.NOTIFICATION_SERVICE_URL, 'notification-service', process.env.NOTIFICATION_SERVICE_PORT || 3006),
+      '/mcp':         svc(process.env.MCP_SERVER_URL,          'mcp-server',          process.env.MCP_SERVER_PORT || 3007),
     },
     // Auth-service routes don't have an /auth prefix (e.g. /login not /auth/login),
     // so strip it before forwarding. Other services keep their prefix.

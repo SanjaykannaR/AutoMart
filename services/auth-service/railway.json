@@ -1,0 +1,13 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm ci && npx prisma generate --schema=services/auth-service/prisma/schema.prisma && cd services/auth-service && npx tsc",
+    "watchPatterns": ["services/auth-service/**"]
+  },
+  "deploy": {
+    "startCommand": "node services/auth-service/dist/index.js",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
