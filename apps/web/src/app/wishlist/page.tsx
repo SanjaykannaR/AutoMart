@@ -175,7 +175,7 @@ export default function WishlistPage() {
               <Link href={`/products/${item.id}`} className="block">
                 <div className="aspect-square bg-[var(--color-surface)] relative overflow-hidden">
                   <Image
-                    src={item.image}
+                    src={item.image || item.imageUrl || '/placeholder.png'}
                     alt={item.name} // Alt text for accessibility
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
