@@ -154,7 +154,7 @@ export default function CartPage() {
                       <p className="text-xs text-[var(--color-text-dim)] mt-0.5">{getCategoryName(item.category)}</p>
                     )}
                     <p className="text-sm glow-text font-semibold mt-1">
-                      ${Number(item.price).toFixed(2)} {/* Unit price in lime */}
+                      ₹{Number(item.price).toLocaleString('en-IN')} {/* Unit price in lime */}
                     </p>
                   </div>
 
@@ -181,7 +181,7 @@ export default function CartPage() {
 
                   {/* Line total — price * qty */}
                   <p className="text-sm font-semibold w-20 text-right hidden sm:block">
-                    ${(Number(item.price) * item.qty).toFixed(2)}
+                    ₹{(Number(item.price) * item.qty).toLocaleString('en-IN')}
                   </p>
 
                   {/* Remove button — trash icon */}
@@ -220,7 +220,7 @@ export default function CartPage() {
                 <div className="space-y-3 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--color-text-dim)]">Subtotal</span>
-                    <span>${total.toFixed(2)}</span> {/* Subtotal amount */}
+                    <span>₹{total.toLocaleString('en-IN')}</span> {/* Subtotal amount */}
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--color-text-dim)]">Delivery</span>
@@ -234,7 +234,7 @@ export default function CartPage() {
                 {/* Total — large lime text */}
                 <div className="flex justify-between items-center mb-6">
                   <span className="font-bold text-lg">Total</span>
-                  <span className="font-bold text-lg glow-text">${total.toFixed(2)}</span>
+                  <span className="font-bold text-lg glow-text">₹{total.toLocaleString('en-IN')}</span>
                 </div>
 
                 {/* Checkout button — full width coral pill */}

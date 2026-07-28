@@ -364,7 +364,7 @@ function SearchContent() {
           )}
           {(filters.minPrice || filters.maxPrice) && (
             <FilterChip
-              label={`$${filters.minPrice || '0'} — $${filters.maxPrice || '\u221E'}`}
+              label={`₹${filters.minPrice || '0'} — ₹${filters.maxPrice || '\u221E'}`}
               onRemove={() => { setFilters({ ...filters, minPrice: '', maxPrice: '' }) }}
             />
           )}

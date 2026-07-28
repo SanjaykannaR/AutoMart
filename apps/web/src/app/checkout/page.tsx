@@ -239,7 +239,7 @@ function CheckoutContent() {
                     <span className="text-[var(--color-text-dim)] truncate mr-4">
                       {item.name} <span className="opacity-50">&times;{item.qty}</span>
                     </span>
-                    <span className="font-medium shrink-0">${(Number(item.price) * item.qty).toFixed(2)}</span>
+                    <span className="font-medium shrink-0">₹{(Number(item.price) * item.qty).toLocaleString('en-IN')}</span>
                   </div>
                 ))}
               </div>
@@ -250,7 +250,7 @@ function CheckoutContent() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--color-text-dim)]">Subtotal</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>₹{total.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--color-text-dim)]">Delivery</span>
@@ -263,7 +263,7 @@ function CheckoutContent() {
               {/* Total */}
               <div className="flex justify-between items-center mb-6">
                 <span className="font-bold text-lg">Total</span>
-                <span className="font-bold text-lg glow-text">${total.toFixed(2)}</span>
+                <span className="font-bold text-lg glow-text">₹{total.toLocaleString('en-IN')}</span>
               </div>
 
               {/* Pay with Card button */}
@@ -280,7 +280,7 @@ function CheckoutContent() {
                 ) : (
                   <>
                     <CreditCardIcon className="w-5 h-5" />
-                    Pay with Card — ${total.toFixed(2)}
+                    Pay with Card — ₹{total.toLocaleString('en-IN')}
                   </>
                 )}
               </button>

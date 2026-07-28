@@ -101,6 +101,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   // Check if current page is a public admin page (no auth required)
   const isPublicPage = PUBLIC_ADMIN_PAGES.some(p => pathname.startsWith(p))
@@ -128,10 +129,22 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  return (
+    return (
     <div className="min-h-screen bg-[var(--color-bg)] flex">
+      {/* ─── Mobile Sidebar Backdrop ─── */}
+      {mobileDrawerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileDrawerOpen(false)}
+        />
+      )}
+
       {/* ─── Sidebar ─── */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-[var(--color-surface)] border-r border-[var(--color-border)] flex flex-col shrink-0`}>
+      <aside className={`
+        ${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-[var(--color-surface)] border-r border-[var(--color-border)] flex flex-col shrink-0
+        max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-xl
+        ${mobileDrawerOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'}
+      `}>
         {/* Logo area */}
         <div className="h-16 flex items-center px-4 border-b border-[var(--color-border)]">
           {sidebarOpen ? (
@@ -160,6 +173,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setMobileDrawerOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20'
@@ -201,6 +215,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         {/* Top header bar */}
         <header className="h-16 flex items-center justify-between px-6 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="flex items-center gap-3">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileDrawerOpen(true)}
+              className="lg:hidden p-2 text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-alt)] rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             <h1 className="text-lg font-semibold text-[var(--color-text)]" style={{ fontFamily: 'Outfit, sans-serif' }}>
               {NAV_ITEMS.find(n => n.href === pathname)?.label || 
                NAV_ITEMS.find(n => pathname.startsWith(n.href) && n.href !== '/admin')?.label ||

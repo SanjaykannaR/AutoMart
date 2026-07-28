@@ -36,6 +36,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react' // React hooks for state, effects, and refs
 import { motion, AnimatePresence } from 'framer-motion' // Animation library for smooth transitions
 import Link from 'next/link' // Next.js link for client-side navigation
+import Image from 'next/image' // Next.js optimized image component
 import { SearchBar } from '@/components/SearchBar' // Reusable search bar component
 
 /** Shape of a banner slide from the API or hardcoded fallback */
@@ -216,11 +217,14 @@ export function Hero({ onSearch }: HeroProps) {
             className="absolute inset-0" // Fill entire parent
           >
             {/* Banner background image — covers entire section */}
-            <img
+            <Image
               src={currentSlide.image} // Image URL from current slide data
               alt={currentSlide.headline} // Alt text for accessibility
-              className="w-full h-full object-cover" // Cover entire area, maintain aspect ratio
+              fill // Fill entire parent container
+              className="object-cover" // Cover entire area, maintain aspect ratio
               draggable={false} // Prevent drag interference
+              priority // Load immediately (hero is above the fold)
+              sizes="100vw" // Full viewport width
             />
 
             {/* Gradient overlay — darkens image and adds color theme */}

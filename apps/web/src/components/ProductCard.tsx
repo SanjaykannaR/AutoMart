@@ -21,6 +21,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { saveCart, type CartItem } from '@/lib/sync'
@@ -87,11 +88,13 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="card overflow-hidden group cursor-pointer h-full flex flex-col">
         {/* ─── SQUARE IMAGE ─── */}
         <div className="aspect-square bg-white/[0.02] relative overflow-hidden">
-          <img
+          <Image
             src={product.imageUrl || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400&h=400&fit=crop&q=80'}
             alt={product.name}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
           />
 
           {/* Category badge — glass style */}

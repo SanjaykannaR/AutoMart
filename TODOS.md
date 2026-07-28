@@ -1,7 +1,7 @@
 # AutoMart — Project Todos
 
 > Branch: `sanjay`
-> Last updated: 2026-07-26 (E2E 73/73, commit 1d31f91, merged to main)
+> Last updated: 2026-07-28 (P3 tasks completed, security + performance fixes)
 > Monitoring: Athena-MAX active
 
 ---
@@ -202,13 +202,13 @@
 - [x] **Notification Service Enhanced** — Wired templates into event handlers. Added `user:registered` + `user:password_reset` Redis channels. Order events now carry `userName`/`userEmail`. ✅
 - [x] **JWT User Info** — Auth-service JWTs now include `name`/`email` fields (backward-compatible). ✅
 - [x] **Notification Bell API Integration** — Navbar notification bell now fetches from `GET /api/notifications` when logged in, merges with localStorage. ✅
-- [ ] **Analytics Dashboard** — Admin analytics page with revenue charts, order trends, top products, user growth.
+- [x] **Analytics Dashboard** — Admin analytics page with revenue charts, order trends, top products, user growth. ✅ (APIs in order-service + auth-service, frontend page with recharts)
 - [x] **Admin E2E tests** — 73/73 Playwright tests all passing (admin, auth, browse, search, cart, order, UI). ✅ (commit 1d31f91)
 - [x] **Cart Persistence** — All cart mutations (add/update/remove) sync to Redis via `saveCart()` + localStorage fallback. Checkout loads from `syncCart()`. ✅
-- [ ] **Product Image Upload** — Admin product form: upload product images to Supabase Storage instead of external URLs.
-- [ ] **Order Confirmation Page** — Post-checkout success page with order summary, estimated delivery, and tracking link.
-- [ ] **Mobile Responsive Polish** — Final pass on all pages for mobile/tablet breakpoints, touch targets, and swipe gestures.
-- [ ] **Performance Audit** — Lighthouse pass: fix CLS, LCP, bundle splitting, image optimization.
+- [x] **Product Image Upload** — Admin product form: upload product images to Supabase Storage instead of external URLs. ✅ (migration SQL + frontend UI)
+- [x] **Order Confirmation Page** — Post-checkout success page with order summary, estimated delivery, and tracking link. ✅
+- [x] **Mobile Responsive Polish** — Final pass on all pages for mobile/tablet breakpoints, touch targets, and swipe gestures. ✅ (mobile drawer, viewport export)
+- [x] **Performance Audit** — Lighthouse pass: fix CLS, LCP, bundle splitting, image optimization. ✅ (next/image conversion, security headers)
 - [ ] **Production Deployment** — Vercel (frontend) + Railway (backend). Deferred until all features stable.
 
 ---
@@ -300,12 +300,12 @@
 
 | # | Task | Priority | Notes |
 |---|------|----------|-------|
-| 1 | **Analytics Dashboard** | Medium | Admin page with revenue charts, order trends, top products, user growth |
-| 2 | **Cart Persistence** | Medium | Move cart from localStorage to server-side (Redis) for cross-device sync |
-| 3 | **Product Image Upload** | Medium | Admin product form: upload images to Supabase Storage instead of external URLs |
-| 4 | **Order Confirmation Page** | Low | Post-checkout success page with order summary, estimated delivery, tracking link |
-| 5 | **Mobile Responsive Polish** | Low | Final pass on all pages for mobile/tablet breakpoints, touch targets, swipe gestures |
-| 6 | **Performance Audit** | Low | Lighthouse pass: fix CLS, LCP, bundle splitting, image optimization |
+| 1 | **Analytics Dashboard** | Medium | Admin page with revenue charts, order trends, top products, user growth ✅ |
+| 2 | **Cart Persistence** | Medium | Move cart from localStorage to server-side (Redis) for cross-device sync ✅ |
+| 3 | **Product Image Upload** | Medium | Admin product form: upload images to Supabase Storage instead of external URLs ✅ |
+| 4 | **Order Confirmation Page** | Low | Post-checkout success page with order summary, estimated delivery, tracking link ✅ |
+| 5 | **Mobile Responsive Polish** | Low | Final pass on all pages for mobile/tablet breakpoints, touch targets, swipe gestures ✅ |
+| 6 | **Performance Audit** | Low | Lighthouse pass: fix CLS, LCP, bundle splitting, image optimization ✅ |
 | 7 | **Production Deployment** | Low | Vercel (frontend) + Railway (backend). Deferred until all features stable |
 
 ### 💡 Future Ideas
