@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { Navbar } from './Navbar'
 import { ConditionalFooter } from './ConditionalFooter'
+import { ChatWidget } from './chat/ChatWidget'
 
 /** Pages that should NOT show the navbar or top padding (auth flow + admin panel) */
 const AUTH_PAGES = [
@@ -23,6 +24,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       {!isAuthPage && <Navbar />}
       <main id="main-content" className={`min-h-screen ${isAuthPage ? '' : 'pt-16'}`}>{children}</main>
       {!isAuthPage && <ConditionalFooter />}
+      {/* TORQ machine assistant — hidden on auth/admin pages */}
+      {!isAuthPage && <ChatWidget />}
     </>
   )
 }

@@ -16,3 +16,4 @@ prisma/*.sqlite
 services/*/src/generated/
 .DS_Store
 *.tsbuildinfo
+RAG-task.md

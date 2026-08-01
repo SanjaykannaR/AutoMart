@@ -495,3 +495,27 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ─── TORQ chat widget ─── */
+/* Streaming caret blink */
+.caret {
+  animation: caret-blink 1s steps(1) infinite;
+  color: var(--color-accent);
+}
+
+@keyframes caret-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* Thin scrollbar inside chat panel */
+.torq-scroll::-webkit-scrollbar,
+.chat-panel-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.torq-scroll::-webkit-scrollbar-thumb,
+.chat-panel-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border, rgba(255, 255, 255, 0.12));
+  border-radius: 2px;
+}

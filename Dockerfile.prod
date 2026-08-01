@@ -7,7 +7,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Install ALL dependencies (including dev for build tools) ────────
-FROM node:20-alpine AS deps
+FROM node:20-slim AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -20,12 +20,13 @@ COPY services/inventory-service/package.json ./services/inventory-service/
 COPY services/notification-service/package.json ./services/notification-service/
 COPY services/mcp-server/package.json ./services/mcp-server/
 COPY services/api-gateway/package.json ./services/api-gateway/
+COPY services/assistant-service/package.json ./services/assistant-service/
 
 # Install ALL deps (prisma CLI + typescript needed for build)
 RUN npm ci
 
 # ── Stage 2: Generate Prisma clients + compile TypeScript ───────────────────
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
@@ -48,13 +49,14 @@ RUN cd services/inventory-service && npx tsc
 RUN cd services/notification-service && npx tsc
 RUN cd services/mcp-server && npx tsc
 RUN cd services/api-gateway && npx tsc
+RUN cd services/assistant-service && npx tsc
 
 # ── Stage 3: Production image (runtime deps only) ───────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
 WORKDIR /app
 
 # Install curl + bash for health checks and startup script
-RUN apk add --no-cache bash curl
+RUN apt-get update && apt-get install -y --no-install-recommends bash curl && rm -rf /var/lib/apt/lists/*
 
 # Install only runtime dependencies (no prisma CLI, no typescript)
 COPY package.json package-lock.json ./
@@ -66,6 +68,7 @@ COPY services/inventory-service/package.json ./services/inventory-service/
 COPY services/notification-service/package.json ./services/notification-service/
 COPY services/mcp-server/package.json ./services/mcp-server/
 COPY services/api-gateway/package.json ./services/api-gateway/
+COPY services/assistant-service/package.json ./services/assistant-service/
 RUN npm ci --omit=dev
 
 # Copy compiled dist directories (all services)
@@ -77,6 +80,7 @@ COPY --from=build /app/services/inventory-service/dist ./services/inventory-serv
 COPY --from=build /app/services/notification-service/dist ./services/notification-service/dist
 COPY --from=build /app/services/mcp-server/dist ./services/mcp-server/dist
 COPY --from=build /app/services/api-gateway/dist ./services/api-gateway/dist
+COPY --from=build /app/services/assistant-service/dist ./services/assistant-service/dist
 
 # Copy Prisma generated clients + schema files (needed at runtime by @prisma/client)
 COPY --from=build /app/services/auth-service/src/generated ./services/auth-service/src/generated

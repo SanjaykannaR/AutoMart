@@ -148,6 +148,7 @@ app.use('/api',
       '/inventory':   svc(process.env.INVENTORY_SERVICE_URL,   'inventory-service',   process.env.INVENTORY_SERVICE_PORT || 3005),
       '/notifications': svc(process.env.NOTIFICATION_SERVICE_URL, 'notification-service', process.env.NOTIFICATION_SERVICE_PORT || 3006),
       '/mcp':         svc(process.env.MCP_SERVER_URL,          'mcp-server',          process.env.MCP_SERVER_PORT || 3007),
+      '/assistant':   svc(process.env.ASSISTANT_SERVICE_URL,   'assistant-service',   process.env.ASSISTANT_SERVICE_PORT || 3008),
     },
     // Auth-service routes don't have an /auth prefix (e.g. /login not /auth/login),
     // so strip it before forwarding. Other services keep their prefix.
