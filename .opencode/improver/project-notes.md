@@ -154,3 +154,10 @@
   - Re-added `protectedPaths`/`publicPaths` (accidentally dropped in first edit pass)
 - Verified: gateway tsc clean; live: breaking/barking bad → brake pad (5), hedlight → LED headlight (1), /api/auth/health → 504 (auth-service not running locally — correct proxy behavior).
 - LESSON: always run tsc for EVERY changed package before commit (I skipped gateway round 5 → CI caught it). And don't trust @types alone for node core APIs — verify runtime presence.
+
+## Fix: flaky wishlist E2E — Next.js Dev Tools button hijack (2026-08-02)
+- CI failure: wishlist.spec.ts:25 "can remove item from wishlist" — strict mode violation, 2 elements: the real remove button AND `button[aria-label="Open Next.js Dev Tools"]`.
+- Root cause: test used `.or(locator('button').filter({has: svg}).last())` as a "remove" fallback. In dev mode Next.js injects a dev-tools button (svg, last in DOM) → fallback matched it → union = 2 elements → click strict violation. (In prod build the dev-tools button doesn't exist, so this only flakes against a dev server — but CI runs dev.)
+- Fix: target the component's real accessible name: `getByRole('button', { name: /remove .* from wishlist/i })` (wishlist page sets aria-label="Remove <name> from wishlist"). Dropped the svg-count fallback entirely.
+- Verified: wishlist spec 4/4, full tests/ui suite 12/12 green.
+- LESSON: never guess element selectors with svg-count fallbacks when the component exposes aria-labels — always prefer getByRole+name. Also: Next dev tools button is a hidden DOM landmine for svg/button locators; scope by role/name instead.

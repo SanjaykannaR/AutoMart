@@ -31,8 +31,10 @@ test.describe('Wishlist Page', () => {
     })
     await page.reload()
     await expect(page.getByText('Test Part')).toBeVisible()
-    // Click remove button
-    await page.getByRole('button', { name: /remove/i }).or(page.locator('button').filter({ has: page.locator('svg') }).last()).click()
+    // Click remove button — the component sets aria-label="Remove <name> from wishlist",
+    // so target it by role+name. (No SVG-count fallback: it previously matched the
+    // Next.js Dev Tools button and caused a strict-mode violation.)
+    await page.getByRole('button', { name: /remove .* from wishlist/i }).click()
     await page.reload()
     // Should show empty state
     await expect(page.getByText('Test Part')).not.toBeVisible()
