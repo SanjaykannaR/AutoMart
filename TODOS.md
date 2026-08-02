@@ -1,7 +1,7 @@
 # AutoMart — Project Todos
 
 > Branch: `sanjay`
-> Last updated: 2026-07-28 (P3 tasks completed, security + performance fixes)
+> Last updated: 2026-07-28 (Render free-tier deployment configs created)
 > Monitoring: Athena-MAX active
 
 ---
@@ -209,7 +209,8 @@
 - [x] **Order Confirmation Page** — Post-checkout success page with order summary, estimated delivery, and tracking link. ✅
 - [x] **Mobile Responsive Polish** — Final pass on all pages for mobile/tablet breakpoints, touch targets, and swipe gestures. ✅ (mobile drawer, viewport export)
 - [x] **Performance Audit** — Lighthouse pass: fix CLS, LCP, bundle splitting, image optimization. ✅ (next/image conversion, security headers)
-- [ ] **Production Deployment** — Vercel (frontend) + Railway (backend). Deferred until all features stable.
+- [x] **Production Deployment** — Dockerfile.prod, render.yaml, start-prod.sh, DEPLOYMENT.md rewritten. Single-container backend on Render ($0/mo). ✅ (commit 592f8c5)
+- [ ] **🔴 TOMORROW: Deploy to Render** — Create Upstash Redis, deploy backend to Render, update Vercel API URL, bootstrap admin, update Stripe webhook. See DEPLOYMENT.md for full instructions.
 
 ---
 
@@ -279,7 +280,7 @@
 
 | Agent | Status | Last Seen | Current Task |
 |-------|--------|-----------|--------------|
-| Athena-MAX | 🟢 Active | 2026-07-26 | E2E fixes 73/73, merged to main |
+| Athena-MAX | 🟢 Active | 2026-07-28 | Render deployment configs created |
 | Athena-GOD | 🟡 Idle | 2026-07-23 | Session closed |
 
 ### Monitor Log
@@ -290,7 +291,8 @@
 - `2026-07-23 22:00` — Admin bootstrap fixed (role constraint, infinite redirect, entrypoint). TODOS updated for tomorrow.
 - `2026-07-23 22:30` — End-of-day check: all 10 Docker containers healthy ✅, admin login API verified ✅, banner storage bucket exists ✅. Session closed.
 - `2026-07-26` — E2E 73/73 ALL PASSING. Fixed 6 bugs (cart JSONB, rate limits, defensive guards, seed, banner placeholder). Merged to main.
-- **Total commits today**: 1 (`1d31f91`)
+- `2026-07-28` — Render free-tier deployment: created Dockerfile.prod, render.yaml, start-prod.sh, fixed MCP server URLs, rewrote DEPLOYMENT.md. Docker build verified. Committed to sanjay + merged to main.
+- **Total commits today**: 1 (`592f8c5`)
 
 ---
 
@@ -306,7 +308,22 @@
 | 4 | **Order Confirmation Page** | Low | Post-checkout success page with order summary, estimated delivery, tracking link ✅ |
 | 5 | **Mobile Responsive Polish** | Low | Final pass on all pages for mobile/tablet breakpoints, touch targets, swipe gestures ✅ |
 | 6 | **Performance Audit** | Low | Lighthouse pass: fix CLS, LCP, bundle splitting, image optimization ✅ |
-| 7 | **Production Deployment** | Low | Vercel (frontend) + Railway (backend). Deferred until all features stable |
+| 7 | **Production Deployment** | High | Configs ready (Dockerfile.prod, render.yaml). See tasks below |
+
+### 🔴 TOMORROW (July 29) — Render Deployment
+
+| # | Step | Where | Time |
+|---|------|-------|------|
+| 1 | Create Upstash Redis → copy `REDIS_URL` | https://console.upstash.com | 5 min |
+| 2 | Deploy backend to Render (Docker, free plan) | https://dashboard.render.com | 10 min |
+| 3 | Set all env vars in Render dashboard | Copy from `render.yaml` or `DEPLOYMENT.md` | 5 min |
+| 4 | Update `NEXT_PUBLIC_API_URL` in Vercel → Render URL | Vercel dashboard | 2 min |
+| 5 | Bootstrap admin: `curl POST /api/auth/admin/bootstrap` | Terminal | 1 min |
+| 6 | Update Stripe webhook URL to Render | https://dashboard.stripe.com | 2 min |
+| 7 | Test: frontend loads, search works, checkout succeeds | Browser | 5 min |
+| 8 | Optional: set up cron-job.org to ping `/health` every 10 min (prevents spin-down) | https://cron-job.org | 5 min |
+
+> **Total: ~35 minutes.** All steps documented in `DEPLOYMENT.md`.
 
 ### 💡 Future Ideas
 

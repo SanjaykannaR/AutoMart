@@ -39,6 +39,7 @@ ORDER_PORT=${ORDER_SERVICE_PORT:-3004}
 INVENTORY_PORT=${INVENTORY_SERVICE_PORT:-3005}
 NOTIFICATION_PORT=${NOTIFICATION_SERVICE_PORT:-3006}
 MCP_PORT=${MCP_SERVER_PORT:-3007}
+ASSISTANT_PORT=${ASSISTANT_SERVICE_PORT:-3008}
 GATEWAY_PORT=${API_GATEWAY_PORT:-3000}
 
 # ─── Set service URLs for the API gateway (all on localhost) ──────────────────
@@ -51,6 +52,7 @@ export ORDER_SERVICE_URL="${ORDER_SERVICE_URL:-http://localhost:$ORDER_PORT}"
 export INVENTORY_SERVICE_URL="${INVENTORY_SERVICE_URL:-http://localhost:$INVENTORY_PORT}"
 export NOTIFICATION_SERVICE_URL="${NOTIFICATION_SERVICE_URL:-http://localhost:$NOTIFICATION_PORT}"
 export MCP_SERVER_URL="${MCP_SERVER_URL:-http://localhost:$MCP_PORT}"
+export ASSISTANT_SERVICE_URL="${ASSISTANT_SERVICE_URL:-http://localhost:$ASSISTANT_PORT}"
 
 log "Service URLs configured:"
 log "  AUTH:        $AUTH_SERVICE_URL"
@@ -60,6 +62,7 @@ log "  ORDER:       $ORDER_SERVICE_URL"
 log "  INVENTORY:   $INVENTORY_SERVICE_URL"
 log "  NOTIFICATION: $NOTIFICATION_SERVICE_URL"
 log "  MCP:         $MCP_SERVER_URL"
+log "  ASSISTANT:   $ASSISTANT_SERVICE_URL"
 
 # ─── Start backend services ──────────────────────────────────────────────────
 log "Starting backend services..."
@@ -92,13 +95,17 @@ node services/mcp-server/dist/index.js &
 PIDS+=($!)
 log "  mcp-server started (PID $!, port $MCP_PORT)"
 
+node services/assistant-service/dist/index.js &
+PIDS+=($!)
+log "  assistant-service started (PID $!, port $ASSISTANT_PORT)"
+
 # ─── Wait for services to be ready ───────────────────────────────────────────
 log "Waiting 3s for services to initialize..."
 sleep 3
 
 # ─── Health check ─────────────────────────────────────────────────────────────
 FAILED=0
-for svc in "auth:$AUTH_PORT" "product:$PRODUCT_PORT" "order:$ORDER_PORT"; do
+for svc in "auth:$AUTH_PORT" "product:$PRODUCT_PORT" "order:$ORDER_PORT" "assistant:$ASSISTANT_PORT"; do
   NAME=$(echo "$svc" | cut -d: -f1)
   PORT=$(echo "$svc" | cut -d: -f2)
   if curl -sf "http://localhost:$PORT/health" > /dev/null 2>&1; then

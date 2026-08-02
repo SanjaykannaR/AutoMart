@@ -14,6 +14,7 @@
     "dev:auth": "npm run dev -w services/auth-service",
     "dev:products": "npm run dev -w services/product-service",
     "dev:search": "npm run dev -w services/search-service",
+    "dev:assistant": "npm run dev -w services/assistant-service",
     "dev:orders": "npm run dev -w services/order-service",
     "dev:inventory": "npm run dev -w services/inventory-service",
     "dev:notifications": "npm run dev -w services/notification-service",

@@ -20,20 +20,53 @@
  */
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { useVoiceSearch } from '@/hooks/useVoiceSearch'
 import { MagnifyingGlassIcon, MicrophoneIcon, CameraIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface SearchBarProps {
+  /** Fired on text submit (Enter) and, by default, on voice transcript. */
   onSearch: (query: string) => void
+  /**
+   * When provided, voice transcripts call THIS instead of onSearch —
+   * lets pages route voice search differently (e.g. navigate to /search)
+   * while keeping text-submit behavior unchanged.
+   */
+  onVoiceSearch?: (query: string) => void
   placeholder?: string
+  /**
+   * Optional external query source (e.g. the URL ?q= on the search page).
+   * When it changes, the input syncs to it — keeps the bar in step with the
+   * URL, including server-side normalization ("breaking bad" → "brake pad").
+   */
+  value?: string
 }
 
-export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchBarProps) {
+export function SearchBar({ onSearch, onVoiceSearch, placeholder = 'Search parts...', value }: SearchBarProps) {
   const [query, setQuery] = useState('')
-  const [listening, setListening] = useState(false)
-  const [showVoiceOverlay, setShowVoiceOverlay] = useState(false)
-  const [voiceText, setVoiceText] = useState('')
-  const recognitionRef = useRef<any>(null)
+
+  // Sync from external value (URL query) when it changes — e.g. after a
+  // navigation or when the server returns the normalized query.
+  useEffect(() => {
+    if (value !== undefined) setQuery(value)
+  }, [value])
+
+  // ─── Voice search (shared hook — identical behavior to Navbar.tsx) ───
+  const {
+    listening,
+    error: voiceError,
+    transcript: voiceTranscript,
+    start,
+    stop,
+  } = useVoiceSearch({
+    onTranscript: (t) => (onVoiceSearch ?? onSearch)(t),
+  })
+  const showVoiceOverlay = listening || !!voiceError
+
+  // Live-update the search input while speaking
+  useEffect(() => {
+    if (voiceTranscript) setQuery(voiceTranscript)
+  }, [voiceTranscript])
 
   /** Submit search on form submit (Enter key) */
   const handleSubmit = (e: React.FormEvent) => {
@@ -41,55 +74,8 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
     if (query.trim()) onSearch(query.trim())
   }
 
-  /**
-   * Start voice recognition using the Web Speech API.
-   * Falls back gracefully if the browser doesn't support it (e.g. Firefox).
-   */
-  const startVoiceSearch = () => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert('Voice search is not supported in this browser. Try Chrome or Edge.')
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'en-US'
-    recognition.interimResults = true
-    recognition.continuous = false
-
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((r: any) => r[0].transcript)
-        .join('')
-      setVoiceText(transcript)
-      setQuery(transcript)
-    }
-
-    recognition.onend = () => {
-      setListening(false)
-      setShowVoiceOverlay(false)
-      if (voiceText.trim()) onSearch(voiceText.trim())
-    }
-
-    recognition.onerror = () => {
-      setListening(false)
-      setShowVoiceOverlay(false)
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
-    setListening(true)
-    setShowVoiceOverlay(true)
-    setVoiceText('')
-  }
-
-  /** Stop voice recognition */
-  const stopVoiceSearch = () => {
-    recognitionRef.current?.stop()
-    setListening(false)
-    setShowVoiceOverlay(false)
-  }
+  /* Voice search (start/stop, transcript, error handling) is provided by the
+   * shared useVoiceSearch hook — see the state block above. */
 
   /**
    * Open file picker for image-based search.
@@ -159,7 +145,7 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
           {/* Voice search button */}
           <button
             type="button"
-            onClick={listening ? stopVoiceSearch : startVoiceSearch}
+            onClick={listening ? stop : start}
             title="Voice search"
             className="p-1.5 rounded-lg hover:bg-[var(--color-surface-alt)] transition-colors"
           >
@@ -185,13 +171,19 @@ export function SearchBar({ onSearch, placeholder = 'Search parts...' }: SearchB
 
             {/* Status text */}
             <p className="text-lg mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              {listening ? 'Listening...' : voiceText || 'Say something'}
+              {voiceError ? 'Voice search unavailable' : listening ? 'Listening...' : voiceTranscript || 'Say something'}
             </p>
-            <p className="text-sm text-[var(--color-text-dim)] mb-6">{voiceText}</p>
+            <p
+              className={`text-sm mb-6 ${
+                voiceError ? 'text-[var(--color-coral)]' : 'text-[var(--color-text-dim)]'
+              }`}
+            >
+              {voiceError || voiceTranscript}
+            </p>
 
             {/* Cancel button */}
             <button
-              onClick={stopVoiceSearch}
+              onClick={stop}
               className="glass-button-outline text-sm px-6 py-2"
             >
               Cancel

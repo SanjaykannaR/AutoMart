@@ -26,7 +26,8 @@
 // ─── React + Next.js imports ───
 import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useVoiceSearch } from '@/hooks/useVoiceSearch'
 
 // ─── Heroicons imports ───
 import {
@@ -124,6 +125,8 @@ export function Navbar() {
   // ─── Core hooks ───
   const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlQuery = searchParams.get('q') || '' // URL ?q= — source of truth after navigating
   const fileInputRef = useRef<HTMLInputElement>(null)
   const notifPanelRef = useRef<HTMLDivElement>(null)
   const notifButtonRef = useRef<HTMLButtonElement>(null)
@@ -133,7 +136,33 @@ export function Navbar() {
   const [wishlistCount, setWishlistCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [isListening, setIsListening] = useState(false)
+
+  // ─── Voice search (shared hook — identical behavior to SearchBar.tsx) ───
+  const {
+    listening: isListening,
+    error: voiceError,
+    transcript: voiceTranscript,
+    start: startVoice,
+    stop: stopVoice,
+  } = useVoiceSearch({
+    onTranscript: (t) => {
+      setSearchQuery(t)
+      router.push(`/search?q=${encodeURIComponent(t)}`)
+    },
+  })
+
+  // Live-update the search input while speaking
+  useEffect(() => {
+    if (voiceTranscript) setSearchQuery(voiceTranscript)
+  }, [voiceTranscript])
+
+  // Sync the navbar input with the URL query — covers voice-search navigation
+  // ("say it" → /search?q=…) and server-side normalization: the search page
+  // rewrites the URL to the corrected text, so the bar shows "brake pad"
+  // instead of the raw transcript "breaking bad".
+  useEffect(() => {
+    setSearchQuery(urlQuery)
+  }, [urlQuery])
 
   // ─── Mobile menu state ───
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -508,42 +537,9 @@ export function Navbar() {
 
   /* ───────────────────────────────────────────────────────────────
    * SEARCH BY VOICE (Web Speech API)
+   * Implemented in the shared useVoiceSearch hook — see the state block.
+   * Mic button: onClick={isListening ? stopVoice : startVoice}
    * ─────────────────────────────────────────────────────────────── */
-  const handleVoiceSearch = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert('Voice search is not supported in this browser. Try Chrome or Edge.')
-      return
-    }
-
-    if (isListening) {
-      setIsListening(false)
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'en-US'
-    recognition.interimResults = false
-    recognition.maxAlternatives = 1
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript
-      setSearchQuery(transcript)
-      router.push(`/search?q=${encodeURIComponent(transcript)}`)
-      setIsListening(false)
-    }
-
-    recognition.onerror = () => {
-      setIsListening(false)
-    }
-
-    recognition.onend = () => {
-      setIsListening(false)
-    }
-
-    setIsListening(true)
-    recognition.start()
-  }
 
   return (
     <>
@@ -620,7 +616,7 @@ export function Navbar() {
                   )}
                   <button
                     type="button"
-                    onClick={handleVoiceSearch}
+                    onClick={isListening ? stopVoice : startVoice}
                     title={isListening ? 'Stop listening' : 'Search by voice'}
                     className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-all ${
                       isListening
@@ -645,6 +641,12 @@ export function Navbar() {
                   {isListening && (
                     <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-semibold text-[var(--color-coral)] whitespace-nowrap animate-pulse tracking-wide">
                       Listening...
+                    </span>
+                  )}
+                  {/* Voice error indicator (mic denied / unsupported browser) */}
+                  {voiceError && (
+                    <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-semibold text-[var(--color-coral)] whitespace-nowrap w-max">
+                      {voiceError}
                     </span>
                   )}
                 </div>

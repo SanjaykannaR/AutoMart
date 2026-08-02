@@ -61,6 +61,11 @@ services:
       - ./services/mcp-server/src:/app/services/mcp-server/src
     command: npx tsx watch services/mcp-server/src/index.ts
 
+  assistant-service:
+    volumes:
+      - ./services/assistant-service/src:/app/services/assistant-service/src
+    command: npx tsx watch services/assistant-service/src/index.ts
+
   api-gateway:
     volumes:
       - ./services/api-gateway/src:/app/services/api-gateway/src

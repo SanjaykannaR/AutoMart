@@ -70,6 +70,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 /** Props interface — Hero accepts a search callback */
 interface HeroProps {
   onSearch: (query: string) => void // Callback fired when user submits a search query
+  onVoiceSearch?: (query: string) => void // Optional — voice transcripts route here (e.g. navigate to /search)
 }
 
 /** Total number of banner slides for index wrapping */
@@ -79,7 +80,7 @@ const TOTAL_SLIDES = FALLBACK_SLIDES.length
  * Hero Component
  * Full-width banner carousel with centered text and Gemini-style search bar.
  */
-export function Hero({ onSearch }: HeroProps) {
+export function Hero({ onSearch, onVoiceSearch }: HeroProps) {
   /** Current active slide index — starts at 0 */
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -309,7 +310,7 @@ export function Hero({ onSearch }: HeroProps) {
           {/* Search wrapper — applies soft drop shadow glow when input is focused */}
           <div className="search-glow-wrapper">
             {/* Actual search bar component — no extra divs, no layout disruption */}
-            <SearchBar onSearch={onSearch} placeholder="Search by part name, brand, or vehicle..." />
+            <SearchBar onSearch={onSearch} onVoiceSearch={onVoiceSearch} placeholder="Search by part name, brand, or vehicle..." />
           </div>
         </motion.div>
 
