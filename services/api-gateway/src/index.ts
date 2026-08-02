@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit'
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import dns from 'node:dns' // svc() uses lookupSync to detect docker-compose network vs local dev
 import { authMiddleware } from './middleware/auth'
+import { turnstileMiddleware } from './middleware/turnstile'
 
 const app = express()
 const PORT = process.env.API_GATEWAY_PORT || 3000
@@ -41,7 +42,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Turnstile-Token'],
   maxAge: 86400, // Cache preflight for 24 hours
 }))
 
@@ -106,6 +107,15 @@ app.use('/api/auth/password/reset', authLimiter)
 app.use('/api/auth/otp/send', otpSendLimiter)
 app.use('/api/auth/otp/resend', otpSendLimiter)
 app.use('/api/auth/otp/verify', authLimiter)
+
+// ─── Turnstile human verification (SEC: bot defense) ────────────────────────────
+// Applied to the highest-value auth endpoints. Rate limiters above stop volume
+// attacks; Turnstile stops distributed credential stuffing and SMS bombing.
+// Middleware auto-skips when TURNSTILE_SECRET_KEY is unset (dev/CI).
+app.use('/api/auth/login', turnstileMiddleware)
+app.use('/api/auth/register', turnstileMiddleware)
+app.use('/api/auth/otp/send', turnstileMiddleware)
+app.use('/api/auth/admin/login', turnstileMiddleware)
 
 // ─── Service routing ─────────────────────────────────────────────────────────
 // All /api/* routes are handled by a single proxy mount point.

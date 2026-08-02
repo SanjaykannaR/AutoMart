@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/Toast'
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
+import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
@@ -80,6 +81,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [loginMode, setLoginMode] = useState<LoginMode>('email')
 
+  // ─── Turnstile human verification state ───
+  // Tokens are single-use: after each submit attempt we clear + remount the
+  // widget (via turnstileKey) so the next attempt carries a fresh challenge.
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileKey, setTurnstileKey] = useState(0)
+
+  const resetTurnstile = () => {
+    setTurnstileToken('')
+    setTurnstileKey(k => k + 1)
+  }
+
   // ─── Email/password state ───
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -124,11 +136,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError('Please complete the human verification check.')
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(turnstileToken ? { 'x-turnstile-token': turnstileToken } : {}),
+        },
         body: JSON.stringify({ email, password }),
       })
       if (!res.ok) {
@@ -145,6 +164,7 @@ export default function LoginPage() {
       setError(err.message)
       showToast(err.message, 'error')
     } finally {
+      resetTurnstile()
       setLoading(false)
     }
   }
@@ -224,11 +244,18 @@ export default function LoginPage() {
       return
     }
     setError('')
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError('Please complete the human verification check.')
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch(`${API}/api/auth/otp/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(turnstileToken ? { 'x-turnstile-token': turnstileToken } : {}),
+        },
         body: JSON.stringify({ phone: fullPhone }),
       })
       if (!res.ok) {
@@ -246,6 +273,7 @@ export default function LoginPage() {
       setError(err.message)
       showToast(err.message, 'error')
     } finally {
+      resetTurnstile()
       setLoading(false)
     }
   }
@@ -565,6 +593,16 @@ export default function LoginPage() {
                       Forgot password?
                     </Link>
                   </div>
+                  {TURNSTILE_ENABLED && (
+                    <div className="pt-1">
+                      <TurnstileWidget
+                        key={turnstileKey}
+                        onToken={setTurnstileToken}
+                        onExpire={() => setTurnstileToken('')}
+                        onError={() => setTurnstileToken('')}
+                      />
+                    </div>
+                  )}
                   <button type="submit" disabled={loading} className="glass-button w-full py-3 mt-2">
                     {loading ? 'Signing In...' : 'Sign In'}
                   </button>
@@ -623,6 +661,16 @@ export default function LoginPage() {
                           />
                         </div>
                       </div>
+                      {TURNSTILE_ENABLED && (
+                        <div className="pt-1">
+                          <TurnstileWidget
+                            key={turnstileKey}
+                            onToken={setTurnstileToken}
+                            onExpire={() => setTurnstileToken('')}
+                            onError={() => setTurnstileToken('')}
+                          />
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={handleSendOtp}

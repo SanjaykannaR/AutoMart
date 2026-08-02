@@ -161,3 +161,14 @@
 - Fix: target the component's real accessible name: `getByRole('button', { name: /remove .* from wishlist/i })` (wishlist page sets aria-label="Remove <name> from wishlist"). Dropped the svg-count fallback entirely.
 - Verified: wishlist spec 4/4, full tests/ui suite 12/12 green.
 - LESSON: never guess element selectors with svg-count fallbacks when the component exposes aria-labels — always prefer getByRole+name. Also: Next dev tools button is a hidden DOM landmine for svg/button locators; scope by role/name instead.
+
+## Cloudflare Turnstile bot protection on auth endpoints (2026-08-02)
+- Added Turnstile (Cloudflare human verification) to login/register/OTP/admin-login.
+- Backend: NEW `services/api-gateway/src/middleware/turnstile.ts` — reads token from `x-turnstile-token` HEADER (not body, preserving the gateway's no-express.json proxy design), calls siteverify, FAILS CLOSED when a secret is configured, auto-SKIPS when `TURNSTILE_SECRET_KEY` unset (dev/CI/e2e unaffected).
+- Gateway wiring: applied to `/api/auth/login`, `/register`, `/otp/send`, `/admin/login` (after the existing rate limiters — limiter stops volume, Turnstile stops distributed stuffing). Added `X-Turnstile-Token` to CORS allowedHeaders.
+- Frontend: NEW `apps/web/src/components/Turnstile.tsx` — self-contained widget, lazy-loads official script, zero deps; `TURNSTILE_ENABLED` flag; renders nothing when site key empty. Added to customer login (email + phone forms), register, admin login.
+- Token lifecycle: single-use → each page resets token + remounts widget (`key={turnstileKey}`) after every submit attempt so retries carry a fresh challenge.
+- Env: `TURNSTILE_SECRET_KEY` (gateway) + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (web) added to .env.example, .env.docker.example, .env.production.example, apps/web/.env.local, docker-compose web env.
+- NOT protected (by design): `/oauth` (real Google token already proves human), `/otp/resend` (behind 5/15min limiter + only reachable after a Turnstile-gated send), `/otp/verify`, forgot-password (candidate for future).
+- Verified: tsc clean on api-gateway + web. No tests reference the protected endpoints.
+- To activate: set both keys from https://dash.cloudflare.com → Turnstile.
