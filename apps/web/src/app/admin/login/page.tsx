@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAdminAuth } from '@/lib/admin-auth'
+import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
@@ -33,18 +34,32 @@ function LoginForm() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // ─── Turnstile human verification state ───
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileKey, setTurnstileKey] = useState(0)
+
+  const resetTurnstile = () => {
+    setTurnstileToken('')
+    setTurnstileKey(k => k + 1)
+  }
+
   /** Handle form submission — call admin login endpoint */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError('Please complete the human verification check.')
+      return
+    }
     setLoading(true)
 
     try {
-      await login(email, password)
+      await login(email, password, turnstileToken)
       router.push('/admin')
     } catch (err: any) {
       setError(err.message || 'Invalid credentials')
     } finally {
+      resetTurnstile()
       setLoading(false)
     }
   }
@@ -143,6 +158,17 @@ function LoginForm() {
                 Forgot password?
               </Link>
             </div>
+
+            {TURNSTILE_ENABLED && (
+              <div className="pt-1">
+                <TurnstileWidget
+                  key={turnstileKey}
+                  onToken={setTurnstileToken}
+                  onExpire={() => setTurnstileToken('')}
+                  onError={() => setTurnstileToken('')}
+                />
+              </div>
+            )}
 
             {/* Submit button */}
             <button

@@ -28,7 +28,7 @@ interface AdminAuthContextType {
   /** Whether auth state has been loaded from localStorage (prevents flash) */
   loading: boolean
   /** Login with email + password. Returns true on success, throws on failure. */
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, turnstileToken?: string) => Promise<void>
   /** Logout — clears token + user from localStorage and state */
   logout: () => void
   /** Update the stored user object (after username change, etc.) */
@@ -86,10 +86,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /** Login handler — calls POST /api/auth/admin/login */
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, turnstileToken?: string) => {
     const res = await fetch(`${API}/api/auth/admin/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(turnstileToken ? { 'x-turnstile-token': turnstileToken } : {}),
+      },
       body: JSON.stringify({ email, password }),
     })
     if (!res.ok) {

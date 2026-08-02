@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useToast } from '@/components/Toast'
+import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
@@ -19,6 +20,15 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  // ─── Turnstile human verification state ───
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileKey, setTurnstileKey] = useState(0)
+
+  const resetTurnstile = () => {
+    setTurnstileToken('')
+    setTurnstileKey(k => k + 1)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -31,12 +41,19 @@ export default function RegisterPage() {
       setError('Password must be at least 8 characters')
       return
     }
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError('Please complete the human verification check.')
+      return
+    }
 
     setLoading(true)
     try {
       const res = await fetch(`${API}/api/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(turnstileToken ? { 'x-turnstile-token': turnstileToken } : {}),
+        },
         body: JSON.stringify({ name, email, password, role: 'individual' }),
       })
       if (!res.ok) {
@@ -53,6 +70,7 @@ export default function RegisterPage() {
       setError(err.message)
       showToast(err.message, 'error')
     } finally {
+      resetTurnstile()
       setLoading(false)
     }
   }
@@ -228,6 +246,17 @@ export default function RegisterPage() {
                     }`}
                   />
                 ))}
+              </div>
+            )}
+
+            {TURNSTILE_ENABLED && (
+              <div className="pt-1">
+                <TurnstileWidget
+                  key={turnstileKey}
+                  onToken={setTurnstileToken}
+                  onExpire={() => setTurnstileToken('')}
+                  onError={() => setTurnstileToken('')}
+                />
               </div>
             )}
 
