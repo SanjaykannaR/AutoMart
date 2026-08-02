@@ -17,3 +17,6 @@ services/*/src/generated/
 .DS_Store
 *.tsbuildinfo
 RAG-task.md
+
+# Improver session backups
+.env.local.*

@@ -17,6 +17,7 @@ import Fuse from 'fuse.js'
 import { Trie } from './trie'
 import { TfidfEngine } from './tfidf'
 import { initClipModel, indexProductImage, trainIndex, resetIndex } from './imageSearch'
+import { soundex, stemToken, expandPhonetically } from './voiceSearch'
 
 export interface Product {
   id: string
@@ -51,6 +52,11 @@ let productCache: Product[] = []
 let trie: Trie | null = null
 let tfidf: TfidfEngine | null = null
 
+// Soundex code → shortest known catalog word with that sound.
+// Used as a LAST-RESORT fallback when a query returns zero results:
+// "bracking bad" → stem "brack" → code B620 → swap in "brake".
+let phoneticVocab = new Map<string, string[]>()
+
 /**
  * Initialize all search indexes from the product-service catalog.
  * Called at startup and every 5 minutes to pick up new/updated products.
@@ -58,7 +64,24 @@ let tfidf: TfidfEngine | null = null
  */
 export async function initSearchEngine() {
   try {
-    const res = await fetch(`http://product-service:${process.env.PRODUCT_SERVICE_PORT || 3002}/products`)
+    const port = process.env.PRODUCT_SERVICE_PORT || 3002
+    // Try, in order: explicit URL → Docker DNS (compose) → localhost (local dev).
+    const urls = [
+      process.env.PRODUCT_SERVICE_URL,
+      `http://product-service:${port}/products`,
+      `http://localhost:${port}/products`,
+    ].filter(Boolean) as string[]
+    let res: Response | null = null
+    for (const url of urls) {
+      try {
+        res = await fetch(url)
+        if (res.ok) break
+      } catch {
+        /* try next candidate */
+      }
+      res = null
+    }
+    if (!res) throw new Error('product-service unreachable (docker DNS + localhost both failed)')
     const products = await res.json() as any[]
     productCache = products.map((p: any) => ({
       id: p.id,
@@ -114,6 +137,25 @@ export async function initSearchEngine() {
       trie.insert(p.brand.toLowerCase(), 1)
     }
 
+    // ─── Phonetic vocabulary (Soundex) for zero-result fallback ─────────────
+    phoneticVocab = new Map()
+    for (const p of productCache) {
+      const text = `${p.name} ${p.brand} ${p.category} ${p.vehicleType} ${p.compatibleVehicles.join(' ')}`.toLowerCase()
+      for (const rawTok of text.split(/[^a-z]+/)) {
+        if (rawTok.length < 3) continue
+        const tok = stemToken(rawTok)
+        const code = soundex(tok)
+        if (!code) continue
+        const list = phoneticVocab.get(code)
+        if (!list) {
+          phoneticVocab.set(code, [tok])
+        } else if (!list.includes(tok)) {
+          list.push(tok)
+          list.sort((a, b) => a.length - b.length) // shortest first = best canonical
+        }
+      }
+    }
+
     // ─── CLIP model + image embeddings ───────────────────────────────────────
     const clipReady = await initClipModel()
     if (clipReady) {
@@ -138,58 +180,83 @@ export async function initSearchEngine() {
 }
 
 /**
- * Combined fuzzy + TF-IDF search. Runs the query through both pipelines,
- * normalizes scores to [0, 1], and combines them with equal weight (50/50).
- * Post-filters by category, brand, price range, and vehicle type.
+ * Score a query through Fuse.js + TF-IDF and return ranked products.
+ * Shared by fuzzySearch and its phonetic-retry fallback.
  */
-export function fuzzySearch(opts: SearchOptions): Product[] {
+function scoreQuery(query: string): Product[] {
   if (!fuse) return []
 
+  // ─── Fuse.js results with scores ──────────────────────────────────────
+  const fuseResults = fuse.search(query)
+  const fuseScoreMap = new Map<string, number>()
+
+  for (const r of fuseResults) {
+    // Normalize Fuse score: 0 = best match, 1 = worst → invert to 0-1 where 1 = best
+    fuseScoreMap.set(r.item.id, 1 - (r.score || 0))
+  }
+
+  // ─── TF-IDF results with scores ───────────────────────────────────────
+  const tfidfScoreMap = new Map<string, number>()
+  if (tfidf) {
+    const tfidfResults = tfidf.search(query)
+    const maxTfidfScore = tfidfResults.length > 0 ? tfidfResults[0].score : 1
+
+    for (const r of tfidfResults) {
+      // Normalize to 0-1
+      tfidfScoreMap.set(r.id, maxTfidfScore > 0 ? r.score / maxTfidfScore : 0)
+    }
+  }
+
+  // ─── Combine scores ────────────────────────────────────────────────────
+  // Product must appear in at least one ranking to be included
+  const allIds = new Set([...fuseScoreMap.keys(), ...tfidfScoreMap.keys()])
+  const scored: Array<{ product: Product; score: number }> = []
+
+  for (const id of allIds) {
+    const product = productCache.find((p) => p.id === id)
+    if (!product) continue
+
+    const fuseScore = fuseScoreMap.get(id) || 0
+    const tfidfScore = tfidfScoreMap.get(id) || 0
+
+    // Hybrid score: 50% fuzzy + 50% TF-IDF
+    const score = 0.5 * fuseScore + 0.5 * tfidfScore
+
+    scored.push({ product, score })
+  }
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored.map((s) => s.product)
+}
+
+/**
+ * Combined fuzzy + TF-IDF search. Runs the query through both pipelines,
+ * normalizes scores to [0, 1], and combines them with equal weight (50/50).
+ * If zero results, retries once with a Soundex-phonetic expansion of the
+ * query (catches speech-to-text homophones like "bracking" → "brake").
+ * Post-filters by category, brand, price range, and vehicle type.
+ */
+export function fuzzySearch(opts: SearchOptions): { results: Product[]; query: string } {
+  if (!fuse) return { results: [], query: opts.query || '' }
+
   let results: Product[]
+  let effectiveQuery = opts.query || ''
 
   if (opts.query) {
-    // ─── Fuse.js results with scores ──────────────────────────────────────
-    const fuseResults = fuse.search(opts.query)
-    const fuseScoreMap = new Map<string, number>()
-    const maxFuseScore = fuseResults.length > 0 ? fuseResults[0].score || 1 : 1
+    results = scoreQuery(opts.query)
 
-    for (const r of fuseResults) {
-      // Normalize Fuse score: 0 = best match, 1 = worst → invert to 0-1 where 1 = best
-      fuseScoreMap.set(r.item.id, 1 - (r.score || 0))
-    }
-
-    // ─── TF-IDF results with scores ───────────────────────────────────────
-    const tfidfScoreMap = new Map<string, number>()
-    if (tfidf) {
-      const tfidfResults = tfidf.search(opts.query)
-      const maxTfidfScore = tfidfResults.length > 0 ? tfidfResults[0].score : 1
-
-      for (const r of tfidfResults) {
-        // Normalize to 0-1
-        tfidfScoreMap.set(r.id, maxTfidfScore > 0 ? r.score / maxTfidfScore : 0)
+    // ─── Phonetic fallback: zero results + unknown-word query → retry with
+    //     Soundex-matched catalog words. "bracking bad" → "brake pad". ─────
+    if (results.length === 0 && phoneticVocab.size > 0) {
+      const alt = expandPhonetically(opts.query, phoneticVocab)
+      if (alt && alt !== opts.query) {
+        const phoneticResults = scoreQuery(alt)
+        if (phoneticResults.length > 0) {
+          results = phoneticResults
+          effectiveQuery = alt // report the query that actually matched
+        }
       }
     }
-
-    // ─── Combine scores ────────────────────────────────────────────────────
-    // Product must appear in at least one ranking to be included
-    const allIds = new Set([...fuseScoreMap.keys(), ...tfidfScoreMap.keys()])
-    const scored: Array<{ product: Product; score: number }> = []
-
-    for (const id of allIds) {
-      const product = productCache.find((p) => p.id === id)
-      if (!product) continue
-
-      const fuseScore = fuseScoreMap.get(id) || 0
-      const tfidfScore = tfidfScoreMap.get(id) || 0
-
-      // Hybrid score: 50% fuzzy + 50% TF-IDF
-      const score = 0.5 * fuseScore + 0.5 * tfidfScore
-
-      scored.push({ product, score })
-    }
-
-    scored.sort((a, b) => b.score - a.score)
-    results = scored.map((s) => s.product)
   } else {
     results = [...productCache]
   }
@@ -211,7 +278,7 @@ export function fuzzySearch(opts: SearchOptions): Product[] {
     results = results.filter((p) => p.vehicleType === opts.vehicleType || p.vehicleType === 'both')
   }
 
-  return results.slice(0, opts.limit || 50)
+  return { results: results.slice(0, opts.limit || 50), query: effectiveQuery }
 }
 
 /**

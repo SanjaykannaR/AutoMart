@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import { Navbar } from './Navbar'
 import { ConditionalFooter } from './ConditionalFooter'
@@ -21,7 +22,10 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {!isAuthPage && <Navbar />}
+      {!isAuthPage && (
+        // Suspense is required around components using useSearchParams (Navbar reads ?q=)
+        <Suspense fallback={null}><Navbar /></Suspense>
+      )}
       <main id="main-content" className={`min-h-screen ${isAuthPage ? '' : 'pt-16'}`}>{children}</main>
       {!isAuthPage && <ConditionalFooter />}
       {/* TORQ machine assistant — hidden on auth/admin pages */}

@@ -9,6 +9,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { createProxyMiddleware } from 'http-proxy-middleware'
+import dns from 'node:dns' // svc() uses lookupSync to detect docker-compose network vs local dev
 import { authMiddleware } from './middleware/auth'
 
 const app = express()
@@ -119,10 +120,15 @@ app.use('/api/auth/otp/verify', authLimiter)
 const protectedPaths = ['/orders', '/payments', '/inventory', '/notifications']
 const publicPaths = ['/payments/webhook'] // Stripe webhooks — no auth token
 
-/** Resolve a service URL: prefer explicit *_URL env var, fall back to Docker DNS */
+/** Resolve a service URL: prefer explicit *_URL env var, fall back to Docker DNS, then localhost (local dev). */
 function svc(envUrl: string | undefined, dockerHost: string, port: number | string): string {
   if (envUrl) return envUrl
-  return `http://${dockerHost}:${port}`
+  try {
+    dns.lookupSync(dockerHost) // resolves only inside docker compose network
+    return `http://${dockerHost}:${port}`
+  } catch {
+    return `http://localhost:${port}`
+  }
 }
 
 // Single proxy for all /api/* — Express strips "/api" so req.url = "/orders/123"

@@ -23,6 +23,7 @@ import { FeaturedCarousel } from '@/components/FeaturedCarousel' // Featured pro
 import { ScrollReveal } from '@/components/ScrollReveal' // Reusable scroll animation wrapper
 import { motion } from 'framer-motion' // Framer Motion for non-ScrollReveal animations
 import Link from 'next/link' // Next.js client-side navigation
+import { useRouter } from 'next/navigation' // Next.js routing
 import {
   StopIcon, CogIcon, WrenchIcon, BoltIcon, Cog6ToothIcon, FireIcon, // Category icons
   MagnifyingGlassIcon, ClipboardDocumentCheckIcon, TruckIcon, // How It Works icons
@@ -82,6 +83,8 @@ const stats = [
  * HomePage Component — Main landing page
  */
 export default function HomePage() {
+  const router = useRouter() // Router for voice-search navigation
+
   /** Search results state — populated when user searches from Hero */
   const [results, setResults] = useState<any[]>([])
   /** Whether a search has been performed (shows empty state if no results) */
@@ -95,8 +98,17 @@ export default function HomePage() {
     setSearched(true) // Mark as searched to show empty state if needed
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search?q=${encodeURIComponent(query)}`)
       .then((r) => r.json()) // Parse JSON response
-      .then(setResults) // Store results in state
+      .then((data) => setResults(Array.isArray(data) ? data : (data.results || []))) // Handle { query, results } shape
       .catch(() => setResults([])) // On error, set empty results
+  }
+
+  /**
+   * Voice search from the Hero bar navigates to the search page (same as the
+   * Navbar) so results are actually visible — the inline section below the
+   * tall hero carousel was effectively invisible.
+   */
+  const handleVoiceSearch = (query: string) => {
+    router.push(`/search?q=${encodeURIComponent(query)}`)
   }
 
   return (
@@ -105,7 +117,7 @@ export default function HomePage() {
           SECTION 1: Hero
           Full-width banner carousel with auto-slide ads
           ═══════════════════════════════════════════════════════════ */}
-      <Hero onSearch={handleSearch} />
+      <Hero onSearch={handleSearch} onVoiceSearch={handleVoiceSearch} />
 
       {/* Search results — shown inline below hero when user searches */}
       {searched && results.length === 0 && (

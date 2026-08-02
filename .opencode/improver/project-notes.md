@@ -60,3 +60,87 @@
 - VERIFIED: all 9 services `tsc --noEmit` clean (after prisma generate), apps/web build clean, SSE contract smoke-tested (status→text→products→chips→done), template mode zero-key works, gemini invalid-key falls back to template, MiniLM loads (384-dim)
 - REMAINING for full E2E: run `supabase/migration-product-embeddings.sql` in Supabase SQL Editor (user action) → semantic search activates; docker compose up to test against live product-service; visual check of ChatWidget
 - Untracked: `services/assistant-service/`, `supabase/migration-product-embeddings.sql`, `apps/web/src/components/chat/` — NOT committed yet (coordinated commit pending)
+
+## RAG semantic search VERIFIED LIVE in Supabase (2026-08-02)
+- User said they ran the migration — confirmed via direct pg query against `mmvrkljevwgkonpljsut`:
+  - `vector` ext v0.8.2 enabled ✅, `product_embeddings` table exists ✅, HNSW index `product_embeddings_hnsw_idx` (cosine) exists ✅
+  - **25 rows populated** (`all-MiniLM-L6-v2`, embedded 2026-07-31 → worker already ran), 0 nulls, 0 zero-vectors
+  - kNN cosine query returns sensible results (LED fog light self-match 1.0, LED headlight 0.51, LED tail light 0.36)
+- → Semantic search is ACTIVE in prod; the RAG-task.md note about "migration pending" is now obsolete
+- Worker re-syncs on next service start (idempotent, skips unchanged `updated_at`) — nothing manual needed after catalog edits
+- Verification script pattern: read `DATABASE_URL` from `.env.docker`, query via `pg` with `ssl:{rejectUnauthorized:false}`
+
+## Voice search fix — "Microphone blocked" despite grant (2026-08-02)
+- Root cause: Chrome 125+ has a SEPARATE "Speech recognition" site permission (lock icon → Site settings), distinct from Microphone. Granting only mic → `SpeechRecognition` still fires `not-allowed`/`service-not-allowed`. Also: old hook never verified the mic, so "mic blocked" vs "speech service blocked" were indistinguishable, and plain-http (LAN IP) contexts blamed the mic.
+- Fix in `apps/web/src/hooks/useVoiceSearch.ts` (uncommitted WIP):
+  1. `getUserMedia({audio})` pre-flight in `start()` → forces correct permission prompt, precise per-error messages (NotAllowedError/NotFoundError/security), mic stream released after
+  2. `not-allowed`/`service-not-allowed` now treated as speech-service issue (NOT mic) → actionable lock-icon instructions; auto-retries once after a fresh grant
+  3. `network` error → separate "Google servers unreachable (region)" message
+  4. `!window.isSecureContext` guard → https/localhost message instead of mic blame
+  5. Unmount cleanup + `stop()` release pre-flight tracks
+- `SearchBar.tsx` overlay heading changed "Mic unavailable" → "Voice search unavailable" (error can be service-level)
+- Verified: `npx tsc --noEmit -p apps/web/tsconfig.json` clean. If user still blocked after fix → likely regional (network error) → LLM/key not involved; speech API needs Google servers
+- ROUND 2 (same session): pre-flight `getUserMedia` itself fails with NotAllowedError despite site granted → mic-level, not speech-service. Upgraded `ensureMic()`: 2 attempts (retry once — Chrome flaky right after grant), then probes `navigator.permissions.query({name:'microphone'})` to triage:
+  - `'granted'` + still failing → OS-level Windows privacy settings / origin mismatch (localhost vs 127.0.0.1 are different sites!) / mic held by another app / stale Chrome state → browser restart
+  - `'prompt'` → not granted for THIS exact URL
+  - `'denied'` → lock-icon fix + restart
+  - User is on `http://localhost:3000` (secure context OK). "Speech recognition" option absent in their Chrome site settings — normal on Windows, not the blocker anymore.
+  - KEY INSIGHT for future: user-reported "mic blocked" on Windows Chrome → check OS privacy toggle FIRST (`Settings → Privacy & security → Microphone`), not just site permissions.
+- 🎯 **ROOT CAUSE FOUND (2026-08-02)**: `apps/web/next.config.ts` sends `Permissions-Policy: camera=(), microphone=(), geolocation=()` (added in commit `07dd405` "security headers" polish) → **the site itself blocks the microphone via HTTP header** on every page. `getUserMedia` fails with NotAllowedError REGARDLESS of site settings / OS privacy settings / hardware. User had granted mic, Windows privacy fully allowed (verified via ConsentStore registry), mic hardware OK — all moot.
+  - FIX: `microphone=(self), camera=(self)` (own-origin only; geolocation still blocked). Applied to `next.config.ts`. **LESSON: `Permissions-Policy` blocking `microphone`/`camera` silently breaks voice/camera features — always audit feature usage before blanket-blocking.**
+  - Requires dev-server restart + hard refresh (headers are server-side); if user previously denied, reset site permission via lock icon. Web app port: docker maps 3080:3000; `next dev` alone = 3000.
+
+## Voice search round 3 — hero routing + STT query normalization (2026-08-02)
+- **Issue A (hero bar types but doesn't search)**: Hero `onSearch` rendered results INLINE below the tall hero carousel — effectively invisible. ALSO: `/search` page never read `?q=` from URL on mount → navbar voice search (`router.push('/search?q=…')`) landed on an UNFILTERED page (latent bug since navbar voice existed).
+  - Fixes: `SearchBar.tsx` gained optional `onVoiceSearch` prop (voice → this, text → onSearch); `Hero.tsx` passes through; `app/page.tsx` voice → `router.push('/search?q=…')` (matches navbar); `app/search/page.tsx` reads `urlQuery = searchParams.get('q')`, single effect `[filters, urlQuery]` fetches, `handleSearch` just navigates (kills double-fetch).
+- **Issue B ("barking bad" → no results)**: STT homophones never corrected. `voiceSearch.ts` (previously DEAD code — `processVoiceTranscript` never imported) rewritten into `normalizeSearchQuery()`: phrase fixes ("braking/barking/bad"→"brake pad", "break disc|rotor|caliper", "hed light"→"headlight"), word map (tyre→tire, calliper→caliper, sparkplug→spark plug, etc.), leading filler strip ("i need", "show me", "please"), trailing politeness strip, punctuation cleanup. Wired into `/search` route — benefits typed + voice + TORQ assistant queries. Guard changed to `!query && !category && !brand`.
+  - BUG caught by self-test: `$1` with non-capturing group → `'brake $1 rotor'`; fixed with capturing group. Tests: 7 new cases in `voiceSearch.test.ts`; all 68 search-service tests pass; web + search tsc clean.
+- STILL UNCOMMITTED (all of today's work + earlier voice hook + next.config fix). Suggest one commit: "fix: voice search — permissions-policy, hero routing, URL query handling, STT query normalization".
+
+## Voice search round 4 — "breaking bad" variant + SOUNDEX fallback (2026-08-02)
+- User reported a THIRD STT variant ("breaking bad" — after "barking", "braking"). Curated homophone map is whack-a-mole → added a permanent phonetic layer.
+- `voiceSearch.ts` additions:
+  - `breaking` added to phrase regex + word map
+  - `stemToken()` — proper plural-aware stemmer: brakes→brake, pads→pad, batteries→battery, breaking→break (min len 4; `>=3` guard protects gas/bus/air). BUG FOUND BY TEST: naive `/(?:es|s)$/` regex made "brakes"→"brak"; fixed with plural rules (plain `s` strip; `es` only after s/sh/ch/x/z; `ies`→y)
+  - `soundex()` — standard American Soundex. All brake variants (brake/break/brack/breaking/braking/barking/bracking) → B620; headlight/hedlight → H342; pad P300 ≠ bad B300
+  - `expandPhonetically(query, vocab)` — swaps unknown-sounding tokens for shortest known catalog word with same code
+- `textSearch.ts`:
+  - `phoneticVocab` (soundex code → shortest catalog word) built at index time from name+brand+category+vehicleType+compatibleVehicles
+  - `fuzzySearch` refactored: extracted `scoreQuery()`; when zero results AND vocab non-empty → retry once with phonetic expansion
+- Verified end-to-end vs real catalog: breaking/barking/braking bad → direct map; bracking/breck/brik pad → PHONETIC fallback; hedlight bulb → headlight. 75/75 tests pass, both tsc clean.
+- LESSON: STT homophone fixes need BOTH a curated map (fast, predictable) AND a phonetic fallback (catches every future variant) — map alone never converges with real-world accents.
+- NOTE for user: search-service restart REQUIRED (server-side change) — restarting only the web dev server is not enough.
+
+## Voice search round 5 — local dev topology repair (2026-08-02)
+- Real blocker behind "no item found": the LOCAL stack was never wired end-to-end. Chain: web(3080) → gateway(3000) → search-service(3003) → product-service(3002) → Supabase Postgres.
+- Fixes applied:
+  1. `search-service/src/search/textSearch.ts`: product fetch now tries PRODUCT_SERVICE_URL → docker DNS `product-service:3002` → `localhost:3002` (was docker-DNS-only → empty index locally)
+  2. `product-service/package.json`: dev script `tsx watch --env-file=.env src/index.ts` (Prisma does NOT auto-load .env at runtime; CLI-only)
+  3. `services/product-service/.env` (NEW, gitignored via root `.env` pattern): DATABASE_URL from .env.docker — Supabase pooler creds
+  4. `api-gateway/src/index.ts` svc(): `dns.lookupSync(dockerHost)` → docker URL if resolves, else `localhost:<port>`; + `import dns from 'node:dns'`
+  5. `apps/web/.env.local`: NEXT_PUBLIC_API_URL 3001→3000 (gateway). Backup: apps/web/.env.local.bak-20260802-130705
+  6. Gateway routes are UNDER /api/* — `/api/search` NOT `/search` (web app already correct)
+- Live-verified FULL chain: gw/api/breaking|barking|braking bad → Ceramic+Motorcycle Brake Pads (5); bracking pad → phonetic fallback (2); hedlight bulb → LED Headlight Bulb H4 (1). 25 products in catalog.
+- Local dev port map: web 3080, gateway 3000, auth 3001, products 3002, search 3003, orders/payments 3004, inventory 3005, notifications 3006, mcp 3007, assistant 3008.
+- LESSONS: (a) never trust that "docker DNS service names" resolve on the host — every service fetch/proxy needs a localhost fallback; (b) Prisma env is NOT runtime-loaded; (c) tsx watch restarts can EADDRINUSE-collide with the still-bound old child — kill the listener before relying on a reload.
+- tsx watch auto-reloads code edits in all 4 running services (web 3080, gw 3000, products 3002, search 3003) — file edits are live.
+
+## Voice search round 6 — search bar shows normalized text (2026-08-02)
+- User: results correct ("breaking bad" → brake pads) but the bar still showed the raw STT text. Fixed by returning the corrected query from the API + syncing URL/bar.
+- API: `/api/search` now returns `{ query, results }` instead of a bare array.
+  - `fuzzySearch()` returns `{ results, query: effectiveQuery }` — effectiveQuery = phonetic-expanded alt when the zero-result retry matched, else the normalized input.
+  - Empty guard returns `{ query: '', results: [] }`.
+- Frontend:
+  - `SearchBar`: new optional `value` prop + `useEffect` sync — input follows the URL query (also fixes navbar/hero nav leaving the bar empty).
+  - `search/page.tsx`: parses `{ query, results }`; if server query differs from URL q → `router.replace('/search?q=<normalized>&<filters>', { scroll:false })` → bar + URL converge to "brake pad".
+  - `app/page.tsx` Hero inline search: handles both array and object shapes.
+- Verified: breaking bad → query "brake pad" (5); bracking/breck pad → Fuse fuzzy matches (2) so phonetic path doesn't fire, text stays as typed (correct behavior — bar shows the query that matched); hedlight bulb → "hedlight bulb" (1).
+- NOTE: `fuzzySearch` signature changed (Product[] → {results, query}) — only 1 caller (index.ts /search), no tests reference it. 75/75 tests still pass, both tsc clean.
+
+## Voice search round 7 — NAVBAR bar shows corrected text (2026-08-02)
+- User: page SearchBar updated ("breaking bad"→"brake pad") but the NAVBAR bar still showed the raw transcript. Root cause: Navbar does NOT use the SearchBar component — it has its own inline input bound to local `searchQuery` state, so the round-6 `value` prop never reached it.
+- Fix:
+  - `Navbar.tsx`: added `useSearchParams`; `urlQuery = searchParams.get('q')||''`; new effect `useEffect(()=>setSearchQuery(urlQuery),[urlQuery])` — syncs after voice nav AND after the search page's `router.replace` to the normalized query.
+  - `LayoutShell.tsx`: wrapped `<Navbar/>` in `<Suspense fallback={null}>` — Next 15 build requirement for useSearchParams in client components.
+- Why no typing-clobber: the effect only fires when `urlQuery` CHANGES (typing doesn't change the URL); navigation does.
+- LESSON: there are TWO search inputs in this app (SearchBar component + Navbar's inline one). Any query-sync fix must touch both. Consider refactoring Navbar to use SearchBar someday.

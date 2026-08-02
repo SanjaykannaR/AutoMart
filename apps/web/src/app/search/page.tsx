@@ -69,6 +69,9 @@ function SearchContent() {
   const [imageSearchError, setImageSearchError] = useState<string | null>(null) // Error message if image search fails
   const isImageMode = searchParams.get('mode') === 'image' // Check if URL has image mode
 
+  /** URL query — source of truth for the active search term */
+  const urlQuery = searchParams.get('q') || ''
+
   /**
    * Convert a base64 data URL to a File object for multipart upload.
    */
@@ -182,7 +185,18 @@ function SearchContent() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search?${params}`) // Fetch from API
       const data = await res.json() // Parse response
-      setProducts(Array.isArray(data) ? data : []) // Store products (guard against error objects)
+      // Response is now { query, results } — normalize handles plain arrays too
+      const items = Array.isArray(data) ? data : (data.results || [])
+      setProducts(items) // Store products
+
+      // If the server normalized/corrected the query ("breaking bad" → "brake pad"),
+      // update the URL so the search bar and results header show the right text.
+      const corrected = !Array.isArray(data) && data.query && data.query !== urlQuery ? data.query : null
+      if (corrected) {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('q', corrected)
+        router.replace(`/search?${params.toString()}`, { scroll: false })
+      }
     } catch {
       setProducts([]) // On error, empty results
     } finally {
@@ -190,16 +204,17 @@ function SearchContent() {
     }
   }
 
-  /** Re-fetch when filters change */
+  /** Re-fetch when filters OR the URL query change.
+   *  The URL query is the source of truth — arriving with ?q=brake+pads
+   *  (navbar / hero voice search) now actually filters results on mount. */
   useEffect(() => {
-    fetchProducts() // Fetch with current filters
-  }, [filters]) // Re-run when filters change
+    fetchProducts(urlQuery) // Fetch with current URL query
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, urlQuery]) // Re-run when filters or query change
 
-  /** Handle search bar submissions */
+  /** Handle search bar submissions — navigate, the effect above fetches */
   const handleSearch = (query: string) => {
-    const params = new URLSearchParams({ q: query }) // Build search URL
-    router.push(`/search?${params}`) // Navigate to search page
-    fetchProducts(query) // Fetch results
+    router.push(`/search?q=${encodeURIComponent(query)}`) // Navigate (triggers effect)
   }
 
   /** Clear a single filter by key */
@@ -301,7 +316,7 @@ function SearchContent() {
       {/* Search bar — animates in on page load */}
       <ScrollReveal variant="text">
         <div className="mb-8">
-          <SearchBar onSearch={handleSearch} placeholder="Search by part name, brand, or vehicle..." />
+          <SearchBar value={urlQuery} onSearch={handleSearch} placeholder="Search by part name, brand, or vehicle..." />
         </div>
       </ScrollReveal>
 

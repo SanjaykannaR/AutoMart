@@ -7,6 +7,7 @@ import express from 'express'
 import multer from 'multer'
 import { fuzzySearch, initSearchEngine, autoComplete } from './search/textSearch'
 import { searchByImage, getIndexStats } from './search/imageSearch'
+import { normalizeSearchQuery } from './search/voiceSearch'
 
 const app = express()
 // Multer configured for in-memory storage — images are processed immediately,
@@ -44,9 +45,14 @@ app.get('/search', (req, res) => {
   try {
     const { q, category, brand, minPrice, maxPrice, vehicleType, limit } = req.query
 
+    // Normalize the query first: fixes speech-transcription artifacts
+    // ("barking bad" → "brake pad") and benefits typed queries too
+    // ("break pads" → "brake pads"). Harmless when there is no query.
+    const query = normalizeSearchQuery((q as string) || '')
+
     // Return empty if no search criteria provided — prevents unbounded results
-    if (!q && !category && !brand) {
-      return res.json([])
+    if (!query && !category && !brand) {
+      return res.json({ query: '', results: [] })
     }
 
     // Validate price range
@@ -65,8 +71,8 @@ app.get('/search', (req, res) => {
       }
     }
 
-    const results = fuzzySearch({
-      query: (q as string) || '',
+    const { results, query: effectiveQuery } = fuzzySearch({
+      query,
       category: category as string,
       brand: brand as string,
       minPrice: minPrice ? parseFloat(minPrice as string) : undefined,
@@ -75,7 +81,10 @@ app.get('/search', (req, res) => {
       limit: limit ? parseInt(limit as string) : undefined,
     })
 
-    res.json(results)
+    // Respond with BOTH the results and the query that actually matched
+    // (normalized / phonetically corrected). The client uses `query` to
+    // update the search bar and URL: "breaking bad" → "brake pad".
+    res.json({ query: effectiveQuery, results })
   } catch (err) {
     console.error('[Search] Fuzzy search error:', err)
     return errorResponse(res, 500, 'SEARCH_FAILED',
