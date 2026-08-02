@@ -115,19 +115,47 @@ app.use('/api/auth/otp/verify', authLimiter)
 //
 // Docker: resolves service names to container IPs via DNS.
 // Railway: uses *_SERVICE_URL env vars (e.g. AUTH_SERVICE_URL).
-// The svc() helper prefers the env var, falling back to Docker DNS.
-
 const protectedPaths = ['/orders', '/payments', '/inventory', '/notifications']
 const publicPaths = ['/payments/webhook'] // Stripe webhooks — no auth token
 
-/** Resolve a service URL: prefer explicit *_URL env var, fall back to Docker DNS, then localhost (local dev). */
-function svc(envUrl: string | undefined, dockerHost: string, port: number | string): string {
-  if (envUrl) return envUrl
+// Upstream service routes. Each can be overridden by an explicit *_URL env var
+// (e.g. SEARCH_SERVICE_URL). Otherwise the docker-compose hostname is used when
+// it resolves (docker mode); local dev falls back to http://localhost:<port>.
+const ROUTES: { prefix: string; envUrl: string | undefined; dockerHost: string; port: number | string }[] = [
+  { prefix: '/auth',           envUrl: process.env.AUTH_SERVICE_URL,           dockerHost: 'auth-service',        port: process.env.AUTH_SERVICE_PORT || 3001 },
+  { prefix: '/banners',        envUrl: process.env.AUTH_SERVICE_URL,           dockerHost: 'auth-service',        port: process.env.AUTH_SERVICE_PORT || 3001 },
+  { prefix: '/products',       envUrl: process.env.PRODUCT_SERVICE_URL,        dockerHost: 'product-service',     port: process.env.PRODUCT_SERVICE_PORT || 3002 },
+  { prefix: '/search',         envUrl: process.env.SEARCH_SERVICE_URL,         dockerHost: 'search-service',      port: process.env.SEARCH_SERVICE_PORT || 3003 },
+  { prefix: '/orders',         envUrl: process.env.ORDER_SERVICE_URL,          dockerHost: 'order-service',       port: process.env.ORDER_SERVICE_PORT || 3004 },
+  { prefix: '/payments',       envUrl: process.env.ORDER_SERVICE_URL,          dockerHost: 'order-service',       port: process.env.ORDER_SERVICE_PORT || 3004 },
+  { prefix: '/inventory',      envUrl: process.env.INVENTORY_SERVICE_URL,      dockerHost: 'inventory-service',   port: process.env.INVENTORY_SERVICE_PORT || 3005 },
+  { prefix: '/notifications',  envUrl: process.env.NOTIFICATION_SERVICE_URL,   dockerHost: 'notification-service', port: process.env.NOTIFICATION_SERVICE_PORT || 3006 },
+  { prefix: '/mcp',            envUrl: process.env.MCP_SERVER_URL,             dockerHost: 'mcp-server',          port: process.env.MCP_SERVER_PORT || 3007 },
+  { prefix: '/assistant',      envUrl: process.env.ASSISTANT_SERVICE_URL,      dockerHost: 'assistant-service',   port: process.env.ASSISTANT_SERVICE_PORT || 3008 },
+]
+
+/** Cached upstream URLs per docker hostname — resolved once at first request. */
+const targetCache = new Map<string, string>()
+
+/**
+ * Resolve the upstream target for a route:
+ *   1. explicit *_URL env var (highest priority)
+ *   2. docker-compose DNS hostname — if it resolves, docker mode
+ *   3. http://localhost:<port> — local dev (no docker network)
+ */
+async function resolveTarget(route: { prefix: string; envUrl: string | undefined; dockerHost: string; port: number | string }): Promise<string> {
+  if (route.envUrl) return route.envUrl
+  const cached = targetCache.get(route.dockerHost)
+  if (cached) return cached
   try {
-    dns.lookupSync(dockerHost) // resolves only inside docker compose network
-    return `http://${dockerHost}:${port}`
+    await dns.promises.lookup(route.dockerHost) // resolves only inside the docker-compose network
+    const url = `http://${route.dockerHost}:${route.port}`
+    targetCache.set(route.dockerHost, url)
+    return url
   } catch {
-    return `http://localhost:${port}`
+    const url = `http://localhost:${route.port}`
+    targetCache.set(route.dockerHost, url)
+    return url
   }
 }
 
@@ -143,18 +171,12 @@ app.use('/api',
   },
   createProxyMiddleware({
     changeOrigin: true,
-    // Dynamic target: http-proxy-middleware picks the upstream based on path prefix
-    router: {
-      '/auth':        svc(process.env.AUTH_SERVICE_URL,        'auth-service',        process.env.AUTH_SERVICE_PORT || 3001),
-      '/banners':     svc(process.env.AUTH_SERVICE_URL,        'auth-service',        process.env.AUTH_SERVICE_PORT || 3001),
-      '/products':    svc(process.env.PRODUCT_SERVICE_URL,     'product-service',     process.env.PRODUCT_SERVICE_PORT || 3002),
-      '/search':      svc(process.env.SEARCH_SERVICE_URL,      'search-service',      process.env.SEARCH_SERVICE_PORT || 3003),
-      '/orders':      svc(process.env.ORDER_SERVICE_URL,       'order-service',       process.env.ORDER_SERVICE_PORT || 3004),
-      '/payments':    svc(process.env.ORDER_SERVICE_URL,       'order-service',       process.env.ORDER_SERVICE_PORT || 3004),
-      '/inventory':   svc(process.env.INVENTORY_SERVICE_URL,   'inventory-service',   process.env.INVENTORY_SERVICE_PORT || 3005),
-      '/notifications': svc(process.env.NOTIFICATION_SERVICE_URL, 'notification-service', process.env.NOTIFICATION_SERVICE_PORT || 3006),
-      '/mcp':         svc(process.env.MCP_SERVER_URL,          'mcp-server',          process.env.MCP_SERVER_PORT || 3007),
-      '/assistant':   svc(process.env.ASSISTANT_SERVICE_URL,   'assistant-service',   process.env.ASSISTANT_SERVICE_PORT || 3008),
+    // Dynamic target: resolve the upstream per request path. The first request
+    // for each service runs a DNS check (docker vs localhost), then caches it.
+    router: async (req: { url?: string }) => {
+      const route = ROUTES.find((r) => (req.url || '').startsWith(r.prefix))
+      if (!route) return undefined
+      return resolveTarget(route)
     },
     // Auth-service routes don't have an /auth prefix (e.g. /login not /auth/login),
     // so strip it before forwarding. Other services keep their prefix.

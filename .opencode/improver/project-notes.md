@@ -144,3 +144,13 @@
   - `LayoutShell.tsx`: wrapped `<Navbar/>` in `<Suspense fallback={null}>` — Next 15 build requirement for useSearchParams in client components.
 - Why no typing-clobber: the effect only fires when `urlQuery` CHANGES (typing doesn't change the URL); navigation does.
 - LESSON: there are TWO search inputs in this app (SearchBar component + Navbar's inline one). Any query-sync fix must touch both. Consider refactoring Navbar to use SearchBar someday.
+
+## Fix: gateway lookupSync doesn't exist (2026-08-02)
+- CI (`npx tsc --noEmit`) failed: `dns.lookupSync` not on node:dns types — AND it's not in the runtime either (verified `typeof dns.lookupSync === 'undefined'` on Node 25). My round-5 gateway fallback always threw; locally the catch accidentally produced localhost, but in DOCKER it would ALSO have fallen to localhost — deployment-breaking.
+- Fix in api-gateway/src/index.ts:
+  - `ROUTES` table (prefix → envUrl/dockerHost/port) replacing inline router map
+  - `resolveTarget()`: env override → `dns.promises.lookup(host)` (real async DNS; resolves in compose, ENOTFOUND locally) → localhost fallback; cached per hostname in `targetCache` (first request resolves, then instant)
+  - HPM v3 `router` becomes an async function `(req) => Promise<string>` — GOTCHA: runtime calls it with `router(req)` (request object, NOT path despite types showing (path,req)) — use `req.url`. Verified against dist/router.js.
+  - Re-added `protectedPaths`/`publicPaths` (accidentally dropped in first edit pass)
+- Verified: gateway tsc clean; live: breaking/barking bad → brake pad (5), hedlight → LED headlight (1), /api/auth/health → 504 (auth-service not running locally — correct proxy behavior).
+- LESSON: always run tsc for EVERY changed package before commit (I skipped gateway round 5 → CI caught it). And don't trust @types alone for node core APIs — verify runtime presence.
