@@ -87,6 +87,13 @@ NODE_OPTS_GATEWAY="--max-old-space-size=64"
 # ─── Start backend services ──────────────────────────────────────────────────
 log "Starting backend services..."
 
+# Start the API gateway FIRST so port 3000 is the first port Render detects.
+# Render's Docker port detection scans shortly after boot; if the gateway
+# started last, Render can pick an earlier-open port (e.g. 3002) as primary.
+node $NODE_OPTS_GATEWAY services/api-gateway/dist/index.js &
+GATEWAY_PID=$!
+log "  api-gateway started (PID $GATEWAY_PID, port $GATEWAY_PORT)"
+
 node $NODE_OPTS_AUTH services/auth-service/dist/index.js &
 PIDS+=($!)
 log "  auth-service started (PID $!, port $AUTH_PORT)"
@@ -148,6 +155,6 @@ if [ $FAILED -gt 0 ]; then
   warn "$FAILED service(s) not yet healthy — gateway will retry connections."
 fi
 
-# ─── Start API gateway (foreground) ──────────────────────────────────────────
-log "Starting API gateway on port $GATEWAY_PORT..."
-exec node $NODE_OPTS_GATEWAY services/api-gateway/dist/index.js
+# ─── Keep the container alive until the API gateway exits ────────────────────
+log "All services started. Gateway is the main process (port $GATEWAY_PORT)."
+wait $GATEWAY_PID
