@@ -139,6 +139,7 @@ const ROUTES: { prefix: string; envUrl: string | undefined; dockerHost: string; 
   { prefix: '/auth',           envUrl: process.env.AUTH_SERVICE_URL,           dockerHost: 'auth-service',        port: process.env.AUTH_SERVICE_PORT || 3001 },
   { prefix: '/banners',        envUrl: process.env.AUTH_SERVICE_URL,           dockerHost: 'auth-service',        port: process.env.AUTH_SERVICE_PORT || 3001 },
   { prefix: '/products',       envUrl: process.env.PRODUCT_SERVICE_URL,        dockerHost: 'product-service',     port: process.env.PRODUCT_SERVICE_PORT || 3002 },
+  { prefix: '/categories',     envUrl: process.env.PRODUCT_SERVICE_URL,        dockerHost: 'product-service',     port: process.env.PRODUCT_SERVICE_PORT || 3002 },
   { prefix: '/search',         envUrl: process.env.SEARCH_SERVICE_URL,         dockerHost: 'search-service',      port: process.env.SEARCH_SERVICE_PORT || 3003 },
   { prefix: '/orders',         envUrl: process.env.ORDER_SERVICE_URL,          dockerHost: 'order-service',       port: process.env.ORDER_SERVICE_PORT || 3004 },
   { prefix: '/payments',       envUrl: process.env.ORDER_SERVICE_URL,          dockerHost: 'order-service',       port: process.env.ORDER_SERVICE_PORT || 3004 },

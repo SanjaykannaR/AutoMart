@@ -50,10 +50,10 @@ app.get('/search', (req, res) => {
     // ("break pads" → "brake pads"). Harmless when there is no query.
     const query = normalizeSearchQuery((q as string) || '')
 
-    // Return empty if no search criteria provided — prevents unbounded results
-    if (!query && !category && !brand) {
-      return res.json({ query: '', results: [] })
-    }
+    // No criteria → browse mode: return the full catalog (filtered by any
+    // price/vehicle filters). Previously this short-circuited to empty,
+    // which made the "Browse Parts" page show "No products found".
+    // fuzzySearch() with an empty query returns the full product cache.
 
     // Validate price range
     if (minPrice && maxPrice) {
