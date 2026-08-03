@@ -63,6 +63,10 @@ export NOTIFICATION_SERVICE_URL="${NOTIFICATION_SERVICE_URL:-http://localhost:$N
 export MCP_SERVER_URL="${MCP_SERVER_URL:-http://localhost:$MCP_PORT}"
 export ASSISTANT_SERVICE_URL="${ASSISTANT_SERVICE_URL:-http://localhost:$ASSISTANT_PORT}"
 
+# Heavy optional feature — CLIP image search loads a ~600MB model. Off by
+# default to fit the 512MB free tier. Text search is unaffected.
+export ENABLE_IMAGE_SEARCH="${ENABLE_IMAGE_SEARCH:-false}"
+
 log "Service URLs configured:"
 log "  AUTH:        $AUTH_SERVICE_URL"
 log "  PRODUCT:     $PRODUCT_SERVICE_URL"

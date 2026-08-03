@@ -156,20 +156,23 @@ export async function initSearchEngine() {
       }
     }
 
-    // ─── CLIP model + image embeddings ───────────────────────────────────────
-    const clipReady = await initClipModel()
-    if (clipReady) {
-      resetIndex()
-      let indexed = 0
-      for (const p of productCache) {
-        if (p.imageUrl) {
-          await indexProductImage(p.id, p.imageUrl, { name: p.name, brand: p.brand })
-          indexed++
+    // ─── CLIP model + image embeddings (OPTIONAL — ~600MB model, OOMs free tier) ─
+    // Skipped unless explicitly enabled. Text search above is unaffected.
+    if (process.env.ENABLE_IMAGE_SEARCH === 'true') {
+      const clipReady = await initClipModel()
+      if (clipReady) {
+        resetIndex()
+        let indexed = 0
+        for (const p of productCache) {
+          if (p.imageUrl) {
+            await indexProductImage(p.id, p.imageUrl, { name: p.name, brand: p.brand })
+            indexed++
+          }
         }
-      }
-      if (indexed > 0) {
-        trainIndex()
-        console.log(`[Search] Indexed ${indexed} product images for CLIP search`)
+        if (indexed > 0) {
+          trainIndex()
+          console.log(`[Search] Indexed ${indexed} product images for CLIP search`)
+        }
       }
     }
 
