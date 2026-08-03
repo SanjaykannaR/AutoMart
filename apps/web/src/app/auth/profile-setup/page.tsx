@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useToast } from '@/components/Toast'
 import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
+import UserAvatar from '@/components/Avatar'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
@@ -161,7 +162,7 @@ export default function ProfileSetupPage() {
               onClick={() => setShowAvatarPicker(!showAvatarPicker)}
               className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-blue)]/10 border-2 border-[var(--color-accent)]/40 flex items-center justify-center text-4xl hover:border-[var(--color-accent)]/60 transition-all duration-200 hover:shadow-[0_0_20px_rgba(57,255,20,0.15)]"
             >
-              {avatar}
+              <UserAvatar value={avatar} alt="Profile avatar" />
             </button>
             <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-[var(--color-bg)] text-xs cursor-pointer hover:scale-110 transition-transform">
               ✏️
