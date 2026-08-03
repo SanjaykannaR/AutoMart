@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useToast } from '@/components/Toast'
+import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
@@ -34,6 +35,15 @@ export default function ProfileSetupPage() {
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
   const [authToken, setAuthToken] = useState('')
 
+  // ─── Turnstile human verification state ───
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileKey, setTurnstileKey] = useState(0)
+
+  const resetTurnstile = () => {
+    setTurnstileToken('')
+    setTurnstileKey(k => k + 1)
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     const user = localStorage.getItem('user')
@@ -58,6 +68,10 @@ export default function ProfileSetupPage() {
     }
     if (phone.length < 6) {
       showToast('Please enter a valid phone number', 'error')
+      return
+    }
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      showToast('Please complete the human verification check.', 'error')
       return
     }
 
@@ -95,6 +109,7 @@ export default function ProfileSetupPage() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
+          ...(turnstileToken ? { 'x-turnstile-token': turnstileToken } : {}),
         },
         body: JSON.stringify({ phone: fullPhone }),
       })
@@ -110,6 +125,7 @@ export default function ProfileSetupPage() {
     } catch (err: any) {
       showToast(err.message, 'error')
     } finally {
+      resetTurnstile()
       setLoading(false)
     }
   }
@@ -260,6 +276,7 @@ export default function ProfileSetupPage() {
           </div>
 
           {/* Submit */}
+          <TurnstileWidget key={turnstileKey} onToken={setTurnstileToken} />
           <button
             type="submit"
             disabled={loading}

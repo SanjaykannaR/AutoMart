@@ -263,7 +263,9 @@ app.post('/oauth', async (req, res) => {
     if (provider === 'google') {
       // ─── Google OAuth verification ───
       if (GOOGLE_CLIENT_ID) {
-        // Production: verify with real Google token
+        // Production: verify with real Google token.
+        // Frontend popup flow sends an OAuth access_token (via useGoogleLogin),
+        // while One Tap / GoogleLogin send an id_token. Handle both.
         try {
           const ticket = await googleClient.verifyIdToken({
             idToken: providerToken,
@@ -271,19 +273,27 @@ app.post('/oauth', async (req, res) => {
           })
           const payload = ticket.getPayload()
           if (!payload) {
-            return errorResponse(res, 401, 'AUTH_GOOGLE_INVALID_TOKEN',
-              'Invalid Google token. Could not extract user info.',
-              'Try signing in again with Google.')
+            throw new Error('empty token payload')
           }
           email = payload.email || ''
           name = payload.name || payload.given_name || 'Google User'
           avatarUrl = payload.picture || ''
-          console.log(`[OAuth] Google token verified for: ${email}`)
-        } catch (googleErr: any) {
-          console.error('[OAuth] Google verification failed:', googleErr.message)
-          return errorResponse(res, 401, 'AUTH_GOOGLE_VERIFY_FAILED',
-            'Failed to verify Google token. It may have expired or been revoked.',
-            'Try signing in again with Google.')
+          console.log(`[OAuth] Google id_token verified for: ${email}`)
+        } catch {
+          // Fallback: treat the token as an OAuth access_token (popup flow).
+          const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${providerToken}` },
+          })
+          if (!userinfoRes.ok) {
+            return errorResponse(res, 401, 'AUTH_GOOGLE_INVALID_TOKEN',
+              'Invalid Google token. It may have expired or been revoked.',
+              'Try signing in again with Google.')
+          }
+          const info: any = await userinfoRes.json()
+          email = info.email || ''
+          name = info.name || 'Google User'
+          avatarUrl = info.picture || ''
+          console.log(`[OAuth] Google access_token verified for: ${email}`)
         }
       } else {
         // Dev mode: simulate Google OAuth
