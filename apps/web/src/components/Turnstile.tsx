@@ -15,7 +15,7 @@
  *   // after submission: setTurnstileToken(''); setTurnstileKey(k => k + 1)
  *   //   (tokens are single-use — remounting issues a fresh challenge)
  */
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 
 declare global {
   interface Window {
@@ -44,55 +44,70 @@ interface TurnstileWidgetProps {
 export default function TurnstileWidget({ onToken, onExpire, onError }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef('')
-
-  const render = useCallback(() => {
-    const el = containerRef.current
-    if (!el || !window.turnstile) return
-    if (widgetIdRef.current) {
-      // Already rendered — issue a fresh challenge.
-      window.turnstile.reset(widgetIdRef.current)
-      return
-    }
-    widgetIdRef.current = window.turnstile.render(el, {
-      sitekey: SITE_KEY,
-      callback: onToken,
-      'expired-callback': () => {
-        widgetIdRef.current = ''
-        onExpire?.()
-      },
-      'error-callback': () => {
-        widgetIdRef.current = ''
-        onError?.()
-      },
-      theme: 'auto',
-    })
-  }, [onToken, onExpire, onError])
+  // Callbacks live in a ref so that parent re-renders (which create fresh
+  // inline function identities) never trigger a widget re-render. Without
+  // this, remove() + render() race on the same container and Turnstile
+  // throws "already been rendered in this container" / error 110200.
+  const callbacksRef = useRef({ onToken, onExpire, onError })
+  callbacksRef.current = { onToken, onExpire, onError }
 
   useEffect(() => {
     if (!SITE_KEY) return
     let cancelled = false
 
-    if (window.turnstile) {
-      render()
-      return
+    const renderWidget = () => {
+      const el = containerRef.current
+      if (!el || !window.turnstile) return
+      if (widgetIdRef.current) {
+        // Already rendered — issue a fresh challenge rather than a second render.
+        window.turnstile.reset(widgetIdRef.current)
+        return
+      }
+      const { onToken, onExpire, onError } = callbacksRef.current
+      try {
+        widgetIdRef.current = window.turnstile.render(el, {
+          sitekey: SITE_KEY,
+          callback: onToken,
+          'expired-callback': () => {
+            widgetIdRef.current = ''
+            onExpire?.()
+          },
+          'error-callback': () => {
+            widgetIdRef.current = ''
+            onError?.()
+          },
+          theme: 'auto',
+        })
+      } catch {
+        // Previous widget may still be tearing down — retry shortly.
+        if (!cancelled) setTimeout(renderWidget, 100)
+      }
     }
 
-    const script = document.createElement('script')
-    script.src = SCRIPT_SRC
-    script.async = true
-    script.onload = () => {
-      if (!cancelled) render()
+    if (window.turnstile) {
+      renderWidget()
+    } else {
+      const script = document.createElement('script')
+      script.src = SCRIPT_SRC
+      script.async = true
+      script.onload = () => {
+        if (!cancelled) renderWidget()
+      }
+      document.head.appendChild(script)
     }
-    document.head.appendChild(script)
 
     return () => {
       cancelled = true
       if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current)
+        try {
+          window.turnstile.remove(widgetIdRef.current)
+        } catch {
+          // ignore — widget may already be gone
+        }
         widgetIdRef.current = ''
       }
     }
-  }, [render])
+  }, [])
 
   if (!SITE_KEY) return null
 
