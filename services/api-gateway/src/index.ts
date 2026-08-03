@@ -14,6 +14,10 @@ import { authMiddleware } from './middleware/auth'
 import { turnstileMiddleware } from './middleware/turnstile'
 
 const app = express()
+// Render (and Cloudflare) terminate TLS and forward requests via X-Forwarded-For.
+// Without this, express-rate-limit@7 throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// on every request and rate limiting treats all users as one IP.
+app.set('trust proxy', 1)
 const PORT = process.env.API_GATEWAY_PORT || 3000
 
 // NOTE: Do NOT use express.json() here — it consumes the request body

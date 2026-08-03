@@ -22,12 +22,24 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
 
 // ─── Redis connection (for OTP storage) ───────────────────────────────────────
-const redis = new Redis(process.env.REDIS_URL || 'redis://redis:6379', {
-  maxRetriesPerRequest: 3,
-  retryStrategy(times) {
-    return Math.min(times * 200, 3000)
-  },
-})
+// Guard against an invalid REDIS_URL: ioredis throws ERR_INVALID_URL at
+// construction and would crash the whole service at boot. Fall back to localhost
+// so auth keeps working (OTP will error cleanly until Redis is configured).
+function createRedis(): Redis {
+  const raw = process.env.REDIS_URL || 'redis://localhost:6379'
+  try {
+    return new Redis(raw, {
+      maxRetriesPerRequest: 3,
+      retryStrategy(times) {
+        return Math.min(times * 200, 3000)
+      },
+    })
+  } catch {
+    console.error('[Auth] Invalid REDIS_URL — falling back to localhost. OTP storage unavailable.')
+    return new Redis('redis://localhost:6379')
+  }
+}
+const redis = createRedis()
 
 redis.on('connect', () => console.log('[Auth] Redis connected'))
 redis.on('error', (err) => console.error('[Auth] Redis error:', err.message))
