@@ -52,6 +52,45 @@ function verifyToken(req: express.Request): { id: string; role: string } | null 
   }
 }
 
+/**
+ * Best-effort: emails the OTP code to the user via the notification service.
+ * Uses the authenticated user's email, else a user matched by phone number.
+ * Skips fake OTP-only addresses (@otp.automart.local) and phone-only logins
+ * where no real email is known. Non-fatal on any failure.
+ */
+async function publishOtpEmail(req: express.Request, phone: string, code: string) {
+  try {
+    let userEmail = ''
+    let userName = ''
+    const decoded = verifyToken(req)
+    if (decoded) {
+      const u = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { email: true, name: true },
+      })
+      if (u) { userEmail = u.email; userName = u.name || '' }
+    }
+    if (!userEmail) {
+      const cleanPhone = phone.replace(/[^+\d]/g, '')
+      const u = await prisma.user.findFirst({
+        where: { phone: cleanPhone },
+        select: { email: true, name: true },
+      })
+      if (u) { userEmail = u.email; userName = u.name || '' }
+    }
+    if (!userEmail || userEmail.endsWith('@otp.automart.local')) return
+    await redis.publish('user:otp', JSON.stringify({
+      type: 'otp',
+      userEmail,
+      userName,
+      code,
+      phone: phone.replace(/[^+\d]/g, ''),
+    }))
+  } catch (err) {
+    console.warn('[OTP] Could not publish OTP email event (non-fatal):', err)
+  }
+}
+
 // ─── Schemas ────────────────────────────────────────────────────────────────────
 // Register schema — supports all user roles including admin
 const registerSchema = z.object({
@@ -536,6 +575,8 @@ app.post('/otp/send', async (req, res) => {
       createdAt: new Date().toISOString(),
     }))
 
+    await publishOtpEmail(req, phone, code)
+
     console.log(`\n${'═'.repeat(50)}`)
     console.log(`[OTP] Phone: ${phone}`)
     console.log(`[OTP] Code:  ${code}`)
@@ -700,6 +741,8 @@ app.post('/otp/resend', async (req, res) => {
       attempts: 0,
       createdAt: new Date().toISOString(),
     }))
+
+    await publishOtpEmail(req, phone, code)
 
     console.log(`\n${'═'.repeat(50)}`)
     console.log(`[OTP RESEND] Phone: ${phone}`)

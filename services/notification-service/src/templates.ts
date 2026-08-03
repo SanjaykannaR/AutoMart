@@ -171,3 +171,22 @@ export function passwordResetEmail(opts: {
   `
   return shell('Password Reset Code', body)
 }
+
+// ─── OTP Verification (phone verification) ─────────────────────────────────
+
+export function otpEmail(opts: {
+  userName: string
+  code: string
+  phone: string
+}): string {
+  const body = `
+    <p style="margin:0 0 16px;">Hi ${opts.userName},</p>
+    <p style="margin:0 0 20px;">Use the code below to verify your phone number <strong>${opts.phone}</strong>:</p>
+    <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:24px;text-align:center;margin-bottom:20px;">
+      <p style="margin:0 0 6px;font-size:13px;color:${BRAND.dimColor};">Your Verification Code</p>
+      <p style="margin:0;font-size:32px;font-weight:bold;letter-spacing:8px;color:${BRAND.color};">${opts.code}</p>
+    </div>
+    <p style="margin:0;font-size:14px;color:${BRAND.dimColor};">This code expires in <strong>5 minutes</strong>. If you didn't request this, you can safely ignore this email.</p>
+  `
+  return shell('Your AutoMart Verification Code', body)
+}

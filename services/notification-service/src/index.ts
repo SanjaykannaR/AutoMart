@@ -12,11 +12,15 @@ import {
   orderStatusEmail,
   welcomeEmail,
   passwordResetEmail,
+  otpEmail,
 } from './templates'
 
 const app = express()
 const PORT = process.env.NOTIFICATION_SERVICE_PORT || 3006
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+
+// Configurable sender. For Resend without a verified domain, use onboarding@resend.dev.
+const EMAIL_FROM = process.env.EMAIL_FROM || 'AutoMart <onboarding@resend.dev>'
 
 app.use(express.json())
 
@@ -76,7 +80,7 @@ async function sendEmail(to: string, subject: string, html: string) {
     return
   }
   try {
-    await transporter.sendMail({ from: 'AutoMart <orders@automart.app>', to, subject, html })
+    await transporter.sendMail({ from: EMAIL_FROM, to, subject, html })
   } catch (err: any) {
     console.error(`[Email] Failed to send to ${to}:`, err.message)
     throw new Error(`Email delivery failed: ${err.message}. Check SMTP configuration (RESEND_API_KEY, SMTP_HOST).`)
@@ -191,6 +195,10 @@ async function handleUserEvent(message: string) {
       const html = passwordResetEmail({ userName: userName || 'User', code: code || '' })
       await sendEmail(userEmail, 'AutoMart — Password Reset Code', html)
       console.log(`[Notification] Sent password reset email to ${userEmail}`)
+    } else if (type === 'otp') {
+      const html = otpEmail({ userName: userName || 'User', code: code || '', phone: data.phone || '' })
+      await sendEmail(userEmail, 'AutoMart — Your Verification Code', html)
+      console.log(`[Notification] Sent OTP email to ${userEmail}`)
     }
   } catch (err) {
     console.error('[Notification] Failed to process user event:', err)
@@ -198,7 +206,7 @@ async function handleUserEvent(message: string) {
 }
 
 // ─── Redis subscription ────────────────────────────────────────────────────────
-redis.subscribe('order:created', 'order:status_changed', 'user:registered', 'user:password_reset', (err) => {
+redis.subscribe('order:created', 'order:status_changed', 'user:registered', 'user:password_reset', 'user:otp', (err) => {
   if (err) {
     console.error('[Notification] Redis subscribe error:', err.message)
     console.error('[Notification] Notifications will not work without Redis. Set REDIS_URL to a running Redis instance.')
