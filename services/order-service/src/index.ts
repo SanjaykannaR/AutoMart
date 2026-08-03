@@ -40,7 +40,7 @@ const orderSchema = z.object({
   })).min(1, 'Order must contain at least one item'),
   total: z.number().positive('Order total must be greater than zero'),
   address: z.string().min(5, 'Delivery address must be at least 5 characters'),
-  phone: z.string().min(5, 'Phone number must be at least 5 characters'),
+  phone: z.string().regex(/^\+?[0-9]{7,15}$/, 'Phone number must contain 7–15 digits (optional leading +)'),
   note: z.string().optional(),
 })
 

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/Toast'
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
 import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
+import { isValidPhone, isValidEmail } from '@/lib/validate'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
@@ -136,6 +137,14 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address')
+      return
+    }
+    if (!password) {
+      setError('Please enter your password')
+      return
+    }
     if (TURNSTILE_ENABLED && !turnstileToken) {
       setError('Please complete the human verification check.')
       return
@@ -239,8 +248,8 @@ export default function LoginPage() {
 
   // ─── OTP: Send code ───
   const handleSendOtp = async () => {
-    if (!phone.trim() || phone.length < 6) {
-      setError('Please enter a valid phone number')
+    if (!isValidPhone(phone)) {
+      setError('Please enter a valid phone number (7–15 digits)')
       return
     }
     setError('')
@@ -656,6 +665,7 @@ export default function LoginPage() {
                             type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                            maxLength={15}
                             className="glass-input flex-1"
                             placeholder="98765 43210"
                           />
@@ -674,7 +684,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={handleSendOtp}
-                        disabled={loading || !phone.trim() || phone.length < 6}
+                        disabled={loading || !isValidPhone(phone)}
                         className="glass-button w-full py-3 disabled:opacity-40"
                       >
                         {loading ? 'Sending...' : 'Send OTP'}

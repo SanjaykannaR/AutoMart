@@ -15,6 +15,7 @@ import { ScrollReveal } from '@/components/ScrollReveal'
 import { CheckCircleIcon, MapPinIcon, TruckIcon, ClockIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { saveCart } from '@/lib/sync'
 
 interface OrderItem {
   id: string
@@ -75,6 +76,9 @@ function SuccessContent() {
           }
           setOrder(data)
           setStatus('success')
+          // Payment confirmed → clear cart (localStorage + Redis)
+          saveCart([])
+          window.dispatchEvent(new Event('cart-updated'))
         } else {
           // Order fetch failed but payment likely succeeded — still show success
           setStatus('success')

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { useToast } from '@/components/Toast'
 import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
 import UserAvatar from '@/components/Avatar'
+import { isValidPhone } from '@/lib/validate'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
@@ -67,8 +68,8 @@ export default function ProfileSetupPage() {
       showToast('Please fill in all required fields', 'error')
       return
     }
-    if (phone.length < 6) {
-      showToast('Please enter a valid phone number', 'error')
+    if (!isValidPhone(phone)) {
+      showToast('Please enter a valid phone number (7–15 digits)', 'error')
       return
     }
     if (TURNSTILE_ENABLED && !turnstileToken) {
@@ -257,6 +258,7 @@ export default function ProfileSetupPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                maxLength={15}
                 className="glass-input flex-1"
                 placeholder="98765 43210"
                 required

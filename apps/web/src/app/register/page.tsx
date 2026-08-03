@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useToast } from '@/components/Toast'
 import TurnstileWidget, { TURNSTILE_ENABLED } from '@/components/Turnstile'
+import { isValidEmail } from '@/lib/validate'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
@@ -33,6 +34,14 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
 
+    if (!name.trim()) {
+      setError('Please enter your full name')
+      return
+    }
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address')
+      return
+    }
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       return

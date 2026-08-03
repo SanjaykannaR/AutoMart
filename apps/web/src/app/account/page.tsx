@@ -28,6 +28,7 @@
 import { useState, useEffect } from 'react'
 import { UserIcon, MapPinIcon, ShieldCheckIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ScrollReveal } from '@/components/ScrollReveal'
+import { isValidEmail, isValidPhone } from '@/lib/validate'
 
 /**
  * UserProfile type — what user data looks like in localStorage.
@@ -71,6 +72,7 @@ export default function AccountPage() {
   const [activeTab, setActiveTab] = useState('profile')
   const [loaded, setLoaded] = useState(false)
   const [saved, setSaved] = useState(false) // Shows "Saved!" feedback
+  const [saveError, setSaveError] = useState('')
 
   // Profile form state — editable fields
   const [name, setName] = useState('')
@@ -108,6 +110,19 @@ export default function AccountPage() {
 
   /** Save profile to localStorage */
   const saveProfile = () => {
+    if (!name.trim()) {
+      setSaveError('Please enter your name')
+      return
+    }
+    if (!isValidEmail(email)) {
+      setSaveError('Please enter a valid email address')
+      return
+    }
+    if (!isValidPhone(phone)) {
+      setSaveError('Please enter a valid phone number (7–15 digits)')
+      return
+    }
+    setSaveError('')
     const updated = { ...profile, name, email, phone }
     setProfile(updated)
     localStorage.setItem('user', JSON.stringify(updated))
@@ -269,6 +284,12 @@ export default function AccountPage() {
                 </h3>
 
                 <div className="space-y-4 max-w-lg">
+                  {saveError && (
+                    <div className="p-3 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 text-sm text-[var(--color-danger)]">
+                      {saveError}
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1.5">
                       Full Name
@@ -300,7 +321,8 @@ export default function AccountPage() {
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                      maxLength={16}
                       placeholder="+1 (555) 000-0000"
                       className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/30 outline-none transition-all"
                     />
