@@ -1,9 +1,14 @@
 {
-  "experimentalServices": {
+  "services": {
     "web": {
       "root": "apps/web",
-      "mountPath": "/",
-      "buildCommand": "npm ci && cd apps/web && npx next build"
+      "framework": "nextjs"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": { "service": "web" }
+    }
+  ]
 }
