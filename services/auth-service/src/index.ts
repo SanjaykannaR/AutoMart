@@ -35,12 +35,24 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
 
 // ─── Redis connection (for OTP storage) ───────────────────────────────────────
-const redis = new Redis(process.env.REDIS_URL || 'redis://redis:6379', {
-  maxRetriesPerRequest: 3,
-  retryStrategy(times) {
-    return Math.min(times * 200, 3000)
-  },
-})
+// Guard against an invalid REDIS_URL: ioredis throws ERR_INVALID_URL at
+// construction and would crash the whole service at boot. Fall back to localhost
+// so auth keeps working (OTP will error cleanly until Redis is configured).
+function createRedis(): Redis {
+  const raw = process.env.REDIS_URL || 'redis://localhost:6379'
+  try {
+    return new Redis(raw, {
+      maxRetriesPerRequest: 3,
+      retryStrategy(times) {
+        return Math.min(times * 200, 3000)
+      },
+    })
+  } catch {
+    console.error('[Auth] Invalid REDIS_URL — falling back to localhost. OTP storage unavailable.')
+    return new Redis('redis://localhost:6379')
+  }
+}
+const redis = createRedis()
 
 redis.on('connect', () => console.log('[Auth] Redis connected'))
 redis.on('error', (err) => console.error('[Auth] Redis error:', err.message))
@@ -65,6 +77,45 @@ function verifyToken(req: express.Request): { id: string; role: string } | null 
     return jwt.verify(token, JWT_SECRET) as { id: string; role: string }
   } catch {
     return null
+  }
+}
+
+/**
+ * Best-effort: emails the OTP code to the user via the notification service.
+ * Uses the authenticated user's email, else a user matched by phone number.
+ * Skips fake OTP-only addresses (@otp.automart.local) and phone-only logins
+ * where no real email is known. Non-fatal on any failure.
+ */
+async function publishOtpEmail(req: express.Request, phone: string, code: string) {
+  try {
+    let userEmail = ''
+    let userName = ''
+    const decoded = verifyToken(req)
+    if (decoded) {
+      const u = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { email: true, name: true },
+      })
+      if (u) { userEmail = u.email; userName = u.name || '' }
+    }
+    if (!userEmail) {
+      const cleanPhone = phone.replace(/[^+\d]/g, '')
+      const u = await prisma.user.findFirst({
+        where: { phone: cleanPhone },
+        select: { email: true, name: true },
+      })
+      if (u) { userEmail = u.email; userName = u.name || '' }
+    }
+    if (!userEmail || userEmail.endsWith('@otp.automart.local')) return
+    await redis.publish('user:otp', JSON.stringify({
+      type: 'otp',
+      userEmail,
+      userName,
+      code,
+      phone: phone.replace(/[^+\d]/g, ''),
+    }))
+  } catch (err) {
+    console.warn('[OTP] Could not publish OTP email event (non-fatal):', err)
   }
 }
 
@@ -279,7 +330,9 @@ app.post('/oauth', async (req, res) => {
     if (provider === 'google') {
       // ─── Google OAuth verification ───
       if (GOOGLE_CLIENT_ID) {
-        // Production: verify with real Google token
+        // Production: verify with real Google token.
+        // Frontend popup flow sends an OAuth access_token (via useGoogleLogin),
+        // while One Tap / GoogleLogin send an id_token. Handle both.
         try {
           const ticket = await googleClient.verifyIdToken({
             idToken: providerToken,
@@ -287,19 +340,27 @@ app.post('/oauth', async (req, res) => {
           })
           const payload = ticket.getPayload()
           if (!payload) {
-            return errorResponse(res, 401, 'AUTH_GOOGLE_INVALID_TOKEN',
-              'Invalid Google token. Could not extract user info.',
-              'Try signing in again with Google.')
+            throw new Error('empty token payload')
           }
           email = payload.email || ''
           name = payload.name || payload.given_name || 'Google User'
           avatarUrl = payload.picture || ''
-          console.log(`[OAuth] Google token verified for: ${email}`)
-        } catch (googleErr: any) {
-          console.error('[OAuth] Google verification failed:', googleErr.message)
-          return errorResponse(res, 401, 'AUTH_GOOGLE_VERIFY_FAILED',
-            'Failed to verify Google token. It may have expired or been revoked.',
-            'Try signing in again with Google.')
+          console.log(`[OAuth] Google id_token verified for: ${email}`)
+        } catch {
+          // Fallback: treat the token as an OAuth access_token (popup flow).
+          const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${providerToken}` },
+          })
+          if (!userinfoRes.ok) {
+            return errorResponse(res, 401, 'AUTH_GOOGLE_INVALID_TOKEN',
+              'Invalid Google token. It may have expired or been revoked.',
+              'Try signing in again with Google.')
+          }
+          const info: any = await userinfoRes.json()
+          email = info.email || ''
+          name = info.name || 'Google User'
+          avatarUrl = info.picture || ''
+          console.log(`[OAuth] Google access_token verified for: ${email}`)
         }
       } else {
         // Dev mode: simulate Google OAuth
@@ -542,6 +603,8 @@ app.post('/otp/send', async (req, res) => {
       createdAt: new Date().toISOString(),
     }))
 
+    await publishOtpEmail(req, phone, code)
+
     console.log(`\n${'═'.repeat(50)}`)
     console.log(`[OTP] Phone: ${phone}`)
     console.log(`[OTP] Code:  ${code}`)
@@ -706,6 +769,8 @@ app.post('/otp/resend', async (req, res) => {
       attempts: 0,
       createdAt: new Date().toISOString(),
     }))
+
+    await publishOtpEmail(req, phone, code)
 
     console.log(`\n${'═'.repeat(50)}`)
     console.log(`[OTP RESEND] Phone: ${phone}`)

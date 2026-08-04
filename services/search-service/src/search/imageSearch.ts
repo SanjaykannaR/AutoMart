@@ -219,6 +219,13 @@ export async function searchByImage(
   imageBuffer: Buffer,
   topK = 10,
 ): Promise<ImageSearchResult[]> {
+  // Image search requires the CLIP model, which is only loaded when
+  // ENABLE_IMAGE_SEARCH=true (it is too heavy for Render free tier).
+  if (process.env.ENABLE_IMAGE_SEARCH !== 'true' && !modelReady) {
+    console.log('[Image Search] Skipped — ENABLE_IMAGE_SEARCH is not set to true')
+    return []
+  }
+
   const queryEmbedding = await generateImageEmbedding(imageBuffer)
 
   console.log(`[Image Search] Query embedding dim=${queryEmbedding.length}, index size=${imageIndex.size}`)

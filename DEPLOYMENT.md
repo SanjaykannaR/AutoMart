@@ -1,371 +1,218 @@
-# AutoMart — Production Deployment Guide
+# AutoMart Production Deployment Guide
 
-> **Architecture**: Vercel (Frontend) + Render (Backend) + Supabase (PostgreSQL) + Upstash (Redis)
->
-> **Last updated**: 2026-07-28
+Step-by-step guide to deploy AutoMart to production. Last updated: **2026-08-02**.
 
 ---
 
-## Overview
+## Architecture
 
-| Platform | What | URL Pattern |
-|----------|------|-------------|
-| **Vercel** | Next.js frontend | `https://automart.vercel.app` |
-| **Render** | All 8 backend services (single container) | `https://automart-backend.onrender.com` |
-| **Supabase** | PostgreSQL database | Already configured |
-| **Upstash** | Redis (free tier) | Already configured |
+```
+GitHub: SanjaykannaR/AutoMart  (branch: main)
+│
+├── 🖥️ BACKEND  → Render  → https://automart-backend-f1ic.onrender.com
+│     Single Docker container (Dockerfile.prod) running ALL 8 services:
+│     api-gateway (foreground, port 3000) + auth/product/search/order/inventory/
+│     notification/mcp/assistant on ports 3001-3008 (started by scripts/start-prod.sh)
+│
+└── 🌐 FRONTEND → Vercel  → https://auto-mart-web.vercel.app
+      apps/web (Next.js 15), deployed as the ONLY service (see vercel.json)
+      Calls backend via NEXT_PUBLIC_API_URL
+```
 
-### Why Single Container?
-
-Render free tier gives **750 hours/month** and **512MB RAM**. Running 8 separate services would split those resources. Instead, all services run as background processes in **one container** — the API gateway is the only process that listens on the exposed port (3000). This gives you the full 750 hours and sufficient RAM.
+External URL scheme: every frontend call goes to `https://automart-backend-f1ic.onrender.com/api/<prefix>/...`
+(the gateway proxies `/api/products`, `/api/auth`, `/api/payments`, ... to the internal services).
 
 ---
 
-## Prerequisites
+## Current status (2026-08-02)
 
-1. **GitHub** — code is already pushed ✅
-2. **Vercel** — https://vercel.com (sign up with GitHub)
-3. **Render** — https://render.com (sign up with GitHub)
-4. **Supabase** — already configured ✅
-5. **Stripe** — https://dashboard.stripe.com (test keys ready ✅)
-6. **Upstash Redis** — https://upstash.com (free tier: 10K commands/day)
-
----
-
-## Step 1: Set Up Redis (Upstash — Free)
-
-Railway Redis is no longer available. Use Upstash instead:
-
-1. Go to https://console.upstash.com
-2. Click **"Create Database"**
-3. Choose **Redis** → Region: closest to your users
-4. Plan: **Pay-as-you-go** (free tier: 10K commands/day)
-5. Copy the **Redis URL** (format: `rediss://default:<password>@<host>:<port>`)
+| Item | Status |
+|---|---|
+| Turnstile bot protection (code) | ✅ Done, merged to main (`2504823`) |
+| `vercel.json` → services schema, web-only | ✅ Done, pushed to main (`af66f1b`) |
+| Render service created | ✅ `automart-backend-f1ic` (Language: Docker, free plan) |
+| Render env vars | ⚠️ Partially — still missing 3 secrets |
+| Vercel project import | ⏸️ Paused on import screen (Deploy button was disabled) |
+| Vercel env vars | ✅ 4 of 5 added (site key pending) |
+| Cloudflare Turnstile keys | ❌ Not created yet |
+| Stripe webhook secret | ❌ Not created yet |
+| Google OAuth JS origin | ❌ Not added yet |
 
 ---
 
-## Step 2: Deploy Backend to Render
+## Part 0 — Accounts needed
 
-### 2.1 Create Render Service
-
-1. Go to https://dashboard.render.com
-2. Click **"New"** → **"Web Service"**
-3. Connect your GitHub repository (`AutoMart`)
-4. Configure:
-
-| Setting | Value |
-|---------|-------|
-| **Name** | `automart-backend` |
-| **Runtime** | `Docker` |
-| **Dockerfile Path** | `./Dockerfile.prod` |
-| **Plan** | `Free` |
-| **Health Check Path** | `/health` |
-
-### 2.2 Set Environment Variables
-
-In your Render service → **Environment** tab → add these:
-
-```
-# ── Database (same Supabase URL as before) ──
-DATABASE_URL=postgresql://postgres.mmvrkljevwgkonpljsut:JGQQ3%2FdEuaaLs3P@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true
-
-# ── Redis (from Upstash) ──
-REDIS_URL=<paste your Upstash Redis URL>
-
-# ── Auth ──
-JWT_SECRET=<generate a 64-char random string>
-JWT_EXPIRES_IN=7d
-GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
-GOOGLE_CLIENT_SECRET=<your-google-oauth-client-secret>
-
-# ── Stripe ──
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-# ── URLs ──
-FRONTEND_URL=https://automart.vercel.app
-CORS_ORIGINS=https://automart.vercel.app
-
-# ── Email (optional — runs in mock mode without this) ──
-RESEND_API_KEY=<your-resend-api-key>
-
-# ── Node ──
-NODE_ENV=production
-```
-
-### 2.3 Deploy
-
-1. Click **"Create Web Service"**
-2. Render pulls your repo, builds the Docker image (~3-5 min first time)
-3. All 8 services start automatically via the startup script
-4. Once deployed, copy your service URL (e.g. `https://automart-backend.onrender.com`)
-
-### 2.4 Verify Backend
-
-```bash
-# Health check
-curl https://automart-backend.onrender.com/health
-
-# Test products endpoint
-curl https://automart-backend.onrender.com/api/products
-```
-
-> **Note**: Render free tier services spin down after 15 minutes of inactivity.
-> The first request after spin-down takes ~30-60 seconds to respond.
-> Subsequent requests are fast.
+| Service | Used for | Dashboard |
+|---|---|---|
+| GitHub | Source repo | github.com |
+| Render | Backend hosting | dashboard.render.com |
+| Vercel | Frontend hosting | vercel.com/dashboard |
+| Supabase | PostgreSQL + image storage | supabase.com/dashboard |
+| Upstash | Redis (queue/cache/OTP) | console.upstash.com |
+| Cloudflare | Turnstile bot protection | dash.cloudflare.com → Turnstile |
+| Google Cloud | OAuth (login with Google) | console.cloud.google.com |
+| Stripe | Payments (test mode) | dashboard.stripe.com/test |
 
 ---
 
-## Step 3: Deploy Frontend to Vercel
+## Part 1 — Backend on Render
 
-### 3.1 Connect Repository
+### 1.1 Create the service
+1. dashboard.render.com → **New + → Web Service** → connect GitHub repo `AutoMart`
+2. Name: `automart-backend`, Region: any, **Language: Docker** (auto-detected from `Dockerfile.prod` via `render.yaml`)
+3. `render.yaml` already declares: `runtime: docker`, `dockerfilePath: Dockerfile.prod`, `healthCheckPath: /health`, `plan: free`
+4. Because Language = Docker, **Build/Start Command fields are locked** — that's correct, ignore them.
+5. Add the env vars below → **Create Web Service** → first deploy takes ~5-10 min (Docker build).
+6. Done when the URL responds: `curl https://automart-backend-f1ic.onrender.com/health`
 
-1. Go to https://vercel.com/new
-2. Import your `AutoMart` GitHub repository
-3. Framework: **Next.js** (auto-detected)
+### 1.2 Environment variables (Render → your service → Environment)
 
-### 3.2 Configure Project
+**Required — set all of these:**
 
-| Setting | Value |
-|---------|-------|
-| **Root Directory** | `apps/web` |
-| **Framework Preset** | Next.js |
-| **Build Command** | `npx next build` |
-| **Output Directory** | `.next` |
+| Key | Value (or where to get it) |
+|---|---|
+| `NODE_ENV` | `production` |
+| `JWT_SECRET` | copy from local `.env.docker`; if missing generate: `openssl rand -hex 32` |
+| `JWT_EXPIRES_IN` | `7d` |
+| `DATABASE_URL` | copy from `.env.docker` (Supabase Postgres connection string) |
+| `REDIS_URL` | `rediss://default:<PASSWORD>@positive-muskrat-151421.upstash.io:6379` — replace `<PASSWORD>` with your Upstash password (console.upstash.com → your DB → Details). ⚠️ Must be `rediss://` with password — the plain REST URL won't work with ioredis |
+| `CORS_ORIGINS` | `https://auto-mart-web.vercel.app` |
+| `FRONTEND_URL` | `https://auto-mart-web.vercel.app` (used by Stripe redirects) |
+| `API_URL` | `https://automart-backend-f1ic.onrender.com` |
+| `GOOGLE_CLIENT_ID` | `1052100778533-joctd4ti47huu58f8d1nc7uep39bdbl1.apps.googleusercontent.com` |
+| `STRIPE_SECRET_KEY` | `sk_test_...` (copy from `.env.docker`) |
+| `STRIPE_WEBHOOK_SECRET` | ❌ PENDING — see Part 3, step 3.2 |
+| `TURNSTILE_SECRET_KEY` | ❌ PENDING — see Part 3, step 3.1 |
+| `LLM_PROVIDER` | `template` (no `LLM_API_KEY` needed for template) |
 
-### 3.3 Set Environment Variables
+**Optional — skip unless you need real email:**
+`RESEND_API_KEY`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` (notification service falls back to mock mode without them).
 
-In Vercel dashboard → **Settings** → **Environment Variables**:
+**Do NOT set:** `PORT`, `API_GATEWAY_PORT`, `*_SERVICE_URL` — `scripts/start-prod.sh` auto-configures all internal ports/URLs (gateway on 3000, services on 3001-3008, all localhost).
 
-```
-NEXT_PUBLIC_API_URL=https://automart-backend.onrender.com
-NEXT_PUBLIC_SUPABASE_URL=https://mmvrkljevwgkonpljsut.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tdnJrbGpldndna29ucGxqc3V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjM0NTQsImV4cCI6MjEwMDMzOTQ1NH0.d1wq0wAGsnoeL2GVbf6yFocm6Kqg_tXiTXzKFBSO1_Q
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51TwKnG9rZ0AxR31THvWHXQoeWlAyV6jaLI87Zri5bykAWdhI0dJTbdzpFk30aJO4gPbi2pDkHSzqJE8uo1X0H2bA002SBf9dxU
-```
-
-### 3.4 Deploy
-
-1. Click **"Deploy"**
-2. Wait for build (~2 min)
-3. Vercel gives you a URL like `https://automart-xyz.vercel.app`
-
----
-
-## Step 4: Post-Deployment Setup
-
-### 4.1 Run Database Migrations
-
-The Prisma schemas are already applied via Supabase. If you need to re-run:
-
-```bash
-# Connect to Supabase and run the SQL files:
-# - supabase/setup.sql (8 tables + RLS)
-# - supabase/migration-banners.sql (banners table)
-# - supabase/migration-product-storage.sql (product images bucket)
-```
-
-### 4.2 Bootstrap Admin User
-
-```bash
-curl -X POST https://automart-backend.onrender.com/api/auth/admin/bootstrap \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "email": "admin@automart.com",
-    "password": "AutoMart@2026!"
-  }'
-```
-
-### 4.3 Seed Products (Optional)
-
-```bash
-cd scripts
-node seed-users.cjs
-node seed-orders.cjs
-```
-
-### 4.4 Update Stripe Webhook URL
-
-1. Go to https://dashboard.stripe.com/webhooks
-2. Add endpoint: `https://automart-backend.onrender.com/api/payments/webhook`
-3. Select events: `checkout.session.completed`, `payment_intent.payment_failed`
-4. Copy the webhook signing secret → update `STRIPE_WEBHOOK_SECRET` in Render
-
-### 4.5 Custom Domain (Optional)
-
-1. Render dashboard → **Settings** → **Custom Domains**
-2. Add your domain and update DNS as instructed
+**After any env change:** Service → Manual Deploy → **Clear build cache & deploy**.
 
 ---
 
-## Step 5: Verify Everything
+## Part 2 — Frontend on Vercel
 
-### Health Checks
+### 2.1 The gotcha that blocked us (read this before importing)
+Vercel scans your repo, sees **8 services** (`services/*`), and force-locks the new
+**"Services" application preset** — you cannot switch it to Next.js from the UI.
+That preset validates `vercel.json` against the services schema, where top-level keys like
+`rootDirectory`/`framework`/`buildCommand`/`env` are **illegal** → error
+*"should NOT have additional property `rootDirectory`"*.
 
-```bash
-# Backend (may take 30-60s on first request after spin-down)
-curl https://automart-backend.onrender.com/health
+**Fix (committed):** root `vercel.json` now declares ONLY the web app using the current `services` schema — note `mountPath` is no longer valid, and a top-level `rewrites` rule is required to expose the service publicly:
 
-# Frontend
-curl https://automart.vercel.app
+```json
+{
+  "services": {
+    "web": {
+      "root": "apps/web",
+      "framework": "nextjs"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": { "service": "web" }
+    }
+  ]
+}
 ```
 
-### Test Flows
+### 2.2 Import steps
+1. vercel.com/dashboard → **Add New… → Project** → Import Git Repository → `SanjaykannaR/AutoMart` → branch **main**
+2. It will re-detect the services preset — this is now OK because `vercel.json` is valid
+3. **Project Name:** `auto-mart-web`
+4. **Root Directory:** leave as `apps/web` (service `root` also points there)
+5. Build Command: leave locked (auto-detected `nextjs` framework in `apps/web`)
+6. Add env vars below (tick **Production** and **Preview**)
+7. **Deploy** — should now be enabled (if not, paste the error; see Troubleshooting)
 
-1. **Homepage**: Visit frontend → hero, categories load
-2. **Search**: Type "brake" → products appear
-3. **Register**: Create account → redirects to homepage
-4. **Login**: Login with admin credentials
-5. **Admin**: Visit `/admin` → dashboard shows stats
-6. **Cart**: Add item → cart page shows item
-7. **Checkout**: Fill address → redirect to Stripe
+### 2.3 Environment variables (Vercel → Settings → Environment Variables)
 
----
-
-## Environment Variables Reference
-
-### Backend (Render)
-
-| Variable | Value | Required |
-|----------|-------|----------|
-| `DATABASE_URL` | `postgresql://...` | ✅ |
-| `REDIS_URL` | `rediss://...` (Upstash) | ✅ |
-| `JWT_SECRET` | 64-char random string | ✅ |
-| `JWT_EXPIRES_IN` | `7d` | Optional |
-| `GOOGLE_CLIENT_ID` | OAuth client ID | Optional |
-| `GOOGLE_CLIENT_SECRET` | OAuth client secret | Optional |
-| `STRIPE_SECRET_KEY` | `sk_test_...` | ✅ for payments |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_...` | ✅ for webhooks |
-| `FRONTEND_URL` | `https://automart.vercel.app` | ✅ |
-| `CORS_ORIGINS` | `https://automart.vercel.app` | ✅ |
-| `RESEND_API_KEY` | Resend API key | Optional (mock mode) |
-| `NODE_ENV` | `production` | ✅ |
-
-### Frontend (Vercel)
-
-| Variable | Value |
-|----------|-------|
-| `NEXT_PUBLIC_API_URL` | `https://automart-backend.onrender.com` |
+| Key | Value |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | `https://automart-backend-f1ic.onrender.com` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | `1052100778533-joctd4ti47huu58f8d1nc7uep39bdbl1.apps.googleusercontent.com` |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://mmvrkljevwgkonpljsut.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...` |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_...` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tdnJrbGpldndna29ucGxqc3V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjM0NTQsImV4cCI6MjEwMDMzOTQ1NH0.d1wq0wAGsnoeL2GVbf6yFocm6Kqg_tXiTXzKFBSO1_Q` |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | ❌ PENDING — see Part 3, step 3.1 |
+
+⚠️ `NEXT_PUBLIC_*` vars only apply after a **fresh deploy** (they're baked at build time).
 
 ---
 
-## Architecture (Single Container)
+## Part 3 — Obtain the 3 missing secrets
 
-```
-┌─────────────────────────────────────────────────┐
-│  Render Web Service (Docker)                    │
-│  Port: 3000 (only exposed port)                 │
-│                                                 │
-│  ┌─────────────┐  ┌──────────────┐              │
-│  │ auth-service │  │product-service│              │
-│  │ :3001        │  │ :3002         │              │
-│  └─────────────┘  └──────────────┘              │
-│  ┌─────────────┐  ┌──────────────┐              │
-│  │search-service│  │ order-service │              │
-│  │ :3003        │  │ :3004         │              │
-│  └─────────────┘  └──────────────┘              │
-│  ┌──────────────┐ ┌──────────────┐              │
-│  │inventory-svc  │ │notification-svc│             │
-│  │ :3005         │ │ :3006          │             │
-│  └──────────────┘ └──────────────┘              │
-│  ┌─────────────┐                                │
-│  │  mcp-server │  ┌──────────────┐              │
-│  │ :3007        │  │ api-gateway   │ ◄── :3000   │
-│  └─────────────┘  │ (foreground)  │   (exposed)  │
-│                    └──────────────┘              │
-└─────────────────────────────────────────────────┘
-```
+### 3.1 Cloudflare Turnstile (site key → Vercel, secret key → Render)
+1. dash.cloudflare.com → **Turnstile → Add Site**
+2. Site name: `auto-mart-web`; **Hostname:** `auto-mart-web.vercel.app`
+3. Widget mode: **Managed** (non-interactive), leave the rest default → **Create**
+4. Copy both keys:
+   - **Site Key** → Vercel `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+   - **Secret Key** → Render `TURNSTILE_SECRET_KEY` (copy immediately — shown once)
 
-All services communicate via `localhost`. The API gateway is the only process exposed to the internet.
+### 3.2 Stripe webhook (secret → Render)
+1. dashboard.stripe.com/test → **Developers → Webhooks → Add endpoint**
+2. Endpoint URL: `https://automart-backend-f1ic.onrender.com/api/payments/webhook`
+3. Events: **`checkout.session.completed`** (the app marks orders paid on this event)
+4. Create → click the endpoint → **Reveal signing secret** → copy `whsec_...`
+5. That value → Render `STRIPE_WEBHOOK_SECRET`
+
+### 3.3 Google OAuth — allow your site
+Your login uses the browser popup flow — **no client secret needed** (backend verifies the
+id_token with just `GOOGLE_CLIENT_ID`). But Google must allow the origin:
+1. console.cloud.google.com → your project → **APIs & Services → Credentials** → your OAuth 2.0 Client ID
+2. **Authorized JavaScript origins:** add `https://auto-mart-web.vercel.app` and `http://localhost:3000`
+3. (No redirect URIs needed for the popup flow.)
+4. If you ever switch to server-side code flow, you'll need the client secret — skip that for now.
 
 ---
 
-## Pricing Estimate
+## Part 4 — Wire in and redeploy
 
-| Platform | Plan | Cost |
-|----------|------|------|
-| Vercel (Frontend) | Hobby | **$0/mo** |
-| Render (Backend) | Free | **$0/mo** |
-| Supabase (Database) | Free tier | **$0/mo** |
-| Upstash (Redis) | Pay-as-you-go | **$0/mo** (10K cmds/day) |
-| **Total** | | **$0/mo** |
+1. Add the 3 new values: Render (`TURNSTILE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) and Vercel (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`)
+2. Render → Manual Deploy → Clear build cache & deploy
+3. Vercel → Deployments → Redeploy (or push a commit)
+4. Confirm Render health: `curl https://automart-backend-f1ic.onrender.com/health` → 200
 
-> **Free tier limitations:**
-> - Render: Services spin down after 15 min idle. First request after spin-down takes ~30-60s.
-> - Render: 750 hours/month (enough for single service).
-> - Upstash: 10K commands/day (enough for moderate traffic).
-> - Vercel: 100GB bandwidth/month.
+---
+
+## Part 5 — Verification checklist
+
+- [ ] `https://auto-mart-web.vercel.app` loads, home page shows products from the API
+- [ ] Search works (hits `GET /api/search` on Render)
+- [ ] Register with email → Turnstile widget visible + OTP email/mock code works
+- [ ] Login with Google → popup opens, login succeeds (proves JS origin + client ID OK)
+- [ ] Add to cart → checkout → Stripe test card `4242 4242 4242 4242` → order marked paid
+- [ ] Admin login at `/admin/login` works
+- [ ] Product/banner image upload to Supabase works
 
 ---
 
 ## Troubleshooting
 
-### Build Fails on Render
-
-- Check **Build Logs** in Render dashboard
-- Common: Prisma generate fails → ensure `DATABASE_URL` is set before deploy
-- Common: Out of memory → Render free tier has 512MB, the build should fit
-
-### First Request Is Slow (30-60s)
-
-- **Normal behavior** for Render free tier. The service spins down after 15 min idle.
-- After the first request, subsequent requests are fast.
-- To prevent spin-down, you can use a cron ping service (e.g. cron-job.org) to hit `/health` every 10 minutes.
-
-### API Gateway Returns 502
-
-- All services start in the background — check Render logs for startup errors
-- Ensure `REDIS_URL` is valid (Upstash URL starts with `rediss://`)
-- Ensure `DATABASE_URL` points to a reachable Supabase instance
-
-### Frontend Can't Reach API
-
-- `NEXT_PUBLIC_API_URL` must be the **public** Render URL
-- CORS error → ensure `CORS_ORIGINS` matches your Vercel URL exactly
-- After deploying frontend, update `CORS_ORIGINS` and `FRONTEND_URL` in Render
-
-### Stripe Payments Fail
-
-- `STRIPE_WEBHOOK_SECRET` must match the webhook in Stripe Dashboard
-- Test with: `stripe listen --forward-to https://automart-backend.onrender.com/api/payments/webhook`
+| Symptom | Cause / Fix |
+|---|---|
+| Vercel: "should NOT have additional property rootDirectory" | Old-style root `vercel.json` invalid under services preset → use the services-schema file (already committed) |
+| Vercel Deploy disabled after fix | Refresh/re-open the import so Vercel re-reads the repo; check project name is filled |
+| Vercel: "unknown property `experimentalServices`" | Schema renamed → change key `experimentalServices` → `services` |
+| Vercel: "should NOT have additional property `mountPath`" | `mountPath` was removed in the new `services` schema — drop it; routing is done via top-level `rewrites` instead |
+| Site loads but returns 404 / blank | Services are internal by default — a top-level `rewrites` rule must target the service: `{ "source": "/(.*)", "destination": { "service": "web" } }` |
+| Redis auth errors on Render | `REDIS_URL` must be `rediss://default:<PASSWORD>@...` (Upstash TLS URL), not the plain HTTPS REST URL |
+| CORS errors in browser console | `CORS_ORIGINS` on Render must exactly match `https://auto-mart-web.vercel.app` |
+| Old env still active after change | `NEXT_PUBLIC_*` needs a fresh build; Render needs "Clear build cache & deploy" |
+| Google login fails in popup | JS origin missing in Google Console (Part 3.3); also allow `http://localhost:3000` |
+| Payments webhook returns 400 | `STRIPE_WEBHOOK_SECRET` mismatch or endpoint URL wrong — recreate the webhook endpoint |
+| Turnstile not showing on forms | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` empty → widget intentionally renders nothing (feature-safe); set both keys to enable |
 
 ---
 
-## Deployment Order
+## Secret hygiene
 
-```
-1. Upstash Redis          ← create and copy URL
-2. Render backend         ← set all env vars, deploy
-3. Verify backend health  ← curl /health
-4. Bootstrap admin user   ← POST /api/auth/admin/bootstrap
-5. Vercel frontend        ← set NEXT_PUBLIC_API_URL, deploy
-6. Update Stripe webhook  ← point to Render URL
-7. Test full flow         ← register, search, add to cart, checkout
-```
-
----
-
-## Updating the Backend
-
-When you push code changes:
-
-1. Render auto-deploys from your `main` branch
-2. Docker image rebuilds (~3-5 min)
-3. Services restart automatically
-4. No manual intervention needed
-
----
-
-## Switching From Railway
-
-If you previously deployed on Railway:
-
-1. Create a **Upstash Redis** instance and copy the URL
-2. Deploy to **Render** following the steps above
-3. Update `NEXT_PUBLIC_API_URL` in Vercel to point to Render
-4. Update Stripe webhook URL to point to Render
-5. You can delete the Railway project after confirming Render works
+- `.env.docker` is **gitignored** — don't commit it.
+- This file intentionally uses placeholders for credentials (`JWT_SECRET`, Stripe, webhook, Redis password) — source them from `.env.docker` or the dashboards.
+- `GOOGLE_CLIENT_ID`, Supabase URL/anon key, and the Stripe **test** key are safe to share (browser-visible by design / test-only).

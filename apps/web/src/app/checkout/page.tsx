@@ -28,7 +28,8 @@ import { useToast } from '@/components/Toast'
 import { ScrollReveal } from '@/components/ScrollReveal'
 import { MapPinIcon, PhoneIcon, CreditCardIcon, LockClosedIcon } from '@heroicons/react/24/outline'
 import { Suspense } from 'react'
-import { syncCart, saveCart, type CartItem } from '@/lib/sync'
+import { syncCart, type CartItem } from '@/lib/sync'
+import { isValidPhone } from '@/lib/validate'
 
 function CheckoutContent() {
   const router = useRouter()
@@ -69,6 +70,14 @@ function CheckoutContent() {
    * Handle checkout — creates order + Stripe session, then redirects.
    */
   const handleCheckout = async () => {
+    if (!isValidPhone(phone)) {
+      showToast('Please enter a valid phone number (7–15 digits)', 'error')
+      return
+    }
+    if (address.trim().length < 10) {
+      showToast('Please enter your full delivery address', 'error')
+      return
+    }
     setPlacing(true)
     try {
       const token = localStorage.getItem('token')
@@ -113,11 +122,7 @@ function CheckoutContent() {
 
       const { url } = await paymentRes.json()
 
-      // Step 3: Clear cart (localStorage + Redis) and redirect to Stripe
-      saveCart([]) // Clears both localStorage and backend Redis
-      window.dispatchEvent(new Event('cart-updated'))
-
-      // Redirect to Stripe Checkout
+      // Step 3: Redirect to Stripe Checkout — cart is only cleared after payment succeeds
       window.location.href = url
     } catch (err: any) {
       showToast(err.message || 'Checkout failed. Please try again.', 'error')
@@ -197,7 +202,8 @@ function CheckoutContent() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                    maxLength={16}
                     className="glass-input"
                     placeholder="+1 234 567 890"
                     required

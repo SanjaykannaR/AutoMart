@@ -71,6 +71,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Dark color-scheme: native controls (select dropdowns, scrollbars, date
+     pickers) render in dark mode instead of white boxes with white text. */
+  color-scheme: dark;
 }
 
 body {
@@ -182,6 +185,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .glass-input::placeholder {
   color: var(--color-text-muted);
+}
+
+/* ─── Native dropdown options — match the dark theme ─── */
+select.glass-input option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 /* ─── Primary CTA Button — Glassmorphism ─── */

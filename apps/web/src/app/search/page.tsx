@@ -37,15 +37,18 @@ import { XMarkIcon, FunnelIcon, CameraIcon } from '@heroicons/react/24/outline' 
 
 /**
  * Category options for the filter dropdown.
- * Could be fetched from the API but hardcoded for the demo UI.
+ * Loaded live from /api/categories; falls back to the current catalog
+ * values if the API is unreachable (they must match the DB category names).
  */
-const categoryOptions = [
-  'Brake System', // Brake pads, rotors, calipers
-  'Engine Parts', // Pistons, gaskets, oil filters
-  'Suspension', // Shocks, struts, springs
-  'Electrical', // Lights, batteries, alternators
-  'Transmission', // Clutch kits, gearboxes
-  'Exhaust', // Mufflers, catalytic converters
+const FALLBACK_CATEGORIES = [
+  'Brake Parts',
+  'Engine Parts',
+  'Suspension',
+  'Electrical',
+  'Exhaust',
+  'Filters',
+  'Lighting',
+  'Accessories',
 ]
 
 /**
@@ -62,6 +65,8 @@ function SearchContent() {
   const [loading, setLoading] = useState(false)
   /** Mobile filter drawer open state */
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  /** Category dropdown options — loaded live, falls back to catalog names */
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(FALLBACK_CATEGORIES)
 
   /** Image search mode — shows uploaded image banner */
   const [imageSearch, setImageSearch] = useState<string | null>(null) // Image data URL or null
@@ -155,6 +160,25 @@ function SearchContent() {
     setImageSearch(null) // Clear display
     router.replace('/search') // Navigate to normal search
   }
+
+  /** Load real catalog categories for the filter dropdown */
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`)
+        if (res.ok) {
+          const cats = await res.json()
+          if (Array.isArray(cats) && cats.length > 0) {
+            const names = cats
+              .map((c: any) => c.name || c.slug)
+              .filter((n: any) => typeof n === 'string' && n)
+            if (names.length > 0) setCategoryOptions(names)
+          }
+        }
+      } catch { /* keep fallback list */ }
+    }
+    loadCategories()
+  }, [])
 
   /** Filter state — initialized from URL search params */
   const [filters, setFilters] = useState({

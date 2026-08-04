@@ -1,0 +1,19 @@
+name: Keep Render Backend Warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 \
+            https://automart-backend-f1ic.onrender.com/health || true)
+          echo "Backend health returned HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Warning: health check did not return 200 (cold start in progress, retrying is fine)."
+          fi

@@ -28,6 +28,7 @@ import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useVoiceSearch } from '@/hooks/useVoiceSearch'
+import UserAvatar from '@/components/Avatar'
 
 // ─── Heroicons imports ───
 import {
@@ -862,7 +863,7 @@ export function Navbar() {
                   title={userName || 'Profile'}
                   aria-label="Open profile menu"
                 >
-                  {userAvatar} {/* Emoji avatar */}
+                  <UserAvatar value={userAvatar} alt={userName || 'Profile'} />
                 </button>
 
                 {/* ─── PROFILE DROPDOWN ─── */}
@@ -873,7 +874,7 @@ export function Navbar() {
                       <div className="flex items-center gap-3">
                         {/* Large avatar */}
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-accent)]/25 to-[var(--color-blue)]/25 border-2 border-[var(--color-accent)]/30 flex items-center justify-center text-2xl">
-                          {userAvatar}
+                          <UserAvatar value={userAvatar} alt={userName || 'Profile'} />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold truncate">{userName || 'User'}</p>
@@ -1045,7 +1046,7 @@ export function Navbar() {
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-2xl" style={{ backgroundColor: 'rgba(57,255,20,0.15)', border: '2px solid rgba(57,255,20,0.3)' }}>
-                  {userAvatar}
+                  <UserAvatar value={userAvatar} alt={userName || 'Profile'} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: '#F0F0F0' }}>{userName || 'User'}</p>

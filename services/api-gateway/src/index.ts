@@ -15,6 +15,10 @@ import { adminMiddleware } from './middleware/admin'
 import { turnstileMiddleware } from './middleware/turnstile'
 
 const app = express()
+// Render (and Cloudflare) terminate TLS and forward requests via X-Forwarded-For.
+// Without this, express-rate-limit@7 throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// on every request and rate limiting treats all users as one IP.
+app.set('trust proxy', 1)
 const PORT = process.env.API_GATEWAY_PORT || 3000
 
 // NOTE: Do NOT use express.json() here — it consumes the request body
@@ -149,6 +153,7 @@ const ROUTES: { prefix: string; envUrl: string | undefined; dockerHost: string; 
   { prefix: '/auth',           envUrl: process.env.AUTH_SERVICE_URL,           dockerHost: 'auth-service',        port: process.env.AUTH_SERVICE_PORT || 3001 },
   { prefix: '/banners',        envUrl: process.env.AUTH_SERVICE_URL,           dockerHost: 'auth-service',        port: process.env.AUTH_SERVICE_PORT || 3001 },
   { prefix: '/products',       envUrl: process.env.PRODUCT_SERVICE_URL,        dockerHost: 'product-service',     port: process.env.PRODUCT_SERVICE_PORT || 3002 },
+  { prefix: '/categories',     envUrl: process.env.PRODUCT_SERVICE_URL,        dockerHost: 'product-service',     port: process.env.PRODUCT_SERVICE_PORT || 3002 },
   { prefix: '/search',         envUrl: process.env.SEARCH_SERVICE_URL,         dockerHost: 'search-service',      port: process.env.SEARCH_SERVICE_PORT || 3003 },
   { prefix: '/orders',         envUrl: process.env.ORDER_SERVICE_URL,          dockerHost: 'order-service',       port: process.env.ORDER_SERVICE_PORT || 3004 },
   { prefix: '/payments',       envUrl: process.env.ORDER_SERVICE_URL,          dockerHost: 'order-service',       port: process.env.ORDER_SERVICE_PORT || 3004 },

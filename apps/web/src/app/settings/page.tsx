@@ -23,6 +23,7 @@
 'use client' // Next.js client component — enables hooks + browser APIs
 
 import { useState, useEffect } from 'react' // React hooks for state + side effects
+import { isValidEmail, isValidPhone } from '@/lib/validate'
 import {
   UserIcon,          // Profile/gender section
   WrenchIcon,        // Vehicle section
@@ -117,6 +118,7 @@ export default function SettingsPage() {
   const [showAddVehicle, setShowAddVehicle] = useState(false)            // Add vehicle modal toggle
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null) // Vehicle being edited (null = adding new)
   const [saved, setSaved] = useState(false)                              // "Saved!" feedback flag
+  const [saveError, setSaveError] = useState('')
   const [couponCode, setCouponCode] = useState('')                       // Coupon input value
   const [appliedCoupons, setAppliedCoupons] = useState<Coupon[]>([])    // Active coupons
   const [referralCopied, setReferralCopied] = useState(false)           // "Copied!" feedback for referral code
@@ -166,6 +168,15 @@ export default function SettingsPage() {
    * Shows "Saved!" feedback for 2 seconds
    * ═══════════════════════════════════════════════════════════════ */
   const saveSettings = () => {
+    if (!isValidEmail(settings.email)) {
+      setSaveError('Please enter a valid email address')
+      return
+    }
+    if (!isValidPhone(settings.phone)) {
+      setSaveError('Please enter a valid phone number (7–15 digits)')
+      return
+    }
+    setSaveError('')
     localStorage.setItem('userSettings', JSON.stringify(settings)) // Persist to localStorage
     setSaved(true) // Show success feedback
     setTimeout(() => setSaved(false), 2000) // Hide after 2 seconds
@@ -425,6 +436,12 @@ export default function SettingsPage() {
 
               <div className="space-y-5 max-w-lg"> {/* Form container */}
 
+                {saveError && (
+                  <div className="p-3 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 text-sm text-[var(--color-danger)]">
+                    {saveError}
+                  </div>
+                )}
+
                 {/* Display Name */}
                 <div>
                   <label className="block text-xs font-medium text-[var(--color-text-dim)] mb-1.5">
@@ -461,7 +478,8 @@ export default function SettingsPage() {
                   <input
                     type="tel"
                     value={settings.phone} // Controlled input
-                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })} // Update state
+                    onChange={(e) => setSettings({ ...settings, phone: e.target.value.replace(/[^0-9+]/g, '') })} // Update state
+                    maxLength={16}
                     placeholder="+1 (555) 000-0000" // Ghost text when empty
                     className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/30 outline-none transition-all"
                   />
