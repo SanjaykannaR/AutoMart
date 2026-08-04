@@ -34,6 +34,7 @@ test.describe('Product Search', () => {
   test('category filter can be changed', async ({ page }) => {
     const searchPage = new SearchPage(page)
     await searchPage.goto()
+    await searchPage.waitForCategoryOptions()
     await searchPage.categoryFilter.selectOption('Brake System')
     await expect(searchPage.categoryFilter).toHaveValue('Brake System')
   })
@@ -41,6 +42,7 @@ test.describe('Product Search', () => {
   test('clear filters resets category', async ({ page }) => {
     const searchPage = new SearchPage(page)
     await searchPage.goto()
+    await searchPage.waitForCategoryOptions()
     await searchPage.categoryFilter.selectOption('Engine Parts')
     // Re-locate the button after filter change (sidebar re-renders and detaches stale refs)
     await expect(page.getByRole('button', { name: /clear all filters/i })).toBeVisible({ timeout: 5000 })

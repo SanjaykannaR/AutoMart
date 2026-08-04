@@ -2,7 +2,7 @@
  * SearchPage Page Object Model
  */
 
-import { type Page, type Locator } from '@playwright/test'
+import { type Page, type Locator, expect } from '@playwright/test'
 
 export class SearchPage {
   readonly page: Page
@@ -29,6 +29,11 @@ export class SearchPage {
 
   async goto() {
     await this.page.goto('/search')
+  }
+
+  async waitForCategoryOptions() {
+    await this.page.locator('select').nth(0).waitFor()
+    await expect(this.page.locator('select').nth(0).locator('option').first()).toBeVisible({ timeout: 15000 })
   }
 
   async search(query: string) {
