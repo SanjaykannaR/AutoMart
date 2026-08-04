@@ -15,7 +15,20 @@ import { OAuth2Client } from 'google-auth-library'
 const app = express()
 const prisma = new PrismaClient()
 const PORT = process.env.AUTH_SERVICE_PORT || 3001
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret'
+
+// ─── JWT secret (SEC-3) ───────────────────────────────────────────────────────
+// SECURITY: Previously fell back to the public 'dev-secret' when JWT_SECRET was
+// missing, which let anyone forge tokens (including admin). Now the service
+// FAILS CLOSED: if JWT_SECRET is absent we refuse to start rather than run with
+// a known, publicly-documented secret. Render generates JWT_SECRET; docker-compose
+// supplies one; .env.* provide dev values.
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) {
+  console.error('[Auth] FATAL: JWT_SECRET is not set. Refusing to start with an insecure default.')
+  console.error('[Auth] Set JWT_SECRET to a long random string (openssl rand -hex 32).')
+  process.exit(1)
+}
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 
 // ─── Google OAuth client ───────────────────────────────────────────────────────
@@ -45,6 +58,9 @@ function verifyToken(req: express.Request): { id: string; role: string } | null 
   if (!header || !header.startsWith('Bearer ')) return null
   const token = header.split(' ')[1]
   if (!token) return null
+  // Defensive: startup already exits if JWT_SECRET is missing, but TS cannot
+  // narrow the module-level guard inside this function, so assert it here.
+  if (!JWT_SECRET) return null
   try {
     return jwt.verify(token, JWT_SECRET) as { id: string; role: string }
   } catch {

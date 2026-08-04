@@ -55,6 +55,11 @@ RUN cd services/assistant-service && npx tsc
 FROM node:20-slim AS production
 WORKDIR /app
 
+# SECURITY (SEC-3): force production mode so auth-service NEVER returns OTP /
+# reset codes in API responses (devCode is only emitted when NODE_ENV !==
+# 'production'). This applies even if a deployer forgets to set it in the panel.
+ENV NODE_ENV=production
+
 # Install curl + bash for health checks and startup script
 RUN apt-get update && apt-get install -y --no-install-recommends bash curl && rm -rf /var/lib/apt/lists/*
 

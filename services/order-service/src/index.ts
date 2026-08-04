@@ -281,6 +281,10 @@ app.get('/orders/analytics', async (req, res) => {
 })
 
 // ─── GET /orders/:id ───────────────────────────────────────────────────────────
+// SECURITY (SEC-AUTHZ-3): returns an order ONLY if the caller is an admin OR
+// the order's owner. Previously any authenticated user could read ANY order by
+// iterating IDs (IDOR). The gateway also gates /orders behind auth, but we never
+// trust the caller's claims here — we enforce ownership server-side too.
 app.get('/orders/:id', async (req, res) => {
   try {
     const order = await prisma.order.findUnique({ where: { id: req.params.id } })
@@ -289,6 +293,18 @@ app.get('/orders/:id', async (req, res) => {
         `No order found with ID "${req.params.id}".`,
         'Verify the order ID is correct. It may have been deleted or never existed.')
     }
+
+    // Ownership / privilege check — deny access unless admin or the order owner.
+    const role = getUserRole(req)
+    const userId = getUserId(req)
+    const isAdmin = role === 'admin'
+    const isOwner = order.userId === userId
+    if (!isAdmin && !isOwner) {
+      return errorResponse(res, 403, 'ORDER_FORBIDDEN',
+        'You do not have permission to view this order.',
+        'Orders are only visible to the account that placed them, or to admins.')
+    }
+
     res.json({ ...order, items: order.items })
   } catch (err) {
     console.error('[Order] Get by ID error:', err)
@@ -299,11 +315,20 @@ app.get('/orders/:id', async (req, res) => {
 })
 
 // ─── PATCH /orders/:id/status ──────────────────────────────────────────────────
-// Updates order status with state machine validation. Each status has a
-// limited set of valid next states to prevent illegal transitions.
-// Sets deliveredAt timestamp when status becomes 'delivered'.
+// SECURITY (SEC-AUTHZ-4): only admins may change order status. Previously ANY
+// authenticated user could flip any order to delivered/cancelled. The gateway
+// enforces admin for this path, and we re-check the role here (defense in depth)
+// in case the service is ever reached outside the gateway (e.g. docker network).
 app.patch('/orders/:id/status', async (req, res) => {
   try {
+    // Role gate — only admins can mutate order state.
+    const role = getUserRole(req)
+    if (role !== 'admin') {
+      return errorResponse(res, 403, 'ORDER_STATUS_FORBIDDEN',
+        'Only admins can update order status.',
+        'Log in as an admin to change order status.')
+    }
+
     const { status } = req.body
     // All valid order statuses — used for both validation and the error hint
     const validStatuses = ['pending', 'confirmed', 'picked', 'shipped', 'delivered', 'cancelled']

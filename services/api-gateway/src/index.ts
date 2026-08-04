@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit'
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import dns from 'node:dns' // svc() uses lookupSync to detect docker-compose network vs local dev
 import { authMiddleware } from './middleware/auth'
+import { adminMiddleware } from './middleware/admin'
 import { turnstileMiddleware } from './middleware/turnstile'
 
 const app = express()
@@ -128,6 +129,19 @@ app.use('/api/auth/admin/login', turnstileMiddleware)
 const protectedPaths = ['/orders', '/payments', '/inventory', '/notifications']
 const publicPaths = ['/payments/webhook'] // Stripe webhooks — no auth token
 
+// ─── Admin-only write protection (SEC-4) ──────────────────────────────────────
+// Write operations (POST/PUT/PATCH/DELETE) on the product catalog, inventory
+// mutation, and order-status changes must be performed by an admin.
+// Previously these were openly reachable (or only gated by any-valid-token),
+// letting unauthorised users create/edit/delete products or flip order status.
+// GET/read endpoints stay public. The path prefix matches req.url AFTER Express
+// strips "/api", so "/api/products" arrives here as "/products".
+const adminWritePathPrefixes = ['/products', '/categories', '/inventory', '/orders']
+const adminWriteMethods = ['POST', 'PUT', 'PATCH', 'DELETE']
+// GET /inventory/:id is read-only and used by the admin inventory page AND by
+// the catalog; reserve/release/confirm are the mutating ones — all match the
+// '/inventory' prefix and are covered by the method check above.
+
 // Upstream service routes. Each can be overridden by an explicit *_URL env var
 // (e.g. SEARCH_SERVICE_URL). Otherwise the docker-compose hostname is used when
 // it resolves (docker mode); local dev falls back to http://localhost:<port>.
@@ -174,6 +188,15 @@ app.use('/api',
   // Auth gate: protected paths require a token, public paths bypass auth
   (req, res, next) => {
     if (publicPaths.some(p => req.url.startsWith(p))) return next()
+
+    // ── SECURITY (SEC-4): admin-only for catalog/inventory/order writes ──
+    // Any non-GET write to these prefixes requires an admin token.
+    if (adminWriteMethods.includes(req.method)
+        && adminWritePathPrefixes.some(p => req.url.startsWith(p))) {
+      return adminMiddleware(req, res, next)
+    }
+
+    // ── Any-authenticated-user for the other protected prefixes ──
     if (protectedPaths.some(p => req.url.startsWith(p))) {
       return authMiddleware(req, res, next)
     }

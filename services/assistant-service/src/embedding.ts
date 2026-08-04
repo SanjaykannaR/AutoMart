@@ -2,11 +2,15 @@
  * Text embedding using a local ONNX sentence-transformer model.
  *
  * HOW IT WORKS:
- * 1. `Xenova/all-MiniLM-L6-v2` (~25MB) is loaded lazily via @xenova/transformers
- *    (ONNX Runtime Web — no native dependencies, same pattern as CLIP in search-service).
+ * 1. `Xenova/all-MiniLM-L6-v2` (~25MB) is loaded lazily via @huggingface/transformers
+ *    (ONNX Runtime, no native deps, same pattern as CLIP in search-service).
  * 2. `embedText()` produces a 384-dim L2-normalized vector.
  * 3. If the model cannot be loaded, a deterministic sinusoidal fallback keeps
  *    the pipeline alive (lower quality, but consistent) — the service never crashes.
+ *
+ * DEPENDENCY NOTE: @huggingface/transformers (v4) is the maintained successor of
+ * the archived @xenova/transformers. Same `pipeline()` API; its onnxruntime-web
+ * ≥1.26 pulls patched protobufjs 7.x (removes the vulnerable 6.x chain). Drop-in swap.
  */
 
 const MODEL = 'Xenova/all-MiniLM-L6-v2'
@@ -22,8 +26,12 @@ let modelReady = false
 export async function initEmbeddingModel(): Promise<boolean> {
   try {
     // Dynamic import — only load if available (mirrors search-service CLIP pattern)
-    const transformers = await import('@xenova/transformers')
+    const transformers = await import('@huggingface/transformers')
     const { pipeline, env } = transformers
+
+    // Fetch the MiniLM model from the Hugging Face Hub.
+    // `allowLocalModels` was removed in v3+; remote is the default — no-op kept
+    // for intent (and harmless if a legacy env var shows up).
     env.allowLocalModels = false
 
     console.log('[Assistant] Loading text embedding model (all-MiniLM-L6-v2)...')

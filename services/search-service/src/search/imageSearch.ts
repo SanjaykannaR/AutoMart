@@ -41,17 +41,29 @@ let modelReady = false
  */
 export async function initClipModel(): Promise<boolean> {
   try {
-    // Dynamic import — only load if available
-    const transformers = await import('@xenova/transformers')
+    // Dynamic import — only load if available.
+    // SECURITY (DEPS-1): @huggingface/transformers is the maintained successor
+    // of the archived @xenova/transformers. It bundles onnxruntime-web ≥1.26
+    // which depends on the PATCHED protobufjs 7.x (the archived chain pulled the
+    // vulnerable protobufjs 6.x — CVE-2023-36665 arbitrary code execution etc).
+    // The pipeline() API is identical, so the migration is a drop-in change.
+    const transformers = await import('@huggingface/transformers')
     const { pipeline, env } = transformers
 
-    // Disable local model cache warnings
+    // Fetch the CLIP model from the Hugging Face Hub (no local cache in prod).
+    // NOTE: `allowLocalModels` was removed in @huggingface/transformers v3+;
+    // remote is the default, so this is now a no-op safety line. Setting it
+    // keeps intent clear and is harmless if a legacy env var appears.
     env.allowLocalModels = false
 
     console.log('[Image Search] Loading CLIP model (this may take a moment on first run)...')
 
-    // Load CLIP model for image feature extraction
-    clipModel = await pipeline('feature-extraction', 'Xenova/clip-vit-base-patch32')
+    // Load CLIP model for image feature extraction.
+    // NOTE (v4): @huggingface/transformers split "feature-extraction" into a
+    // TEXT pipeline and "image-feature-extraction" for vision models. CLIP is a
+    // vision model, so it MUST use the image task — the text pipeline drops the
+    // image inputs and throws "Missing the following inputs: pixel_values".
+    clipModel = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32')
 
     modelReady = true
     console.log('[Image Search] CLIP model loaded successfully')
@@ -72,13 +84,15 @@ export async function initClipModel(): Promise<boolean> {
 export async function generateImageEmbedding(imageBuffer: Buffer): Promise<number[]> {
   if (modelReady && clipModel) {
     try {
-      // Convert buffer to base64 data URI for CLIP processor
-      const base64 = imageBuffer.toString('base64')
+      // Pass the raw bytes as a Blob. NOTE (v4): @huggingface/transformers
+      // dropped support for "data:" URIs — v4 routes any string through
+      // RawImage.fromURL() and 404s on a data URI. Blob goes through
+      // fromBlob() (sharp under the hood) which is the supported Node path.
       const mimeType = detectMimeType(imageBuffer)
-      const dataUri = `data:${mimeType};base64,${base64}`
+      const blob = new Blob([imageBuffer], { type: mimeType })
 
       // CLIP processes image -> 512-dim embedding
-      const output = await clipModel(dataUri, { pooling: 'mean', normalize: true })
+      const output = await clipModel(blob, { pooling: 'mean', normalize: true })
       const embedding = Array.from(output.data) as number[]
 
       if (embedding.length === embeddingDimension) {

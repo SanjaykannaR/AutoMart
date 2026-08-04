@@ -1,5 +1,5 @@
 # ── Assistant Service (RAG chatbot backend) ───────────────────────────────────
-# Uses node:20-slim (glibc) NOT alpine (musl) — @xenova/transformers loads
+# Uses node:20-slim (glibc) NOT alpine (musl) — @huggingface/transformers loads
 # onnxruntime-node which requires glibc. On alpine the MiniLM model fails to
 # load and the service silently falls back to deterministic embeddings.
 FROM node:20-slim AS deps
