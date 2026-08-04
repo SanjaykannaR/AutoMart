@@ -35,8 +35,8 @@ test.describe('Product Search', () => {
     const searchPage = new SearchPage(page)
     await searchPage.goto()
     await searchPage.waitForCategoryOptions()
-    await searchPage.categoryFilter.selectOption('Brake System')
-    await expect(searchPage.categoryFilter).toHaveValue('Brake System')
+    await searchPage.categoryFilter.selectOption('Brake Parts')
+    await expect(searchPage.categoryFilter).toHaveValue('Brake Parts')
   })
 
   test('clear filters resets category', async ({ page }) => {
