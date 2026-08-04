@@ -32,8 +32,13 @@ export class SearchPage {
   }
 
   async waitForCategoryOptions() {
-    await this.page.locator('select').nth(0).waitFor()
-    await expect(this.page.locator('select').nth(0).locator('option').first()).toBeVisible({ timeout: 15000 })
+    const select = this.page.locator('select').nth(0)
+    await select.waitFor()
+    // Wait for at least one non-empty category option to be attached to the DOM.
+    // NOTE: native <select> <option> elements are always reported "hidden" by the
+    // browser (they only become visible when the dropdown opens), so we must wait
+    // for presence, not visibility.
+    await expect(select.locator('option[value]:not([value=""])').first()).toBeAttached({ timeout: 15000 })
   }
 
   /**
