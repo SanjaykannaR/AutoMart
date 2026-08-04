@@ -80,11 +80,11 @@ services:
       product-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:3003/health"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 180s
     networks:
       - automart-net
 
@@ -150,7 +150,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 180s
     networks:
       - automart-net
 
@@ -167,7 +167,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 180s
     networks:
       - automart-net
 
@@ -227,7 +227,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 180s
     networks:
       - automart-net
 
