@@ -140,7 +140,13 @@ const publicPaths = ['/payments/webhook'] // Stripe webhooks — no auth token
 // letting unauthorised users create/edit/delete products or flip order status.
 // GET/read endpoints stay public. The path prefix matches req.url AFTER Express
 // strips "/api", so "/api/products" arrives here as "/products".
-const adminWritePathPrefixes = ['/products', '/categories', '/inventory', '/orders']
+//
+// NOTE: '/orders' is intentionally NOT in adminWritePathPrefixes — POST /orders
+// is customer order creation and must be available to any authenticated user.
+// Only the status-change path is admin-only here; order-service also re-checks
+// the admin role server-side (defense in depth).
+const adminWritePathPrefixes = ['/products', '/categories', '/inventory']
+const adminWritePathPatterns: RegExp[] = [/^\/orders\/[^/]+\/status$/]
 const adminWriteMethods = ['POST', 'PUT', 'PATCH', 'DELETE']
 // GET /inventory/:id is read-only and used by the admin inventory page AND by
 // the catalog; reserve/release/confirm are the mutating ones — all match the
@@ -195,9 +201,12 @@ app.use('/api',
     if (publicPaths.some(p => req.url.startsWith(p))) return next()
 
     // ── SECURITY (SEC-4): admin-only for catalog/inventory/order writes ──
-    // Any non-GET write to these prefixes requires an admin token.
+    // Any non-GET write to these prefixes (or to /orders/:id/status) requires
+    // an admin token. Plain order creation (POST /orders) stays open to any
+    // authenticated user.
     if (adminWriteMethods.includes(req.method)
-        && adminWritePathPrefixes.some(p => req.url.startsWith(p))) {
+        && (adminWritePathPrefixes.some(p => req.url.startsWith(p))
+            || adminWritePathPatterns.some(p => p.test(req.url)))) {
       return adminMiddleware(req, res, next)
     }
 
