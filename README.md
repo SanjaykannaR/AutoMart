@@ -1,328 +1,469 @@
+<div align="center">
+
 # AutoMart ⚡🚗
 
 **Auto parts delivery platform — order any car/bike spare part, delivered in 30 minutes.**
 
-A full-stack microservices monorepo built for learning. 8 backend services + Next.js frontend with a dark glassmorphism UI. Features fuzzy text search with Trie autocomplete, image search via CLIP embeddings, voice search via Web Speech API, and an MCP (Model Context Protocol) server for AI agent integration.
+A full-stack **microservices monorepo** built for learning. **9 backend services + a Next.js frontend**, featuring fuzzy/Trie search, image & voice search, Stripe payments, a full admin panel, and a **retrieval-augmented (RAG) AI assistant**.
+
+[![CI](https://github.com/SanjaykannaR/AutoMart/actions/workflows/ci.yml/badge.svg)](https://github.com/SanjaykannaR/AutoMart/actions/workflows/ci.yml)
+[![E2E](https://github.com/SanjaykannaR/AutoMart/actions/workflows/e2e.yml/badge.svg)](https://github.com/SanjaykannaR/AutoMart/actions/workflows/e2e.yml)
+[![Node](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)](https://nextjs.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
+
+[Live Frontend](https://auto-mart-web.vercel.app) · [Live API](https://automart-backend-f1ic.onrender.com/health) · [Screenshots](#-screenshots)
+
+</div>
 
 ---
 
-## Architecture
+## 📸 Screenshots
 
-```
-                         ┌─────────────────────┐
-                         │     Next.js 15      │
-                         │   (React 19, RSC)   │
-                         │  Dark Glassmorphism  │
-                         └─────────┬───────────┘
-                                   │
-                         ┌─────────▼───────────┐
-                         │    API Gateway       │
-                         │  Rate Limit + Auth   │
-                         │  (http-proxy-mw)     │
-                         └─────────┬───────────┘
-                                   │
-          ┌────────────────────────┼────────────────────────┐
-          │                        │                        │
-┌─────────▼─────────┐  ┌─────────▼──────────┐  ┌──────────▼─────────┐
-│   Auth Service    │  │  Product Service   │  │   Search Service   │
-│  JWT + bcrypt     │  │  CRUD + Categories │  │  Fuse.js + Trie    │
-│  SQLite + Prisma  │  │  SQLite + Prisma   │  │  Image + Voice     │
-└───────────────────┘  └────────────────────┘  └────────────────────┘
-          │                        │                        │
-┌─────────▼─────────┐  ┌─────────▼──────────┐  ┌──────────▼─────────┐
-│  Order Service    │  │ Inventory Service  │  │ Notification Svc   │
-│  Status Tracking  │  │ Reserve/Release    │  │ Email/SMS (Redis)  │
-│  SQLite + Prisma  │  │ SQLite + Prisma    │  └────────────────────┘
-└─────────┬─────────┘  └─────────┬──────────┘
-          │                      │
-          └──────────┬───────────┘
-              ┌──────▼──────┐
-              │  Redis 7    │
-              │  Pub/Sub    │
-              │  Event Bus  │
-              └─────────────┘
+> Captured from the running application (desktop, 1440px). Dark glassmorphism UI, animated with Framer Motion.
 
-              ┌─────────────┐
-              │  MCP Server │  ◄── Claude Desktop / Cursor IDE
-              │  5 AI Tools │
-              └─────────────┘
-```
-
----
-
-## Services
-
-| Service | Port | Tech | Database | Responsibility |
-|---|---|---|---|---|
-| **API Gateway** | 3000 | Express + http-proxy-middleware | — | Routing, JWT auth, rate limiting (100 req/15 min) |
-| **Auth Service** | 3001 | Express + JWT + bcrypt | SQLite | Register, login, token verification |
-| **Product Service** | 3002 | Express + Prisma | SQLite | Product CRUD, categories (24 products, 8 categories seeded) |
-| **Search Service** | 3003 | Express + Fuse.js + Trie | — | Fuzzy text search, autocomplete, image search |
-| **Order Service** | 3004 | Express + Prisma + Redis | SQLite | Order CRUD, status tracking, event publishing |
-| **Inventory Service** | 3005 | Express + Prisma + Redis | SQLite | Stock reserve/release/confirm |
-| **Notification Service** | 3006 | Express + Redis + Nodemailer | — | Email/SMS via Redis pub/sub |
-| **MCP Server** | 3007 | Express | — | 5 AI tools for Model Context Protocol |
-| **Web** | 3080 | Next.js 15, React 19, Tailwind 4 | — | Dark glassmorphism UI |
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/01-home.jpg" alt="Home — hero carousel and instant search" />
+      <sub><b>Home</b> — admin-managed hero carousel, instant search (voice + image), live stats</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/02-search.jpg" alt="Search — fuzzy results with filters" />
+      <sub><b>Search</b> — fuzzy text search, category/brand/vehicle/price filters, wishlist + quick-add</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/03-product.jpg" alt="Product detail — specs and compatible vehicles" />
+      <sub><b>Product detail</b> — specs table, compatible-vehicle fitment, stock badge, 30-min delivery</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/08-chat-assistant.jpg" alt="TORQ — RAG assistant with product rail" />
+      <sub><b>TORQ assistant</b> — RAG chatbot streaming a retrieved product card + follow-up chips</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/04-cart.jpg" alt="Cart — items and order summary" />
+      <sub><b>Cart</b> — quantity controls, order summary, localStorage + backend sync</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/05-checkout.jpg" alt="Checkout — Stripe payment" />
+      <sub><b>Checkout</b> — 3-step flow, address/phone validation, Stripe Checkout (SSL)</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/06-orders.jpg" alt="Orders — live status tracking" />
+      <sub><b>Orders</b> — status progress tracker (pending → confirmed → picked → shipped → delivered)</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/07-admin-dashboard.jpg" alt="Admin dashboard" />
+      <sub><b>Admin dashboard</b> — revenue/orders/inventory stats, recent users, quick actions</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## Features
+## 🧭 Overview
 
-### Search (3 modes)
-- **Text**: Fuzzy search via Fuse.js (Bitap algorithm — modified Levenshtein distance)
-- **Autocomplete**: Trie data structure with insert/search/remove/insertPhrase
-- **Image**: CLIP embeddings + vector similarity (stub ready, plug in real model)
-- **Voice**: Web Speech API — browser-native, zero backend cost
+AutoMart is an e-commerce platform for car and bike spare parts with an obsession on **speed** (30-minute delivery) and **findability** (you must be able to find the right part by typing, speaking, or uploading a photo).
 
-### UI
-- Dark theme with glassmorphism (`backdrop-filter: blur`) + aurora gradients
-- Dark/light theme toggle with localStorage persistence
-- Toast notification system (success/error/info)
-- Error boundaries for graceful failure handling
-- Responsive mobile-first design (Tailwind CSS 4)
-- Animated with Framer Motion
+It is intentionally built as a **learning project** that goes deep on the things that matter in production systems:
 
-### Backend
-- Structured error responses: `{ code, message, hint }` across all 8 services
-- Input validation via Zod schemas
-- SQLite for local dev (zero config), easily swappable to PostgreSQL
-- Prisma ORM with database-per-service pattern
-- Redis pub/sub for event-driven communication
-
-### DSA Implemented
-- **Trie** — autocomplete search suggestions (10/10 unit tests passing)
-- **Levenshtein Distance / Bitap** — fuzzy string matching (Fuse.js)
-- **TF-IDF** — term frequency scoring concept
-- **Cosine Similarity** — vector comparison (image search)
+- **Microservices + API Gateway** with database-per-service and event-driven communication.
+- **Real data-structure & algorithm work** — a hand-written Trie, TF-IDF, Bitap/Levenshtein fuzzy matching, and cosine vector similarity.
+- **A RAG pipeline** — hybrid lexical + semantic retrieval fused with Reciprocal Rank Fusion, streamed to a chat widget over SSE.
+- **Serious security hygiene** — layered rate limiting, bot defense, fail-closed JWT, admin-only write gates.
+- **Full delivery lifecycle** — cart → checkout → Stripe → order state machine → live tracking → notifications.
 
 ---
 
-## Tech Stack
+## 🧰 Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 15 (App Router), React 19, Tailwind CSS 4, Framer Motion |
-| Backend | Node.js 20, Express, TypeScript |
-| Database | SQLite (local dev) / PostgreSQL (production) |
-| ORM | Prisma 5 |
-| Cache/Events | Redis 7 |
-| Search | Fuse.js (Bitap), Trie (custom), Web Speech API |
-| Auth | JWT + bcryptjs |
-| E2E Tests | Playwright |
-| Unit Tests | Vitest (Trie) |
-| CI/CD | GitHub Actions |
-| Container | Docker + Docker Compose |
-| AI Protocol | MCP (Model Context Protocol) |
+| **Frontend** | Next.js 15 (App Router), React 19, Tailwind CSS 4, Framer Motion |
+| **Backend** | Node.js 20, Express, TypeScript (all 9 services) |
+| **Database** | PostgreSQL (Supabase) — one DB, Prisma ORM per service |
+| **Cache / Events** | Redis 7 (Upstash) — pub/sub bus, OTP storage, rate-limit backing |
+| **Search / AI** | Fuse.js (Bitap), custom Trie, TF-IDF, CLIP image embeddings, MiniLM pgvector RAG |
+| **Payments** | Stripe Checkout + webhooks |
+| **Auth** | JWT + bcrypt, Google OAuth, phone OTP, Cloudflare Turnstile |
+| **Email** | Resend / SMTP via Nodemailer |
+| **Testing** | Vitest (unit), Playwright E2E (Page Object Model) |
+| **CI/CD** | GitHub Actions, Vercel (web) + Render (API) |
+| **DevOps** | Docker + Docker Compose, multi-stage builds |
 
 ---
 
-## Getting Started
+## 🏗️ Architecture
+
+```
+                         ┌──────────────────────────────┐
+                         │        Next.js 15 (RSC)      │
+                         │   React 19 · Tailwind 4      │
+                         │   Dark Glassmorphism UI      │
+                         └──────────────┬───────────────┘
+                                        │  HTTPS
+                         ┌──────────────▼───────────────┐
+                         │         API Gateway :3000    │
+                         │  CORS · Helmet · JWT auth    │
+                         │  Rate limiting · Turnstile   │
+                         │  (http-proxy-middleware)     │
+                         └──────────────┬───────────────┘
+        ┌───────────────┬───────────────┼───────────────┬───────────────┐
+        ▼               ▼               ▼               ▼               ▼
+ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+ │ Auth   3001 │ │ Product 3002│ │ Search  3003│ │ Order   3004│ │Inventory3005│
+ │ JWT·OAuth·  │ │ CRUD·       │ │ Fuse.js·    │ │ State       │ │ Reserve·    │
+ │ OTP·Banners │ │ Categories  │ │ Trie·CLIP   │ │ machine·    │ │ Release·    │
+ │ Cart/Wish   │ │             │ │ Voice       │ │ Stripe      │ │ Confirm     │
+ └──────┬──────┘ └─────────────┘ └─────────────┘ └──────┬──────┘ └──────┬──────┘
+        │                                               │               │
+        │              ┌─────────────────┐              └───────┬───────┘
+        │              │ Notification3006│ ◄───── Redis Pub/Sub ┘
+        │              │ Email/SMS (Resend)│   order:created · user:otp …
+        │              └─────────────────┘
+        │
+        ├───────────────┬──────────────────────────────────────┐
+        ▼               ▼                                      ▼
+ ┌─────────────┐ ┌──────────────┐                    ┌──────────────────┐
+ │  MCP   3007 │ │ Assistant3008│ ── pgvector ──►    │  Supabase        │
+ │ 5 AI tools  │ │ RAG chatbot  │   (semantic kNN)   │  Postgres +      │
+ │ (Claude/    │ │ hybrid+RRF   │ ◄─ MiniLM embed    │  pgvector        │
+ │  Cursor)    │ │ SSE stream   │                    └──────────────────┘
+ └─────────────┘ └──────────────┘
+```
+
+**Patterns demonstrated:** API Gateway · database-per-service · event-driven (Redis Pub/Sub) · monorepo (npm workspaces) · containerization · CI/CD.
+
+---
+
+## 📦 Services
+
+| Service | Port | Responsibility | Key capabilities |
+|---|---|---|---|
+| **API Gateway** | 3000 | Single entry point | Routing, JWT verification, admin-only write gates, 3 tiers of rate limiting, Turnstile bot defense, CORS, Helmet |
+| **Auth** | 3001 | Identity & profile | Register/login, Google OAuth, phone OTP verify, forgot/reset password, admin bootstrap & user management, banners CRUD, cart/wishlist persistence |
+| **Product** | 3002 | Catalog | Product CRUD, categories, slug lookup, filtering (category/brand/price/vehicle), stats |
+| **Search** | 3003 | Discovery | Fuzzy search (Fuse.js/Bitap), Trie autocomplete, TF-IDF scoring, CLIP image search, voice transcription |
+| **Order** | 3004 | Order lifecycle | Create/list/detail, **status state machine**, stats/analytics, **Stripe** checkout + webhooks |
+| **Inventory** | 3005 | Stock | Reserve / release / confirm, event-driven sync |
+| **Notification** | 3006 | Comms | Email (Resend/SMTP) driven by Redis pub/sub events |
+| **MCP Server** | 3007 | AI integration | Exposes 5 tools to Claude Desktop / Cursor via Model Context Protocol (HTTP + stdio) |
+| **Assistant** | 3008 | RAG assistant | Hybrid retrieval (lexical ⊕ semantic) + RRF + LLM → SSE-streamed answers with product cards |
+
+---
+
+## 🔍 Search — three modes, real algorithms
+
+### 1. Fuzzy text search (Fuse.js / Bitap)
+Typo-tolerant matching using the **Bitap algorithm** (a modified **Levenshtein distance**). `brake pads`, `break pads`, and `barking bad` all converge on *brake pads*. Results are phonetically normalized before matching.
+
+### 2. Autocomplete — a hand-written **Trie**
+A custom `Trie` (`services/search-service/src/search/trie.ts`) powers the instant suggestions as you type, with `insert`, `search`, `remove`, and `insertPhrase`. Backed by **10/10 passing unit tests**. Falls back to Fuse.js for mid-word queries the Trie can't prefix-match.
+
+### 3. Image & voice search
+- **Image:** upload a part photo → **CLIP** embeddings → **cosine similarity** against the catalog vector index (`imageSearch.ts`). Gated behind `ENABLE_IMAGE_SEARCH` to avoid loading the ~350MB model by default.
+- **Voice:** browser-native **Web Speech API** — zero backend cost.
+
+> **Note:** image search uses `@huggingface/transformers` (migrated from `@xenova/transformers` to clear a critical CVE).
+
+### DSA implemented
+| Algorithm | Where | Purpose |
+|---|---|---|
+| **Trie** | `search/trie.ts` | Prefix autocomplete suggestions |
+| **Bitap / Levenshtein** | Fuse.js | Typo-tolerant fuzzy matching |
+| **TF-IDF** | `search/tfidf.ts` | Term-frequency relevance scoring |
+| **Cosine similarity** | `search/vectorIndex.ts` | Vector comparison for image/semantic search |
+| **Reciprocal Rank Fusion** | `assistant/retrieval.ts` | Merge lexical + semantic result lists |
+
+---
+
+## 🤖 TORQ — the RAG assistant
+
+A **retrieval-augmented generation** chatbot with a fast, factual, "machine" persona, streamed to a FAB/drawer widget.
+
+```
+User message
+   │
+   ▼
+1. Intent / entity parse   (price ceiling, vehicle type)
+   │
+   ├─► LEXICAL   search-service /search  (Fuse.js + TF-IDF)
+   ├─► SEMANTIC  MiniLM query embed → pgvector cosine kNN
+   │
+2. Reciprocal Rank Fusion (RRF)  →  score(d) = Σ 1/(k + rank)
+   │
+3. Token-overlap boost + top-N enrich from the live catalog
+   │
+4. LLM adapter — LLM_PROVIDER = template | gemini | groq
+   │
+5. SSE stream → status → text deltas → product rail → chips → done
+```
+
+- **Zero-cost by default:** local MiniLM embeddings (384-dim) + `template` provider (retrieval-only, no API key). Swap to `gemini`/`groq` via env with no code change.
+- **Semantic index:** a background worker re-embeds products into pgvector every 5 minutes (idempotent, skips unchanged rows).
+- **Graceful degradation:** search-service down → semantic-only; pgvector down → lexical-only; both down → empty (never throws).
+
+---
+
+## 🔐 Security
+
+- **Layered rate limiting:** global (1000/15min) → auth (200/15min) → OTP (5/15min) to stop volume attacks, brute force, and SMS bombing.
+- **Cloudflare Turnstile** bot defense on login/register/OTP/admin-login (auto-skips when unconfigured).
+- **Fail-closed JWT:** the auth service refuses to start without `JWT_SECRET` — no more public `dev-secret` fallback.
+- **Admin-only write gates:** the gateway blocks non-admin `POST/PUT/PATCH/DELETE` on `/products`, `/categories`, `/inventory`, and `PATCH /orders/:id/status`; order-service re-checks the role server-side (defense in depth).
+- **Helmet** security headers + strict **CORS** allowlist.
+- **Structured errors** everywhere: `{ code, message, hint }` — validation (400), auth (401), not-found (404), conflict (409), rate-limit (429), server (500).
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 20+ (check: `node -v`)
-- npm 10+ (check: `npm -v`)
-- Docker & Docker Compose (optional, for full stack)
+- **Node.js 20+** (`node -v`) and **npm 10+**
+- **Docker & Docker Compose** (optional, for the full stack)
 
-### Quick Start (local dev)
+### Option A — Local dev (frontend only + live API)
 ```bash
 git clone https://github.com/SanjaykannaR/AutoMart.git
 cd AutoMart
 npm install
 
-# Initialize databases
+# Point the frontend at the deployed API (or your own gateway)
+# apps/web reads NEXT_PUBLIC_API_URL at build/dev time
+npm run dev:web          # → http://localhost:3000
+```
+
+### Option B — Full stack with Docker (recommended)
+```bash
+cp .env.docker.example .env.docker      # then fill in secrets
+docker compose up --build
+# Frontend   → http://localhost:3080
+# API Gateway→ http://localhost:3000
+```
+
+### Option C — Run each service individually
+```bash
+# 1. Set up databases (Postgres) + seed
 npx prisma migrate dev --schema=services/auth-service/prisma/schema.prisma
 npx prisma migrate dev --schema=services/product-service/prisma/schema.prisma
 npx prisma migrate dev --schema=services/order-service/prisma/schema.prisma
 npx prisma migrate dev --schema=services/inventory-service/prisma/schema.prisma
-
-# Seed data
 node services/auth-service/prisma/seed.js
 node services/product-service/prisma/seed.js
 
-# Start frontend
-npm run dev:web
-# → http://localhost:3000
-```
-
-### Run with Docker (full stack)
-```bash
-docker compose up --build
-# Frontend: http://localhost:3080
-# API Gateway: http://localhost:3000
-```
-
-### Run individual services
-```bash
-npm run dev:auth         # Auth Service → :3001
-npm run dev:products     # Product Service → :3002
-npm run dev:search       # Search Service → :3003
-npm run dev:orders       # Order Service → :3004
-npm run dev:inventory    # Inventory Service → :3005
-npm run dev:notifications # Notification Service → :3006
-npm run dev:gateway      # API Gateway → :3000
-npm run dev:mcp          # MCP Server → :3007
+# 2. Start services (each in its own terminal)
+npm run dev:gateway        # :3000
+npm run dev:auth           # :3001
+npm run dev:products       # :3002
+npm run dev:search         # :3003
+npm run dev:orders         # :3004
+npm run dev:inventory      # :3005
+npm run dev:notifications  # :3006
+npm run dev:mcp            # :3007
+npm run dev:assistant      # :3008
+npm run dev:web            # frontend
 ```
 
 ---
 
-## API Endpoints
+## 🔑 Test Accounts
+
+After seeding:
+
+| Name | Email | Password | Role |
+|---|---|---|---|
+| Admin User | `admin@automart.com` | `AutoMart@2026!` | admin |
+| Priya Sharma | `priya@example.com` | `Password123!` | individual |
+| Raj Kumar | `raj@mechanic.com` | `Password123!` | mechanic |
+| AutoZone Parts | `autozone@shop.com` | `Password123!` | shop |
+
+Admin panel: `/admin/login`.
+
+---
+
+## 🌐 API Endpoints
+
+All routes go through the gateway (`/api/...`). Errors are always `{ code, message, hint }`.
 
 ### Auth (`/api/auth`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | `/register` | No | Create account (name, email, password, role) |
-| POST | `/login` | No | Login → returns JWT token |
-| GET | `/me` | Yes | Get current user profile |
+| POST | `/login` | No | Login → JWT |
+| POST | `/oauth` | No | Google / Apple sign-in |
+| POST | `/otp/send` `/otp/verify` | — | Phone verification |
+| POST | `/password/forgot` `/password/reset` | — | Password reset |
+| GET | `/me` | JWT | Current user profile |
+| GET/PUT | `/users/me/cart` `/users/me/wishlist` | JWT | Persist cart & wishlist |
+| * | `/admin/*` | Admin | Users, analytics, banners management |
 
 ### Products (`/api/products`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/products` | No | List products (filters: category, brand, price, vehicle) |
-| GET | `/products/:id` | No | Get product by ID |
-| POST | `/products` | No | Create product |
-| GET | `/categories` | No | List all categories with product counts |
+| GET | `/products` | No | List (filters: category, brand, minPrice, maxPrice, vehicleType, search) |
+| GET | `/products/:id` `/products/slug/:slug` | No | Detail |
+| POST/PATCH/DELETE | `/products…` | Admin | Mutations |
+| GET | `/categories` | No | Categories with counts |
 
 ### Search (`/api/search`)
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/search?q=...` | No | Fuzzy text search |
-| GET | `/autocomplete?q=...` | No | Trie autocomplete suggestions |
-| POST | `/search/image` | No | Image-based search (multipart) |
+| GET | `/search?q=…` | No | Fuzzy search (+ filters) |
+| GET | `/autocomplete?q=…` | No | Trie suggestions |
+| POST | `/search/image` | No | Image search (multipart) |
 
-### Orders (`/api/orders`) — requires JWT
+### Orders (`/api/orders`) — JWT
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/orders` | Create order (items, address, phone) |
-| GET | `/orders` | List user's orders |
-| GET | `/orders/:id` | Get order details |
-| PATCH | `/orders/:id/status` | Update order status |
+| POST | `/orders` | Create order (items, address, phone, total) |
+| GET | `/orders` `/orders/:id` | List / detail |
+| PATCH | `/orders/:id/status` | **Admin** — state machine |
+| GET | `/orders/stats` `/orders/analytics` | **Admin** — metrics |
 
-### MCP Server (`/mcp`)
+### Payments (`/api/payments`)
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/mcp/tools` | List available tools |
-| POST | `/mcp/tools/:name/call` | Execute a tool |
-| GET | `/mcp/resources` | List available resources |
+| POST | `/create-checkout` | Create Stripe Checkout session |
+| POST | `/webhook` | Stripe webhook (marks orders paid) |
+
+### Assistant (`/api/assistant`)
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/chat` | SSE stream: `status → text → products → chips → done` |
+| GET | `/health` | Health + index size |
+| POST | `/reindex` | Manual re-embed trigger |
 
 ---
 
-## MCP Tools
+## 🧩 MCP Tools (AI agent integration)
 
-The MCP server exposes AutoMart's capabilities to AI agents (Claude Desktop, Cursor IDE):
+The MCP server exposes AutoMart to **Claude Desktop / Cursor** over the Model Context Protocol:
 
 | Tool | Description | Parameters |
 |---|---|---|
-| `search_parts` | Search auto parts by text | `query`, `category?`, `maxPrice?`, `limit?` |
-| `check_stock` | Check real-time stock availability | `productId` |
-| `get_order_status` | Get order status and tracking | `orderId` |
-| `get_categories` | List all product categories | — |
-| `get_popular_parts` | Get popular parts | `limit?` |
+| `search_parts` | Search parts by text | `query`, `category?`, `maxPrice?`, `limit?` |
+| `check_stock` | Real-time stock availability | `productId` |
+| `get_order_status` | Order status + tracking | `orderId` |
+| `get_categories` | List categories | — |
+| `get_popular_parts` | Popular parts | `limit?` |
 
 ---
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```
 automart/
-├── apps/
-│   └── web/                        # Next.js 15 frontend
-│       └── src/
-│           ├── app/                 # App Router pages
-│           │   ├── page.tsx         # Landing page (hero + categories)
-│           │   ├── login/           # Login with toast notifications
-│           │   ├── register/        # Registration with role selector
-│           │   ├── search/          # Search with filters + autocomplete
-│           │   ├── products/[id]/   # Product detail + add to cart
-│           │   ├── cart/            # Shopping cart (localStorage)
-│           │   ├── checkout/        # Order placement
-│           │   ├── orders/          # Order history + tracking
-│           │   └── error.tsx        # Error boundary page
-│           └── components/
-│               ├── Toast.tsx        # Toast notification system
-│               ├── ThemeToggle.tsx  # Dark/light theme switcher
-│               ├── ErrorBoundary.tsx # React error boundary
-│               ├── SearchBar.tsx    # Search + voice + image upload
-│               ├── ProductCard.tsx  # Product display card
-│               └── GlassCard.tsx    # Reusable glassmorphism card
+├── apps/web/                          # Next.js 15 frontend
+│   └── src/
+│       ├── app/                       # App Router pages
+│       │   ├── page.tsx               # Landing (hero + categories)
+│       │   ├── search/ products/[id]/ cart/ checkout/ orders/
+│       │   ├── admin/                 # Full admin panel (dashboard, analytics,
+│       │   │                          #   products, inventory, orders, users, banners, settings)
+│       │   └── auth/                  # profile-setup, verify-phone
+│       └── components/                # Toast, ThemeToggle, ErrorBoundary,
+│                                      #   SearchBar, ProductCard, GlassCard, chat/
 ├── services/
-│   ├── api-gateway/                # Routing + auth + rate limiting
-│   ├── auth-service/               # JWT authentication
-│   ├── product-service/            # Product CRUD + categories
-│   ├── search-service/             # Fuzzy search + Trie + image
-│   │   └── src/search/
-│   │       ├── trie.ts             # Trie DSA (insert/search/remove)
-│   │       ├── trie.test.ts        # 10/10 unit tests (Vitest)
-│   │       ├── textSearch.ts       # Fuse.js + Trie integration
-│   │       ├── imageSearch.ts      # CLIP-based image search
-│   │       └── voiceSearch.ts      # Voice transcription
-│   ├── order-service/              # Orders + Redis events
-│   ├── inventory-service/          # Stock management
-│   ├── notification-service/       # Email/SMS via Redis pub/sub
-│   └── mcp-server/                 # AI agent tools (MCP)
-├── e2e/                            # Playwright E2E tests
-│   ├── pages/                      # Page Object Models (6 pages)
-│   └── tests/                      # Test specs (auth, product, order)
-├── docker-compose.yml              # Full stack with Docker
-├── .github/workflows/ci.yml       # CI pipeline
-└── TODOS.md                       # Development roadmap
+│   ├── api-gateway/                   # Routing + auth + rate limiting + Turnstile
+│   ├── auth-service/                  # JWT, OAuth, OTP, banners, cart/wishlist
+│   ├── product-service/               # Catalog + categories
+│   ├── search-service/                # Trie + Fuse.js + TF-IDF + CLIP + voice
+│   │   └── src/search/                #   trie.ts · textSearch.ts · imageSearch.ts
+│   │                                  #   vectorIndex.ts · tfidf.ts (+ unit tests)
+│   ├── order-service/                 # Orders + Stripe + state machine
+│   ├── inventory-service/             # Stock reserve/release/confirm
+│   ├── notification-service/          # Email via Redis pub/sub
+│   ├── assistant-service/             # RAG: embedding · pgvector · retrieval · llm
+│   └── mcp-server/                    # MCP tools (HTTP + stdio)
+├── e2e/                               # Playwright E2E (Page Object Model)
+│   ├── pages/                         #   6 page objects
+│   └── tests/                         #   auth · product · order · admin · ui
+├── supabase/                          # SQL migrations (pgvector, storage buckets)
+├── docs/screenshots/                  # README screenshots
+├── docker-compose.yml                 # Full stack
+├── Dockerfile.prod                    # Multi-stage prod build (Render)
+├── render.yaml · vercel.json          # Deploy config
+└── .github/workflows/                 # ci.yml · e2e.yml · build.yml · keep-warm.yml
 ```
 
 ---
 
-## CI/CD Pipeline
+## ✅ Testing
 
-GitHub Actions workflow (`ci.yml`):
-- **Backend**: Parallel build matrix for all 8 services (`tsc --noEmit`)
-- **Frontend**: `next build` with `NEXT_WORKER_COUNT=1` (Windows compat)
-- **E2E**: Playwright tests (when Docker stack available)
+- **Unit (Vitest):** Trie (10/10), TF-IDF, vector index, voice normalization.
+- **E2E (Playwright):** **17 spec files** with a **Page Object Model** (6 page objects) covering auth, product browse/search, order placement/tracking, the full admin panel, and UI (account, categories, wishlist). Runs cross-browser (Chromium/Firefox/WebKit) in CI against the deployed environment.
+- **Coverage of flows:** register → login → search → add to cart → checkout → track order → admin manage.
 
 ---
 
-## Error Handling
+## 🔁 CI/CD
 
-Every service returns structured errors:
-```json
-{
-  "code": "AUTH_INVALID_CREDENTIALS",
-  "message": "Incorrect password for \"admin@automart.com\".",
-  "hint": "Double-check your password. If you forgot it, contact support."
-}
+GitHub Actions workflows:
+- **`ci.yml`** — parallel TypeScript build matrix across all backend services (`tsc --noEmit`), unit tests, and a frontend `next build`.
+- **`e2e.yml`** — Playwright E2E on `deployment_status`, cross-browser matrix, uploads report on failure.
+- **`build.yml`** — Docker image builds.
+- **`keep-warm.yml`** — pings the Render free-tier backend every 10 min to prevent cold starts.
+
+**Deploy:** frontend on **Vercel** (`apps/web`), backend on **Render** as a single Docker container running all services (`Dockerfile.prod` + `scripts/start-prod.sh`).
+
+---
+
+## 🐳 Deployment Architecture
+
+```
+GitHub (main)
+   ├── 🌐 Frontend → Vercel   https://auto-mart-web.vercel.app
+   │     Next.js 15 (apps/web), configured via vercel.json "services" schema
+   │
+   └── 🖥️ Backend  → Render    https://automart-backend-f1ic.onrender.com
+         Single Docker container: gateway (:3000, primary port) + all 8 services
+         (:3001–:3008) started by scripts/start-prod.sh
+         Supabase (Postgres + pgvector) · Upstash (Redis) · Stripe · Resend
 ```
 
-Error categories: validation (400), authentication (401), not found (404), conflict (409), rate limit (429), server error (500).
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full step-by-step guide (env vars, Turnstile, Stripe webhooks, Google OAuth origins, troubleshooting).
 
 ---
 
-## Learning Outcomes
+## 📈 Learning Outcomes
 
-This project demonstrates:
-- **Microservices architecture** with database-per-service pattern
-- **Event-driven architecture** via Redis Pub/Sub
-- **API Gateway pattern** with routing, auth middleware, and rate limiting
-- **Monorepo management** with npm workspaces
-- **Containerization** with multi-stage Docker builds
-- **CI/CD** with GitHub Actions
-- **E2E testing** with Playwright (Page Object Model)
-- **DSA**: Trie, Levenshtein Distance, Bitap Algorithm
-- **AI integration** via Model Context Protocol (MCP)
-- **JWT authentication** with bcrypt password hashing
-- **Structured error handling** across all services
+This project demonstrates end-to-end competence across the stack:
 
----
-
-## Test Accounts
-
-After seeding, use these credentials:
-
-| Name | Email | Password | Role |
-|---|---|---|---|
-| Admin User | admin@automart.com | Password123! | shop |
-| Raj Kumar | raj@mechanic.com | Password123! | mechanic |
-| Priya Sharma | priya@example.com | Password123! | individual |
-| AutoZone Parts | autozone@shop.com | Password123! | shop |
+- **Microservices architecture** with database-per-service and an API Gateway.
+- **Event-driven design** via Redis Pub/Sub (order → inventory + notification).
+- **Monorepo management** with npm workspaces.
+- **Containerization** with multi-stage Docker builds + Compose.
+- **CI/CD** with GitHub Actions (build matrix, E2E, keep-warm).
+- **E2E testing** with Playwright + the Page Object Model.
+- **Data structures & algorithms** — Trie, Levenshtein/Bitap, TF-IDF, cosine similarity, RRF.
+- **AI integration** — RAG (hybrid retrieval + pgvector + LLM), CLIP image search, and MCP for agent tooling.
+- **Payments & security** — Stripe Checkout/webhooks, JWT + bcrypt, layered rate limiting, bot defense, admin RBAC.
+- **Structured error handling** and observability across every service.
 
 ---
 
-## License
+## 🧹 Regenerating the Screenshots
+
+The screenshots in `docs/screenshots/` are produced by a Playwright script that drives the running app:
+
+```bash
+# Start the stack (Docker or individual services), then:
+node scripts/capture-screenshots.mjs
+# Point at a different target with env vars:
+BASE_URL=http://localhost:3080 API_URL=http://localhost:3000 node scripts/capture-screenshots.mjs
+```
+
+It logs in (seeded accounts), seeds demo cart/orders, and captures the 8 key pages as 1440×900 JPEGs.
+
+---
+
+## 📄 License
 
 MIT
