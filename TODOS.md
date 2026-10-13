@@ -63,9 +63,23 @@ CRITICAL: 0 | HIGH: 4 | MODERATE: 0 | LOW: 0
 - [x] `main` pushed (`4ea717f..ee0adc1`) — Vercel production deploy triggered
 - [x] Vercel deploy **passed** on `main`
 
+## ✅ Phase 9: Checkout 403 Hotfix — customers blocked from placing orders
+- [x] Symptom (prod console): `POST /api/orders` → `403 ADMIN_FORBIDDEN` ("payment process failed"), `GET /api/auth/users/me/cart` → `504`
+- [x] Root cause: commit `ce85d2f` added `/orders` to `adminWritePathPrefixes` to gate order-status changes, but the blanket prefix also blocked **POST /orders** (customer order creation) for every non-admin user
+- [x] `services/api-gateway/src/index.ts`:
+  - Removed `/orders` from `adminWritePathPrefixes` (`['/products', '/categories', '/inventory']`)
+  - Added `adminWritePathPatterns = [/^\/orders\/[^/]+\/status$/]` — admin gate now scoped to `PATCH /orders/:id/status` only
+  - `POST /orders` now requires any valid JWT (via `protectedPaths`), restoring pre-bug behavior
+  - Defense in depth preserved: order-service still re-checks admin role server-side (`services/order-service/src/index.ts:326`)
+- [x] Verified: api-gateway `tsc --noEmit` ✓, eslint 0 errors ✓
+- [x] Committed as `4e5e79f` on `fix/order-creation-admin-gate`, cherry-picked to `sanjay` (`3efd6ca`), CI passed
+- [x] Merged `sanjay` → `main` (`5804823`), pushed — Vercel/Render deploy triggered
+- [x] Note: cart `504` was infra (Render free-tier cold start / Redis not responding) — frontend already falls back to localStorage cart; browser-extension warnings (`chext_driver`, `couponCollection`, `[BHK] widget`) are not our code
+
 ## 📦 Git
 - [x] `sanjay` branch — all security, migration, e2e, vercel fixes
 - [x] Merged into `main` (head `ee0adc1`), pushed
+- [x] `fix/order-creation-admin-gate` branch — checkout 403 hotfix (`4e5e79f`), cherry-picked to `sanjay`, merged to `main` (head `5804823`), pushed
 
 ## ⏳ Future / Known
 - [ ] Revisit 4 residual HIGHs when `sharp` ≥0.35 / `onnxruntime-node` patches `adm-zip`
