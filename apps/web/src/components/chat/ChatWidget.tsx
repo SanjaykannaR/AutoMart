@@ -6,7 +6,7 @@
  */
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useChat } from './useChat'
@@ -16,7 +16,13 @@ const EASE = [0.16, 1, 0.3, 1] as const
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false)
-  const { messages, status, isStreaming, send, stop, reset } = useChat()
+  const { messages, status, isStreaming, availability, probe, send, stop, reset } = useChat()
+
+  // Probe the assistant on every open — surfaces a graceful offline state
+  // when assistant-service is disabled/unreachable instead of failing silently.
+  useEffect(() => {
+    if (open) void probe()
+  }, [open, probe])
 
   return (
     <>
@@ -35,10 +41,24 @@ export function ChatWidget() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-[var(--color-surface-alt)]/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-pulse" />
+                <div
+                  className={
+                    'w-2 h-2 rounded-full animate-pulse ' +
+                    (availability === 'offline' ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-accent)]')
+                  }
+                />
                 <div>
                   <div className="text-sm font-semibold text-[var(--color-text)] tracking-wide">TORQ</div>
-                  <div className="text-[10px] font-mono text-[var(--color-accent)]">MACHINE ASSISTANT</div>
+                  <div
+                    className={
+                      'text-[10px] font-mono ' +
+                      (availability === 'offline'
+                        ? 'text-[var(--color-danger)]'
+                        : 'text-[var(--color-accent)]')
+                    }
+                  >
+                    {availability === 'offline' ? 'MACHINE ASSISTANT · OFFLINE' : 'MACHINE ASSISTANT'}
+                  </div>
                 </div>
               </div>
               <button
@@ -51,7 +71,14 @@ export function ChatWidget() {
             </div>
 
             {/* Panel */}
-            <ChatPanel messages={messages} status={status} isStreaming={isStreaming} onSend={send} />
+            <ChatPanel
+              messages={messages}
+              status={status}
+              isStreaming={isStreaming}
+              availability={availability}
+              onRetry={probe}
+              onSend={send}
+            />
           </motion.div>
         )}
       </AnimatePresence>

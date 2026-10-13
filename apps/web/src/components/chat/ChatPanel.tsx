@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ChatMessage } from './ChatMessage'
 import type { ChatMessage as ChatMessageType } from './useChat'
+import type { Availability } from './useChat'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -18,10 +19,12 @@ const SUGGESTIONS = [
   'car battery replacement',
 ]
 
-export function ChatPanel({ messages, status, isStreaming, onSend }: {
+export function ChatPanel({ messages, status, isStreaming, availability, onRetry, onSend }: {
   messages: ChatMessageType[]
   status: string | null
   isStreaming: boolean
+  availability: Availability
+  onRetry: () => void
   onSend: (text: string) => void
 }) {
   const [input, setInput] = useState('')
@@ -46,21 +49,39 @@ export function ChatPanel({ messages, status, isStreaming, onSend }: {
       <div ref={scrollRef} className="chat-panel-scroll flex-1 overflow-y-auto px-4 py-4 space-y-3.5">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-3 px-6">
-            <div className="text-[var(--color-accent)] font-mono text-xs tracking-widest">TORQ ONLINE</div>
-            <p className="text-sm text-[var(--color-text-dim)]">
-              Machine assistant. Ask me about parts, prices and fitment.
-            </p>
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {SUGGESTIONS.map((s) => (
+            {availability === 'offline' ? (
+              <>
+                <div className="text-[var(--color-danger)] font-mono text-xs tracking-widest">TORQ OFFLINE</div>
+                <p className="text-sm text-[var(--color-text-dim)]">
+                  The assistant link is down right now. You can still browse parts and search the
+                  catalog, or retry — I&apos;ll reconnect when the backend is back.
+                </p>
                 <button
-                  key={s}
-                  onClick={() => onSend(s)}
-                  className="px-2.5 py-1 text-[11px] rounded-full border border-white/10 bg-white/[0.04] text-[var(--color-text-dim)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] transition-colors"
+                  onClick={onRetry}
+                  className="px-3 py-1.5 text-[11px] font-mono rounded-full border border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
                 >
-                  {s}
+                  RETRY CONNECTION
                 </button>
-              ))}
-            </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[var(--color-accent)] font-mono text-xs tracking-widest">TORQ ONLINE</div>
+                <p className="text-sm text-[var(--color-text-dim)]">
+                  Machine assistant. Ask me about parts, prices and fitment.
+                </p>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => onSend(s)}
+                      className="px-2.5 py-1 text-[11px] rounded-full border border-white/10 bg-white/[0.04] text-[var(--color-text-dim)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] transition-colors"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -79,6 +100,21 @@ export function ChatPanel({ messages, status, isStreaming, onSend }: {
           </motion.div>
         )}
       </div>
+
+      {/* Offline banner — shown whenever the assistant link is known down */}
+      {availability === 'offline' && messages.length > 0 && (
+        <div className="mx-3 mb-0 p-2.5 rounded-lg border border-[var(--color-danger)]/25 bg-[var(--color-danger)]/10 flex items-center justify-between gap-2">
+          <span className="text-[10px] font-mono text-[var(--color-danger)]">
+            ⚠ LINK DOWN — ASSISTANT OFFLINE
+          </span>
+          <button
+            onClick={onRetry}
+            className="text-[10px] font-mono text-[var(--color-danger)] underline underline-offset-2 hover:opacity-80 transition-opacity"
+          >
+            RETRY
+          </button>
+        </div>
+      )}
 
       {/* Composer */}
       <div className="p-3 border-t border-white/[0.06] bg-[var(--color-surface)]/80">

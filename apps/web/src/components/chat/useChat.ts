@@ -43,11 +43,36 @@ const EMPTY_MSG = (role: 'user' | 'assistant'): ChatMessage => ({
   streaming: false,
 })
 
+export type Availability = 'unknown' | 'online' | 'offline'
+
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [availability, setAvailability] = useState<Availability>('unknown')
   const abortRef = useRef<AbortController | null>(null)
+
+  /**
+   * Health probe — GET /api/assistant/health.
+   *
+   * Returns false (and marks the assistant offline) when the gateway can't
+   * reach assistant-service (e.g. the Render proxy 502s while the service is
+   * disabled/crashed) so the UI can show a graceful offline state instead of
+   * letting a send silently die. A slow probe during a Render cold start is
+   * treated as offline-but-retryable — the RETRY button re-runs this.
+   */
+  const probe = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/assistant/health`, {
+        signal: AbortSignal.timeout(15_000),
+      })
+      setAvailability(res.ok ? 'online' : 'offline')
+      return res.ok
+    } catch {
+      setAvailability('offline')
+      return false
+    }
+  }, [])
 
   /** Patch the in-progress assistant message by id. */
   const patch = useCallback((id: string, fn: (m: ChatMessage) => ChatMessage) => {
@@ -77,6 +102,7 @@ export function useChat() {
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
 
+      setAvailability('online') // gateway reached assistant-service — link is up
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
@@ -118,10 +144,11 @@ export function useChat() {
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
         console.error('[Chat] stream error:', err)
+        setAvailability('offline')
         patch(targetId, (m) => ({
           ...m,
           streaming: false,
-          text: m.text || 'CONNECTION LOST. TRY AGAIN.',
+          text: m.text || 'LINK DOWN — TORQ IS OFFLINE RIGHT NOW. TRY AGAIN IN A MOMENT, OR BROWSE PARTS IN THE MEANTIME.',
         }))
       }
     } finally {
@@ -144,5 +171,5 @@ export function useChat() {
     setIsStreaming(false)
   }, [])
 
-  return { messages, status, isStreaming, send, stop, reset }
+  return { messages, status, isStreaming, availability, probe, send, stop, reset }
 }
