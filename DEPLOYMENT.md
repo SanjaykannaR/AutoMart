@@ -84,6 +84,8 @@ External URL scheme: every frontend call goes to `https://automart-backend-f1ic.
 | `STRIPE_WEBHOOK_SECRET` | ❌ PENDING — see Part 3, step 3.2 |
 | `TURNSTILE_SECRET_KEY` | ❌ PENDING — see Part 3, step 3.1 |
 | `LLM_PROVIDER` | `template` (no `LLM_API_KEY` needed for template) |
+| `ENABLE_ASSISTANT` | `true` — turns on the RAG chatbot (assistant-service). Skipped by default to protect the 512MB free tier |
+| `ENABLE_TEXT_EMBEDDINGS` | `false` (default in prod) — assistant runs **lexical-only**: no MiniLM/ONNX model loaded, chat still returns product cards via search-service. Set `true` only if you upgrade Render (needs the extra ~200-300MB) |
 
 **Optional — skip unless you need real email:**
 `RESEND_API_KEY`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` (notification service falls back to mock mode without them).

@@ -16,6 +16,20 @@
 const MODEL = 'Xenova/all-MiniLM-L6-v2'
 export const EMBEDDING_DIM = 384
 
+/**
+ * Text-embedding master switch (default: enabled).
+ *
+ * Set ENABLE_TEXT_EMBEDDINGS=false to run the assistant in lightweight
+ * LEXICAL-ONLY mode: no ONNX model is downloaded or loaded, the pgvector
+ * index worker is skipped, and semantic retrieval returns nothing — chat
+ * still works (search-service Fuse.js + TF-IDF provides the products).
+ *
+ * Used in production (start-prod.sh defaults it to false): the model plus
+ * ONNX runtime pushes the single-container stack past Render's 512MB free
+ * tier. Semantic search remains available in dev/Docker where memory allows.
+ */
+export const EMBEDDINGS_ENABLED = (process.env.ENABLE_TEXT_EMBEDDINGS ?? 'true').toLowerCase() !== 'false'
+
 // Module-level state — initialized once, shared across all requests
 let extractor: any = null
 let modelReady = false
@@ -24,6 +38,10 @@ let modelReady = false
  * Load the MiniLM text encoder once. Graceful fallback if download/init fails.
  */
 export async function initEmbeddingModel(): Promise<boolean> {
+  if (!EMBEDDINGS_ENABLED) {
+    console.log('[Assistant] Text embeddings disabled (ENABLE_TEXT_EMBEDDINGS=false) — lexical-only mode, no model loaded')
+    return false
+  }
   try {
     // Dynamic import — only load if available (mirrors search-service CLIP pattern)
     const transformers = await import('@huggingface/transformers')

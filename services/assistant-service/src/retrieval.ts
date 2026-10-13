@@ -10,7 +10,7 @@
  *   - pgvector/table down  → lexical-only
  *   - both down            → empty (never throws)
  */
-import { embedText } from './embedding'
+import { embedText, EMBEDDINGS_ENABLED } from './embedding'
 import { semanticSearch as pgvectorSemanticSearch } from './pgvector'
 import { getCatalog, getProductsByIds, type CatalogProduct } from './catalog'
 
@@ -42,7 +42,7 @@ async function lexicalSearch(message: string, maxPrice?: number, vehicleType?: s
   try {
     const res = await fetch(`${base}/search?${params}`, { signal: AbortSignal.timeout(6000) })
     if (!res.ok) return []
-    const data = await res.json()
+    const data: any = await res.json()
     // search-service responds `{ query, results }` (it echoes the normalized query
     // too). Older versions returned a bare array. Accept both so lexical retrieval
     // works regardless — previously this did `if (!Array.isArray(data)) return []`,
@@ -62,6 +62,7 @@ async function lexicalSearch(message: string, maxPrice?: number, vehicleType?: s
 
 /** Semantic retrieval via pgvector kNN, enriched + filtered locally. */
 async function semanticSearch(message: string, maxPrice?: number, vehicleType?: string): Promise<CatalogProduct[]> {
+  if (!EMBEDDINGS_ENABLED) return [] // lexical-only mode (ENABLE_TEXT_EMBEDDINGS=false)
   try {
     const queryEmbedding = await embedText(message)
     const hits = await pgvectorSemanticSearch(queryEmbedding, 50)

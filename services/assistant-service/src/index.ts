@@ -11,7 +11,7 @@
  */
 import express from 'express'
 import { z } from 'zod'
-import { initEmbeddingModel } from './embedding'
+import { initEmbeddingModel, EMBEDDINGS_ENABLED } from './embedding'
 import { startIndexingLoop, reindexAll } from './indexing'
 import { hybridSearch } from './retrieval'
 import { generateMachineResponse, llmProviderName } from './llm'
@@ -37,7 +37,13 @@ const chatSchema = z.object({
 
 // Boot the embedding model + indexing worker in the background — the service
 // must serve /health immediately even if these take time or fail.
-initEmbeddingModel().then(() => startIndexingLoop())
+// Lexical-only mode (ENABLE_TEXT_EMBEDDINGS=false): skip both entirely —
+// no model download/load, no periodic pgvector reindex, ~96MB heap budget.
+if (EMBEDDINGS_ENABLED) {
+  initEmbeddingModel().then(() => startIndexingLoop())
+} else {
+  console.log('[Assistant] Lexical-only mode — embedding model and index worker not started')
+}
 // Ensure catalog fetch happens early too
 getCatalog().catch(() => {})
 
@@ -138,6 +144,7 @@ app.get('/assistant/health', async (_req, res) => {
     status: 'ok',
     service: 'assistant-service',
     indexed,
+    embeddings: EMBEDDINGS_ENABLED ? 'enabled' : 'disabled',
     llmProvider: llmProviderName(),
   })
 })

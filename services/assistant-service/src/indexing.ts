@@ -4,13 +4,17 @@
  * Runs at startup + every 5 minutes (same cadence as search-service).
  * Idempotent: upserts every fetched product, deletes ids that no longer exist.
  */
-import { embedBatch, productToText } from './embedding'
+import { embedBatch, productToText, EMBEDDINGS_ENABLED } from './embedding'
 import { upsertEmbedding, deleteEmbedding, listIndexedIds, resetReadyFlag } from './pgvector'
 import { getCatalog, refreshCatalog } from './catalog'
 
 let indexing = false
 
 export async function reindexAll(): Promise<{ indexed: number; deleted: number }> {
+  if (!EMBEDDINGS_ENABLED) {
+    console.log('[Assistant] Reindex skipped — embeddings disabled (ENABLE_TEXT_EMBEDDINGS=false)')
+    return { indexed: 0, deleted: 0 }
+  }
   if (indexing) return { indexed: 0, deleted: 0 }
   indexing = true
   try {

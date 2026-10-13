@@ -7,7 +7,8 @@
 # The API gateway is the main process — when it exits, the container stops.
 #
 # MEMORY: Render free tier has 512MB. Heavy/optional services are OFF by default:
-#   - assistant-service (RAG + ~300MB embedding model) → enable with ENABLE_ASSISTANT=true
+#   - assistant-service (RAG chatbot; lexical-only unless ENABLE_TEXT_EMBEDDINGS=true)
+#     → enable with ENABLE_ASSISTANT=true (fits in 512MB WITHOUT the embedding model)
 #   - mcp-server (dev tool)                            → enable with ENABLE_MCP=true
 # Node heap is capped per process to keep total usage bounded.
 # ──────────────────────────────────────────────────────────────────────────────
@@ -66,6 +67,12 @@ export ASSISTANT_SERVICE_URL="${ASSISTANT_SERVICE_URL:-http://localhost:$ASSISTA
 # Heavy optional feature — CLIP image search loads a ~600MB model. Off by
 # default to fit the 512MB free tier. Text search is unaffected.
 export ENABLE_IMAGE_SEARCH="${ENABLE_IMAGE_SEARCH:-false}"
+
+# Text embeddings (MiniLM + ONNX runtime) add enough memory to blow the 512MB
+# free tier when stacked with the other 7 services — default them OFF so the
+# assistant runs in lightweight LEXICAL-ONLY mode (chat still returns product
+# cards via search-service). Set ENABLE_TEXT_EMBEDDINGS=true on a bigger plan.
+export ENABLE_TEXT_EMBEDDINGS="${ENABLE_TEXT_EMBEDDINGS:-false}"
 
 log "Service URLs configured:"
 log "  AUTH:        $AUTH_SERVICE_URL"
@@ -133,7 +140,7 @@ fi
 if [ "$ENABLE_ASSISTANT" = "true" ]; then
   node $NODE_OPTS_ASSISTANT services/assistant-service/dist/index.js &
   PIDS+=($!)
-  log "  assistant-service started (PID $!, port $ASSISTANT_PORT)"
+  log "  assistant-service started (PID $!, port $ASSISTANT_PORT, embeddings=$ENABLE_TEXT_EMBEDDINGS)"
 else
   warn "  assistant-service SKIPPED (set ENABLE_ASSISTANT=true to enable)"
 fi

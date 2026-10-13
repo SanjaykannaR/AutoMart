@@ -35,15 +35,20 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      # ── Frontend URL (update after deploying to Vercel) ──
+      # ── Frontend URL (Vercel production frontend) ──
       - key: FRONTEND_URL
-        value: "https://automart.vercel.app"
+        value: "https://auto-mart-web.vercel.app"
       - key: CORS_ORIGINS
-        value: "https://automart.vercel.app"
+        value: "https://auto-mart-web.vercel.app"
       # ── Email (optional — mock mode if not set) ──
       - key: RESEND_API_KEY
         sync: false
       # ── RAG Assistant (template mode works with no key) ──
+      # Runs lexical-only on the 512MB free tier (no embedding model loaded).
+      - key: ENABLE_ASSISTANT
+        value: "true"
+      - key: ENABLE_TEXT_EMBEDDINGS
+        value: "false"
       - key: LLM_PROVIDER
         value: "template"
       - key: LLM_API_KEY
