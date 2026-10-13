@@ -17,3 +17,18 @@ jobs:
           if [ "$code" != "200" ]; then
             echo "Warning: health check did not return 200 (cold start in progress, retrying is fine)."
           fi
+
+      # ── Keep Supabase awake ────────────────────────────────────────────────
+      # /health is a hardcoded JSON that does NOT touch the database, so
+      # pinging it alone still leaves Supabase seeing zero DB activity —
+      # which is what got the free project auto-paused (and nearly deleted).
+      # This second ping routes gateway → product-service → Postgres, giving
+      # Supabase the "a few DB queries per day" it needs to stay active.
+      - name: Ping a database-backed endpoint (keeps Supabase un-paused)
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 \
+            https://automart-backend-f1ic.onrender.com/api/products || true)
+          echo "Products endpoint returned HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Warning: products check did not return 200 (DB cold start or pause in progress)."
+          fi
