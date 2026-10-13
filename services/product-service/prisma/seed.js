@@ -72,10 +72,15 @@ async function main() {
   }
 
   // Create products
+  const categoryNameBySlug = Object.fromEntries(categories.map(c => [c.slug, c.name]))
+  // Sample fitment lists per vehicle type — used for the "Compatible Vehicles" section
+  const carFitments = ['Maruti Swift Dzire (2015–2024)', 'Hyundai i20 (2014–2024)', 'Honda City (2017–2024)', 'Toyota Innova Crysta (2016–2024)']
+  const bikeFitments = ['Honda Activa 6G', 'TVS Jupiter', 'Bajaj Pulsar NS200', 'Royal Enfield Classic 350']
   for (const p of products) {
     const slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     const existing = await prisma.product.findUnique({ where: { slug } })
     if (!existing) {
+      const fitments = p.vehicleType === 'car' ? carFitments : p.vehicleType === 'bike' ? bikeFitments : [...carFitments.slice(0, 2), ...bikeFitments.slice(0, 2)]
       await prisma.product.create({
         data: {
           name: p.name,
@@ -85,7 +90,15 @@ async function main() {
           price: p.price,
           categoryId: categoryMap[p.categorySlug],
           vehicleType: p.vehicleType,
-          compatibleVehicles: JSON.stringify([]),
+          compatibleVehicles: JSON.stringify(fitments),
+          specifications: JSON.stringify({
+            Brand: p.brand,
+            'Part Category': categoryNameBySlug[p.categorySlug] || 'General',
+            'Vehicle Type': p.vehicleType === 'both' ? 'Car & Bike' : p.vehicleType === 'car' ? 'Car' : 'Bike',
+            Warranty: '12 months',
+            'Country of Origin': 'India',
+            SKU: `AM-${slug.slice(0, 8).toUpperCase()}`,
+          }),
           stock: p.stock,
         },
       })

@@ -43,13 +43,15 @@ async function lexicalSearch(message: string, maxPrice?: number, vehicleType?: s
     const res = await fetch(`${base}/search?${params}`, { signal: AbortSignal.timeout(6000) })
     if (!res.ok) return []
     const data = await res.json()
-    if (!Array.isArray(data)) return []
-    // search-service returns products (no per-item score) — rank = array position
-    const byId = new Map(data.map((p: any) => [String(p.id), p]))
+    // search-service responds `{ query, results }` (it echoes the normalized query
+    // too). Older versions returned a bare array. Accept both so lexical retrieval
+    // works regardless — previously this did `if (!Array.isArray(data)) return []`,
+    // which always bailed on the object shape and left lexical retrieval dead.
+    const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
+    if (list.length === 0) return []
+    // Enrich: map search hits onto the in-memory catalog (CatalogProduct) by id.
     const all = await getCatalog()
-    return data.map((p: any) => String(p.id))
-      .map((id) => byId.get(id))
-      .filter((p): p is any => !!p)
+    return list
       .map((p: any) => all.find((c) => c.id === p.id))
       .filter((p): p is CatalogProduct => !!p)
   } catch (err: any) {

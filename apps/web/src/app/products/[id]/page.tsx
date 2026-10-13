@@ -103,6 +103,10 @@ export default function ProductDetailPage() {
         if (data && data.specifications && !Array.isArray(data.specifications) && typeof data.specifications === 'object') {
           data.specifications = Object.entries(data.specifications).map(([key, value]) => ({ key, value: String(value) }))
         }
+        // Guard: products with no specifications/compatibleVehicles (null in DB) must
+        // still render — the page calls .map() on both, so default them to empty arrays.
+        if (!Array.isArray(data.specifications)) data.specifications = []
+        if (!Array.isArray(data.compatibleVehicles)) data.compatibleVehicles = []
         setProduct(data) // Store product data
       })
       .catch(() => setProduct(mockProduct)) // Fallback to mock on error
